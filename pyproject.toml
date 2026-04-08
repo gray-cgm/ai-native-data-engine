@@ -1,0 +1,17 @@
+[project]
+name = "ai-native-data-engine"
+version = "0.1.0"
+description = "Autonomous driving data loop local MVP"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv.workspace]
+members = [
+  "apps/api",
+  "apps/orchestrator",
+  "python/core",
+  "python/adapters",
+  "python/workflows",
+  "python/profiles",
+  "sdk/python"
+]

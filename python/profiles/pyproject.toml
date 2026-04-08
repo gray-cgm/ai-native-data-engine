@@ -1,0 +1,14 @@
+[project]
+name = "ad-profiles"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.8.2",
+  "PyYAML>=6.0.2",
+  "ad-core",
+  "ad-adapters"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,32 @@
+profile: team-dev
+
+storage:
+  provider: minio
+  bucket: ad-data
+  endpoint: http://minio:9000
+
+query:
+  provider: duckdb
+  database: ./data/duckdb/team.duckdb
+
+compute:
+  provider: dagster_local
+
+metadata:
+  provider: postgres
+  dsn: postgresql://postgres:postgres@postgres:5432/ad_closure
+
+search:
+  provider: lance
+  uri: ./data/lance/team_samples.lance
+
+auth:
+  provider: local
+  jwt_secret: team-dev-secret
+
+capabilities:
+  multi_tenant: false
+  sso: false
+  distributed_compute: false
+  advanced_governance: false
+  object_storage: true

@@ -1,0 +1,20 @@
+{
+  "folders": [
+    {
+      "path": "../data-platform",
+    },
+    {
+      "path": "../dagster/xpeng-data-pipeline",
+    },
+    {
+      "path": "../dagster/dagster",
+    },
+    {
+      "path": "../dagster/dagster-ui",
+    },
+    {
+      "path": ".",
+    },
+  ],
+  "settings": {},
+}
