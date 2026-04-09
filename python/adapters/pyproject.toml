@@ -1,0 +1,14 @@
+[project]
+name = "ad-adapters"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "ad-core",
+  "duckdb>=1.0.0",
+  "pyarrow>=17.0.0",
+  "lance>=0.18.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,14 @@
+[project]
+name = "orchestrator"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "dagster>=1.8.9",
+  "dagster-webserver>=1.8.9",
+  "ad-workflows",
+  "ad-profiles"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

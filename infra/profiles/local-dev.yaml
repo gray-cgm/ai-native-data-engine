@@ -1,0 +1,31 @@
+profile: local-dev
+
+storage:
+  provider: local_fs
+  root_uri: ./data
+
+query:
+  provider: duckdb
+  database: ./data/duckdb/app.duckdb
+
+compute:
+  provider: dagster_local
+
+metadata:
+  provider: sqlite
+  database: ./data/metadata/metadata.db
+
+search:
+  provider: lance
+  uri: ./data/lance/samples.lance
+
+auth:
+  provider: local
+  jwt_secret: local-dev-secret
+
+capabilities:
+  multi_tenant: false
+  sso: false
+  distributed_compute: false
+  advanced_governance: false
+  object_storage: false

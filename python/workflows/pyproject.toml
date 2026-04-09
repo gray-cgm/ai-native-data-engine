@@ -1,0 +1,14 @@
+[project]
+name = "ad-workflows"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "ad-core",
+  "ad-adapters",
+  "ad-profiles",
+  "lance>=0.18.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

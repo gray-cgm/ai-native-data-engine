@@ -1,0 +1,36 @@
+profile: enterprise-saas
+
+storage:
+  provider: s3
+  bucket: ad-enterprise-data
+  region: ap-southeast-1
+
+query:
+  provider: starrocks
+  jdbc_url: jdbc:mysql://starrocks-fe:9030
+  database: ad_platform
+
+compute:
+  provider: dagster_k8s
+  spark_cluster: spark://spark-master:7077
+  flink_endpoint: http://flink-jobmanager:8081
+
+metadata:
+  provider: postgres
+  dsn: postgresql://app_user:${DB_PASSWORD}@postgres:5432/ad_platform
+
+search:
+  provider: lance
+  uri: s3://ad-enterprise-data/lance/samples/
+
+auth:
+  provider: oidc
+  issuer: https://sso.company.com
+  audience: ad-platform
+
+capabilities:
+  multi_tenant: true
+  sso: true
+  distributed_compute: true
+  advanced_governance: true
+  object_storage: true

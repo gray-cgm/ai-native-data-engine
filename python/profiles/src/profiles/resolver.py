@@ -1,0 +1,78 @@
+from pathlib import Path
+
+import yaml
+
+from adapters.auth.local.adapter import LocalAuthAdapter
+from adapters.auth.oidc.adapter import OIDCAuthAdapter
+from adapters.compute.dagster_local.adapter import DagsterLocalComputeAdapter
+from adapters.compute.local_python.adapter import LocalPythonComputeAdapter
+from adapters.metadata.postgres.adapter import PostgresMetadataAdapter
+from adapters.metadata.sqlite.adapter import SQLiteMetadataAdapter
+from adapters.table.parquet.adapter import ParquetTableAdapter
+from adapters.query.duckdb.adapter import DuckDBQueryAdapter
+from adapters.query.starrocks.adapter import StarRocksQueryAdapter
+from adapters.storage.local_fs.adapter import LocalFileStorageAdapter
+from adapters.storage.s3.adapter import S3StorageAdapter
+from adapters.vector.lance.adapter import LanceVectorAdapter
+from core.domain.models import ProfileCapabilities, RuntimeProfile
+from core.profiles.runtime import RuntimeContainer
+
+
+def load_profile(profile_path: Path) -> RuntimeProfile:
+    payload = yaml.safe_load(profile_path.read_text())
+    payload['capabilities'] = ProfileCapabilities(**payload['capabilities'])
+    return RuntimeProfile(**payload)
+
+
+def build_container(profile_path: Path) -> RuntimeContainer:
+    profile = load_profile(profile_path)
+
+    if profile.storage['provider'] == 'local_fs':
+        storage = LocalFileStorageAdapter()
+    else:
+        storage = S3StorageAdapter(
+            bucket=profile.storage.get('bucket', ''),
+            region=profile.storage.get('region'),
+        )
+
+    if profile.query['provider'] == 'duckdb':
+        query = DuckDBQueryAdapter(
+            db_path=Path(profile.query['database']),
+            parquet_path=Path('./data/silver/samples.parquet'),
+        )
+    else:
+        query = StarRocksQueryAdapter(
+            jdbc_url=profile.query['jdbc_url'],
+            database=profile.query['database'],
+        )
+
+    compute_provider = profile.compute['provider']
+    if compute_provider == 'local_python':
+        compute = LocalPythonComputeAdapter()
+    else:
+        compute = DagsterLocalComputeAdapter()
+
+    metadata_provider = profile.metadata['provider']
+    if metadata_provider == 'sqlite':
+        metadata = SQLiteMetadataAdapter(Path(profile.metadata['database']))
+    else:
+        metadata = PostgresMetadataAdapter()
+    search = LanceVectorAdapter(Path(profile.search['uri']))
+    table = ParquetTableAdapter(Path('./data/gold'))
+
+    if profile.auth['provider'] == 'local':
+        auth = LocalAuthAdapter()
+    else:
+        auth = OIDCAuthAdapter()
+
+    return RuntimeContainer(
+        profile=profile,
+        capabilities=profile.capabilities,
+        storage=storage,
+        query=query,
+        compute=compute,
+        metadata=metadata,
+        search=search,
+        auth=auth,
+        table=table,
+    )
