@@ -1,4 +1,4 @@
-# AI Native Data Engine MVP
+# AI Native Data Closed Loop Engine MVP
 
 本项目是一个面向自动驾驶/机器人数据闭环的本地可跑 monorepo MVP。
 
