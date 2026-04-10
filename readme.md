@@ -1,6 +1,8 @@
-# AI Native Data Closed Loop Engine MVP
+# AI Native Data Closed Loop Engine
 
-本项目是一个面向自动驾驶/机器人数据闭环的本地可跑 monorepo MVP。
+Build a local-first data closed-loop engine for autonomous driving and robotics, while learning to design data-intensive applications systematically.
+
+本项目是一个面向自动驾驶/机器人数据闭环的本地可跑 monorepo MVP，目标不仅是搭建一条可运行的数据闭环链路，也希望帮助开发者系统性地学习如何设计数据密集型应用。
 
 ## 技术选型
 
@@ -165,13 +167,16 @@ If you want to systematically understand AI Native Data Engine and data-closed-l
 
 ### 推荐阅读顺序 / Recommended Reading Order
 
-1. **先看总览综述 / Start with a survey**  
+1. **先补数据密集型系统基础 / Start with data-intensive systems fundamentals**  
+   先建立对 storage、replication、partitioning、stream processing、batch processing 与 system design trade-off 的整体认知，这会直接影响你如何设计数据闭环平台。  
+   First build a mental model of storage, replication, partitioning, stream processing, batch processing, and system-design trade-offs, because these directly shape how you design a data closed-loop platform.
+2. **再看总览综述 / Then read the survey**  
    建立对 data-centric autonomous driving、big data system、data mining、closed-loop technology 的整体认知。  
    Build a high-level mental model of data-centric autonomous driving, big-data systems, data mining, and closed-loop technologies.
-2. **再看感知与表示基础 / Then study perception and representation foundations**  
+3. **再看感知与表示基础 / Then study perception and representation foundations**  
    重点理解 BEV、multi-sensor fusion 等核心表示方法，因为它们是后续规划与闭环优化的重要输入。  
    Focus on BEV and multi-sensor fusion, since they are core inputs for downstream planning and closed-loop optimization.
-3. **再进入闭环规划与端到端 / Move into closed-loop planning and end-to-end driving**  
+4. **再进入闭环规划与端到端 / Move into closed-loop planning and end-to-end driving**  
    理解自动驾驶模型如何围绕 planning objective 进行训练与评估。  
    Understand how driving systems are trained and evaluated around planning objectives.
 4. **再看 LLM / VLM 驱动的新范式 / Then explore LLM/VLM-driven paradigms**  
@@ -183,25 +188,31 @@ If you want to systematically understand AI Native Data Engine and data-closed-l
 
 ### 学习路线图 / Study Roadmap
 
-#### 1) 总览与路线建立 / Survey and Big Picture
+#### 1) 数据密集型系统基础 / Data-Intensive Systems Foundation
 
-- **[1] [Data-Centric Evolution in Autonomous Driving: A Comprehensive Survey of Big Data System, Data Mining, and Closed-Loop Technologies](https://arxiv.org/abs/2401.12888)** (2024)  
+- **[1] [Designing Data-Intensive Applications（DDIA）](https://ddia.vonng.com/)**  
+  **中文**：如果希望通过本项目学会系统性地设计数据密集型应用，这本书应作为优先阅读材料。它覆盖数据系统设计中的核心问题，如数据模型、存储引擎、复制、分区、一致性、流处理与批处理，非常适合作为整个项目的方法论基础。  
+  **EN**: If the goal of this project is to help readers learn how to systematically design data-intensive applications, DDIA should be treated as a foundational reading. It covers core topics such as data models, storage engines, replication, partitioning, consistency, stream processing, and batch processing.
+
+#### 2) 总览与路线建立 / Survey and Big Picture
+
+- **[2] [Data-Centric Evolution in Autonomous Driving: A Comprehensive Survey of Big Data System, Data Mining, and Closed-Loop Technologies](https://arxiv.org/abs/2401.12888)** (2024)  
   **中文**：系统梳理自动驾驶中的大数据系统、数据挖掘与闭环技术，最适合作为整个方向的总览入口。  
   **EN**: A comprehensive overview of big-data systems, data mining, and closed-loop technologies in autonomous driving; the best entry point for this topic.
 
-#### 2) 感知基础与数据表示 / Perception Foundations and Data Representation
+#### 3) 感知基础与数据表示 / Perception Foundations and Data Representation
 
-- **[2] [BEVFormer](https://link.springer.com/chapter/10.1007/978-3-031-20077-9_1)** (ECCV 2022)  
+- **[3] [BEVFormer](https://link.springer.com/chapter/10.1007/978-3-031-20077-9_1)** (ECCV 2022)  
   **中文**：BEV 感知经典工作，是理解鸟瞰表示、时空建模与下游任务接口的重要起点。  
   **EN**: A landmark BEV perception paper and a good starting point for understanding bird’s-eye-view representations and spatiotemporal modeling.
-- **[3] [BEVFusion: Multi-Task Multi-Sensor Fusion with Unified Bird's-Eye View Representation](https://ieeexplore.ieee.org/abstract/document/10160968)** (ICRA 2023)  
+- **[4] [BEVFusion: Multi-Task Multi-Sensor Fusion with Unified Bird's-Eye View Representation](https://ieeexplore.ieee.org/abstract/document/10160968)** (ICRA 2023)  
   **中文**：多传感器融合代表工作，适合从数据融合视角理解自动驾驶感知栈。  
   **EN**: A representative multi-sensor fusion work that helps build intuition for unified BEV-based perception.
-- **[4] [Delving Into the Devils of Bird's-Eye-View Perception: A Review, Evaluation and Recipe](https://ieeexplore.ieee.org/abstract/document/10321736)** (TPAMI)  
+- **[5] [Delving Into the Devils of Bird's-Eye-View Perception: A Review, Evaluation and Recipe](https://ieeexplore.ieee.org/abstract/document/10321736)** (TPAMI)  
   **中文**：对 BEV 感知进行综述、评估与经验总结，适合系统补课。  
   **EN**: A review-and-evaluation style paper for consolidating your understanding of BEV perception.
 
-#### 3) 闭环规划与端到端驾驶 / Closed-Loop Planning and End-to-End Driving
+#### 4) 闭环规划与端到端驾驶 / Closed-Loop Planning and End-to-End Driving
 
 - **[5] [Planning-Oriented Autonomous Driving](https://openaccess.thecvf.com/content/CVPR2023/html/Hu_Planning-Oriented_Autonomous_Driving_CVPR_2023_paper.html)** (CVPR 2023)  
   **中文**：强调以 planning 为中心的自动驾驶建模，是理解闭环优化目标的重要论文。  
@@ -265,10 +276,22 @@ If you want to systematically understand AI Native Data Engine and data-closed-l
 
 ## 当前说明
 
-这是首版本地 MVP 骨架，重点验证：
+这是首版本地 MVP 骨架，目标不仅是验证一条可运行的数据闭环链路，也希望沿着“个人版 -> 企业版 -> SaaS 版”的路径持续拓展。
+
+### 项目拓展路径 / Project Expansion Path
+
+1. **个人本地能跑起来 / Local-first personal edition**  
+   面向个人开发者与学习者，强调一台机器即可跑通 ingestion -> lakehouse -> platform 的最小闭环。
+2. **可复制的企业版 / Enterprise-reproducible edition**  
+   面向求职、面试与企业场景演示，目标是让学习者不仅会做 demo，还能展示更接近真实企业数据平台的架构设计与工程拆分能力，从而拿到更好的 offer。
+3. **对外提供 SaaS 服务的多租户版本 / Multi-tenant SaaS edition**  
+   面向真实产品化与商业化场景，逐步演进到支持多租户隔离、团队协作、权限控制、托管运行与对外服务交付的版本。
+
+### 当前阶段重点 / Current Focus
 
 1. ingestion -> lakehouse -> platform 闭环打通
-2. 个人版 profile 可跑
-3. 企业版扩展点已预留在 Python adapters / profiles 中
-4. local-dev 已采用 SQLite metadata + Parquet table + DuckDB query + Lance search 的轻量 DataLake 组合
-5. 已提供最小 Python SDK 与多格式导出能力，作为统一数据出口的起点
+2. 个人本地版可跑，作为整个系统演进的起点
+3. 企业版扩展点已预留在 Python adapters / profiles 中，便于后续演进为可复制的企业级架构
+4. 后续可继续演进到支持多租户 SaaS 的架构形态
+5. local-dev 已采用 SQLite metadata + Parquet table + DuckDB query + Lance search 的轻量 DataLake 组合
+6. 已提供最小 Python SDK 与多格式导出能力，作为统一数据出口的起点
