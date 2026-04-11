@@ -8,7 +8,7 @@ type WorkspaceItem = { workspace_id: string; name: string }
 type ExportItem = { export_id: string; dataset_id: string; format: string; status: string; output_path: string }
 type SearchRow = { id: string; scene: string; dataset_version_id?: string }
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = 'http://localhost:3100/api'
 
 export function DashboardPage() {
   const [keyword, setKeyword] = useState('')
@@ -22,34 +22,19 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   async function refreshData() {
-    const [distributionRes, datasetsRes, tasksRes, workspacesRes, exportsRes, searchRes] = await Promise.all([
-      fetch(`${API_BASE}/samples/distribution`).then((r) => r.json()),
-      fetch(`${API_BASE}/datasets`).then((r) => r.json()),
-      fetch(`${API_BASE}/tasks`).then((r) => r.json()),
-      fetch(`${API_BASE}/workspaces`).then((r) => r.json()),
-      fetch(`${API_BASE}/exports`).then((r) => r.json()),
-      fetch(`${API_BASE}/samples/search-preview`).then((r) => r.json()),
-    ])
-    const datasetItems = datasetsRes.items ?? []
-    setDistribution(distributionRes.distribution ?? [])
-    setDatasets(datasetItems)
-    setTasks(tasksRes.items ?? [])
-    setWorkspaces(workspacesRes.items ?? [])
-    setExports(exportsRes.items ?? [])
-    setSearchRows(searchRes.rows ?? [])
-
-    const versionEntries = await Promise.all(
-      datasetItems.map(async (item: DatasetItem) => {
-        const detail = await fetch(`${API_BASE}/datasets/${item.dataset_id}`).then((r) => r.json())
-        return [item.dataset_id, detail.versions ?? []] as const
-      })
-    )
-    setDatasetVersions(Object.fromEntries(versionEntries))
+    const payload = await fetch(`${API_BASE}/dashboard`).then((r) => r.json())
+    setDistribution(payload.distribution ?? [])
+    setDatasets(payload.datasets ?? [])
+    setDatasetVersions(payload.datasetVersions ?? {})
+    setTasks(payload.tasks ?? [])
+    setWorkspaces(payload.workspaces ?? [])
+    setExports(payload.exports ?? [])
+    setSearchRows(payload.searchRows ?? [])
   }
 
   useEffect(() => {
     async function bootstrap() {
-      await fetch(`${API_BASE}/samples/ingest-demo`, { method: 'POST' })
+      await fetch(`${API_BASE}/bootstrap`, { method: 'POST' })
       await refreshData()
       setLoading(false)
     }
@@ -57,7 +42,7 @@ export function DashboardPage() {
   }, [])
 
   async function handleExport(datasetId: string) {
-    await fetch(`${API_BASE}/exports/dataset/${datasetId}`, { method: 'POST' })
+    await fetch(`${API_BASE}/datasets/${datasetId}/exports`, { method: 'POST' })
     await refreshData()
   }
 

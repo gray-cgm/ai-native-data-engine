@@ -6,7 +6,9 @@
 docs/
 apps/
   api/
+  bff/
   orchestrator/
+  scheduler/      # placeholder for future service
   web/
 packages/
   config/
@@ -17,6 +19,7 @@ python/
   adapters/
   core/
   profiles/
+  services/       # placeholder for future service layer
   workflows/
 sdk/
   python/
@@ -36,12 +39,20 @@ data/
   - 数据集浏览
   - 检索预览
   - tasks / workspaces / exports 视图
+- `apps/bff`
+  - Node.js + TypeScript BFF
+  - 面向浏览器请求、页面聚合、会话与权限上下文
+  - 组合 Platform API 输出前端友好的 ViewModel
 - `apps/api`
-  - FastAPI 控制面 API
-  - 提供 datasets、tasks、workspaces、exports 与 sample operations 等路由
+  - FastAPI Platform API
+  - 提供 datasets、tasks、workspaces、exports 与 sample operations 等平台资源路由
+  - 作为 query / export / control plane 的外部入口层，而不是吞下全部执行编排逻辑
 - `apps/orchestrator`
   - Dagster 项目
   - 定义资产物化与衍生输出相关的 assets
+- `apps/scheduler`（目录已预留）
+  - 未来独立批任务调度服务入口
+  - 当前只保留目录占位，不声明为已实现可运行服务
 
 ### `packages/`
 TypeScript 侧共享包。
@@ -62,6 +73,8 @@ Python 侧领域、适配器、profile 与 workflow。
   - 领域模型
   - Protocol 接口
   - RuntimeContainer 类型定义
+  - capability contracts
+  - 不承载 scheduler server、调度 loop、callback handler 等常驻服务职责
 - `python/adapters`
   - storage、query、metadata、table、search、compute、auth 的具体 provider 实现
 - `python/profiles`
@@ -71,6 +84,10 @@ Python 侧领域、适配器、profile 与 workflow。
   - ingestion 逻辑
   - 资产物化逻辑
   - demo pipeline 工具
+  - 当前阶段也可承载部分 query/export/scheduler orchestration
+- `python/services`（目录已预留）
+  - 未来沉淀 query、export、scheduler 等应用服务层
+  - 当前只保留最小 package 骨架，不迁移现有 `python/workflows` 逻辑
 
 ### `sdk/`
 统一数据访问出口 SDK。
@@ -105,6 +122,7 @@ Python 侧领域、适配器、profile 与 workflow。
 首版 MVP 必须具备：
 
 - `apps/web`
+- `apps/bff`
 - `apps/api`
 - `apps/orchestrator`
 - `packages/schemas`
@@ -137,9 +155,13 @@ Python 侧领域、适配器、profile 与 workflow。
 这个结构将：
 
 - 产品入口放在 `apps/`
+- 浏览器相关的后端编排逻辑放在 `apps/bff`，而不是塞进 `apps/web`
+- 稳定的平台资源 API 放在 `apps/api`，避免与 BFF 混层
+- 查询协调、导出协调、调度推进等应用服务逻辑放在 `python/workflows` 或未来的 `python/services`，而不是直接堆在 route handler 里
+- `python/core` 保持为领域模型与接口边界，而不是承载 scheduler server 等常驻进程
 - 跨应用共享 TS contract 放在 `packages/`
 - 运行时与领域逻辑放在 `python/`
 - 环境选择放在 `infra/`
 - 外部用户访问出口放在 `sdk/`
 
-这样的划分很适合当前“本地易跑 + 后续企业可演进”的 monorepo 目标。
+这样的划分很适合当前“本地易跑 + 后续企业可演进”的 monorepo 目标，也更容易吸收 FDL 这类项目中 management / query / scheduler 分层清晰的优点。

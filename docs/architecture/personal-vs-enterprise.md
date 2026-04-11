@@ -24,6 +24,7 @@
 - 同一套 adapter contracts
 - 同一套 runtime container 模式
 - 同一套 profile 驱动配置模型
+- 同一套以 Web -> BFF -> Platform API 为基础的访问分层思路
 
 真正变化的主要是 provider 选择和部署拓扑，而不是业务主干。
 
@@ -46,7 +47,7 @@
 - SQLite -> Postgres
 - local fs -> S3 / MinIO
 
-同时不需要重写 API、workflow 和核心领域模型。
+同时不需要推翻 Platform API、workflow 和核心领域模型；BFF 作为 app-facing 层可以随业务场景继续演进，但不应重写平台底座。
 
 ## 实际上的区别
 
@@ -63,6 +64,7 @@
 - 更强的治理与血缘
 - 分布式执行
 - 服务化、组织级控制与运维能力
+- 面向多 app 的 BFF 分层与更稳定的前后端协作边界
 
 ## 建议
 

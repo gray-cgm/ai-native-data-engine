@@ -20,8 +20,9 @@
    - 切换通过 adapter 和 profile 边界完成，而不是通过产品重写完成。
 
 4. **Platform（工作台层）**
-   - 提供面向用户的工作台和控制面。
+   - 提供面向用户的工作台、Web-facing BFF、平台控制面，以及后续可独立演进的调度/查询服务入口。
    - 当前 MVP 重点覆盖 datasets、versions、tasks、workspaces、search preview、exports 和基础 operations API。
+   - 这一层在实现上进一步拆成 Experience Access（Web + BFF）、Platform API（FastAPI）以及未来可独立部署的 scheduler/query services。
    - 完整协作、多租户治理、复杂 RBAC、生产级标注系统等能力当前刻意延后。
 
 ## 核心设计原则
@@ -69,6 +70,35 @@ Dagster 在这里用于建模 dataset、distribution、export、lineage 等资�
 
 这样既保证首版真正可运行，也保证未来升级时系统边界不被推翻。
 
+## Platform 层内部边界
+
+当前推荐的访问路径是：
+
+```text
+Web
+-> BFF
+-> Platform API
+-> RuntimeContainer / adapters
+```
+
+其中：
+
+- `apps/web` 负责 UI 呈现
+- `apps/bff` 负责浏览器请求接入、页面聚合、会话与权限上下文，以及把平台资源编排成前端友好的 ViewModel
+- `apps/api` 负责稳定的平台资源语义、控制面能力，以及 Python SDK / 自动化集成访问
+- 未来如查询协调或批任务调度演进为独立常驻服务，应作为独立 app/service 部署，而不是继续挤进 BFF 或 route handler
+
+BFF 不拥有底层数据资产事实，也不直接持有 runtime provider；平台 domain 事实、workflow 触发、query/search/export 等能力仍由 Platform API 与其背后的 Python runtime 负责。
+
+这里的关键边界是：
+
+- `apps/api` 是 Platform API / query-control plane 的外部入口层
+- `python/core` 负责领域模型、接口定义、capability contracts，不负责常驻服务生命周期
+- `python/adapters` 负责 DuckDB、Lance、SQLite、filesystem 等具体实现
+- `python/workflows` 与未来可新增的 `python/services` 负责查询编排、导出编排、调度编排等应用服务逻辑
+
+因此，批任务调度服务不应放在 `python/core`；如果后续需要独立调度服务，更合理的方向是 `apps/scheduler` + `python/services/scheduler`（或 `python/workflows/scheduler`）的组合。
+
 ## 当前运行时机制
 
 当前代码通过以下机制装配运行时：
@@ -78,4 +108,4 @@ Dagster 在这里用于建模 dataset、distribution、export、lineage 等资�
 - `python/adapters` 中的具体 provider 实现
 - `python/profiles` 中的 profile resolver
 
-这使得 API、workflow、Dagster definitions 依赖的是运行时能力，而不是 DuckDB / SQLite / Lance / local fs 这些具体实现。
+这使得 Platform API、workflow、Dagster definitions 依赖的是运行时能力，而不是 DuckDB / SQLite / Lance / local fs 这些具体实现。BFF 通过调用 Platform API 间接使用这些能力，而不直接与底层 provider 耦合。

@@ -9,7 +9,8 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 - Monorepo: pnpm workspace + turborepo
 - Python workspace: uv
 - Web: React + Vite
-- API: FastAPI
+- BFF: Node.js + TypeScript
+- Platform API: FastAPI
 - Orchestration: Dagster
 - Local Lakehouse: DuckDB + Parquet + Lance
 
@@ -43,6 +44,12 @@ make install
 make dev-web
 ```
 
+#### BFF
+
+```bash
+make dev-bff
+```
+
 #### API
 
 ```bash
@@ -55,12 +62,13 @@ make dev-api
 make dev-dagster
 ```
 
-如果你要同时分别启动多个服务，建议开 3 个终端分别执行上面三个命令。
+如果你要同时分别启动多个服务，建议开 4 个终端分别执行 Web / BFF / API / Dagster 对应命令。
 
-默认端口：
+默认端口（推荐）：
 
 - Web: http://localhost:3000
-- API: http://localhost:8000/docs
+- BFF: http://localhost:3100
+- Platform API: http://localhost:8000/docs
 - Dagster: http://localhost:3001
 
 ### 4. 运行本地 MVP 数据链路
@@ -83,25 +91,25 @@ make query
 make lance
 ```
 
-#### API 触发 demo ingestion / asset materialization
+#### Platform API 触发 demo ingestion / asset materialization
 
 ```bash
 curl -X POST http://localhost:8000/samples/ingest-demo
 ```
 
-#### API 查看样本分布
+#### Platform API 查看样本分布
 
 ```bash
 curl http://localhost:8000/samples/distribution
 ```
 
-#### API 查看基础检索预览
+#### Platform API 查看基础检索预览
 
 ```bash
 curl http://localhost:8000/samples/search-preview
 ```
 
-#### API 查看数据集、任务、工作空间、导出
+#### Platform API 查看数据集、任务、工作空间、导出
 
 ```bash
 curl http://localhost:8000/datasets
@@ -112,7 +120,7 @@ curl http://localhost:8000/workspaces
 curl http://localhost:8000/exports
 ```
 
-#### API 触发真实导出文件
+#### Platform API 触发真实导出文件
 
 ```bash
 curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=parquet"
@@ -137,28 +145,60 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 - DuckDB 查询 demo
 - Lance 基础检索 demo
 - 数据导出 demo（支持 Parquet / CSV / JSONL）
-- Python SDK demo（统一访问 datasets / exports / search）
+- Python SDK demo（统一访问 Platform API 上的 datasets / exports / search）
 - React 工作台：搜索、数据集、任务、工作空间、导出视图
+- Node.js TypeScript BFF：面向 Web 的页面聚合与场景编排层
 - Labeling domain 保留最小 demo，不实现完整标注系统
-- FastAPI API
+- FastAPI Platform API：面向平台资源、控制面能力与 SDK/自动化访问
 - SQLite 元数据存储（local-dev）
 - local-dev profile 驱动 RuntimeContainer
 
 ## 目录
 
 - `apps/web`: React workbench
-- `apps/api`: FastAPI API
+- `apps/bff`: Node.js TypeScript BFF
+- `apps/api`: FastAPI Platform API
 - `apps/orchestrator`: Dagster project
+- `apps/scheduler`: future scheduler service placeholder
 - `packages/schemas`: shared schema
 - `packages/config`: shared TS config
 - `python/core`: domain + interfaces
 - `python/adapters`: local adapters
 - `python/workflows`: ingestion/query/index workflows
 - `python/profiles`: adapter/provider/profile resolver
+- `python/services`: future Python application service layer placeholder
 - `packages/contracts`: TS-side adapter contracts
 - `packages/profiles`: TS-side runtime profile + capability model
 - `infra/profiles`: local-dev / team-dev / enterprise-saas 示例配置
 - `sdk/python`: 最小 Python SDK
+
+## 访问拓扑
+
+当前推荐的访问路径是：
+
+```text
+Browser / Web App
+-> BFF (Node.js + TypeScript)
+-> Platform API (FastAPI)
+-> RuntimeContainer / adapters / lakehouse
+```
+
+其中：
+
+- `apps/web` 面向前端 UI
+- `apps/bff` 面向页面场景聚合、前端友好接口、会话与权限边界
+- `apps/api` 面向平台资源、控制面能力、SDK 与自动化访问
+
+当前首版 BFF 已真实提供以下最小接口：
+
+- `GET /health`
+- `POST /api/bootstrap`
+- `GET /api/dashboard`
+- `POST /api/datasets/{datasetId}/exports`
+
+这些接口会在 BFF 内部聚合或转发到 FastAPI Platform API。
+
+下面的 `curl` 示例仍然以 FastAPI Platform API 为准，主要用于验证平台能力与本地 MVP 主链路，而不是要求未来 Web 继续直连 FastAPI。
 
 ## 学习资料 / Learning Resources
 

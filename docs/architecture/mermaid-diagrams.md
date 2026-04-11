@@ -7,9 +7,9 @@ flowchart TD
     A[原始文件 / 传感器数据 / JSON Metadata] --> B[Ingestion 数据接入层]
     B --> C[Pipeline 资产编排层 / Dagster Assets]
     C --> D[Lakehouse / DataLake 数据访问层]
-    D --> E[Platform 工作台层]
-    E --> F[Web Workbench]
-    E --> G[API]
+    D --> E[Platform 能力层 / FastAPI Platform API]
+    E --> F[BFF / Node.js + TypeScript]
+    F --> G[Web Workbench]
     E --> H[Python SDK]
 ```
 
@@ -23,10 +23,12 @@ flowchart LR
     D --> E[DuckDB 查询表]
     C --> F[Lance 索引]
     C --> G[Dataset / DatasetVersion Metadata]
-    E --> H[API / Web / SDK]
+    E --> H[FastAPI Platform API]
     F --> H
     G --> H
-    H --> I[Export]
+    H --> I[BFF / Web]
+    H --> J[Python SDK]
+    H --> K[Export]
 ```
 
 ## 运行时抽象图
@@ -42,7 +44,8 @@ flowchart TD
     C --> H[SearchAdapter]
     C --> I[ComputeAdapter]
     C --> J[AuthAdapter]
-    K[API / Dagster / Workflows] --> C
+    K[FastAPI Platform API / Dagster / Workflows] --> C
+    L[BFF] --> K
 ```
 
 ## 演进路径图

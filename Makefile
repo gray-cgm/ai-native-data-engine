@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: install install-web install-py dev dev-web dev-api dev-dagster ingest query lance export-parquet export-csv export-jsonl sdk-demo clean
+.PHONY: install install-web install-py dev dev-web dev-bff dev-api dev-dagster ingest query lance export-parquet export-csv export-jsonl sdk-demo clean
 
 install: install-web install-py
 
@@ -18,6 +18,10 @@ dev:
 
 dev-web:
 	pnpm --filter web dev
+
+
+dev-bff:
+	pnpm --filter bff dev
 
 
 dev-api:

@@ -184,7 +184,8 @@ data/
 应用入口：
 
 - `apps/web`：工作台前端
-- `apps/api`：FastAPI 控制面 API
+- `apps/bff`：Node.js + TypeScript BFF，负责页面场景聚合、前端友好接口、会话与权限上下文
+- `apps/api`：FastAPI Platform API，负责平台资源与控制面能力
 - `apps/orchestrator`：Dagster 资产编排
 
 ### `packages/`
@@ -229,6 +230,8 @@ profile 配置与本地运行环境。
 - DuckDB 查询
 - Lance 基础检索
 - SQLite 元数据存储
+- FastAPI Platform API
+- Node.js + TypeScript BFF
 - 数据集 / 版本 / 任务 / 工作空间 / 导出 API
 - Web 工作台
 - Parquet / CSV / JSONL 导出
@@ -432,7 +435,7 @@ SQLite 很适合这个阶段。
 - compute = local dagster
 - auth = local auth
 
-这样 API、workflow、Dagster 都不需要直接依赖底层实现。
+这样 Platform API、workflow、Dagster 都不需要直接依赖底层实现。BFF 通过调用 Platform API 间接使用这些能力，而不直接持有底层 runtime provider。
 
 ---
 
@@ -448,7 +451,8 @@ Local image/json files
 -> DuckDB query table
 -> Lance index
 -> Dataset / DatasetVersion metadata
--> API / Web / SDK / Export
+-> Platform API
+-> BFF / Web or SDK / Export
 ```
 
 这就是个人版 DataLake 的核心路径。
@@ -514,11 +518,16 @@ make install
 
 ## 12.3 启动服务
 
-建议开 3 个终端分别启动。
+建议开 4 个终端分别启动。
 
 ### Web
 ```bash
 make dev-web
+```
+
+### BFF
+```bash
+make dev-bff
 ```
 
 ### API
@@ -531,9 +540,10 @@ make dev-api
 make dev-dagster
 ```
 
-默认端口：
+默认端口（推荐）：
 
 - Web: `http://localhost:3000`
+- BFF: `http://localhost:3100`
 - API: `http://localhost:8000/docs`
 - Dagster: `http://localhost:3001`
 
@@ -558,24 +568,38 @@ make lance
 
 ---
 
-# 14. 用 API 验证系统
+# 14. 为什么不让 Web 直连 FastAPI？
 
-## 14.1 触发 demo ingestion / asset materialization
+因为工作台页面需要的通常不是“原始平台资源”，而是面向页面场景的聚合结果。
+
+BFF 的作用主要有三个：
+
+- 把多个 Platform API 结果拼成前端更容易消费的页面数据
+- 承接浏览器侧的 session、权限、tenant 等上下文边界
+- 让 Platform API 继续保持稳定的资源语义，便于 SDK 和自动化直接使用
+
+所以推荐的访问路径是：`Web -> BFF -> Platform API`，而不是让浏览器长期直接耦合到底层平台资源接口。
+
+---
+
+# 15. 用 Platform API 验证系统
+
+## 15.1 触发 demo ingestion / asset materialization
 ```bash
 curl -X POST http://localhost:8000/samples/ingest-demo
 ```
 
-## 14.2 查看样本分布
+## 15.2 查看样本分布
 ```bash
 curl http://localhost:8000/samples/distribution
 ```
 
-## 14.3 查看基础检索预览
+## 15.3 查看基础检索预览
 ```bash
 curl http://localhost:8000/samples/search-preview
 ```
 
-## 14.4 查看 catalog / operations
+## 15.4 查看 catalog / operations
 ```bash
 curl http://localhost:8000/datasets
 curl http://localhost:8000/datasets/demo-dataset
@@ -587,19 +611,19 @@ curl http://localhost:8000/exports
 
 ---
 
-# 15. 用 API 验证导出
+# 16. 用 Platform API 验证导出
 
-## 15.1 导出 Parquet
+## 16.1 导出 Parquet
 ```bash
 curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=parquet"
 ```
 
-## 15.2 导出 CSV
+## 16.2 导出 CSV
 ```bash
 curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=csv"
 ```
 
-## 15.3 导出 JSONL
+## 16.3 导出 JSONL
 ```bash
 curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 ```
@@ -614,7 +638,7 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 
 ---
 
-# 16. 用 Python SDK 访问系统
+# 17. 用 Python SDK 访问系统
 
 目前已经提供最小 Python SDK。
 
@@ -641,7 +665,7 @@ make sdk-demo
 
 ---
 
-# 17. Web 工作台里你会看到什么？
+# 18. Web 工作台里你会看到什么？
 
 当前工作台优先展示这些内容：
 
@@ -661,7 +685,7 @@ make sdk-demo
 
 ---
 
-# 18. Dagster 在这个项目里扮演什么角色？
+# 19. Dagster 在这个项目里扮演什么角色？
 
 Dagster 在这里不是一个“为了有编排而有编排”的工具。
 它的作用是：

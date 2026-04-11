@@ -6,6 +6,8 @@
 
 ## 范围内能力
 
+当前把 BFF 纳入 MVP，但范围刻意收敛：它只承接 workbench 所需的页面场景接口与聚合能力，不复制平台 domain logic，不替代 Platform API，也不替代 Python SDK。
+
 ### 数据导入
 - 从本地目录导入 demo 数据
 - 接入图像文件和 JSON metadata
@@ -23,6 +25,8 @@
 - 使用 SQLite 存储 metadata
 
 ### Platform 工作台
+- React workbench
+- Node.js + TypeScript BFF
 - dataset 浏览
 - dataset version 浏览
 - search preview
@@ -32,7 +36,8 @@
 
 ### 统一数据出口
 - 支持 Parquet / CSV / JSONL 导出
-- 提供最小 Python SDK 作为第一版统一访问出口
+- 提供 FastAPI Platform API 作为平台资源与控制面能力出口
+- 提供最小 Python SDK 作为第一版程序化访问出口
 
 ## 首版明确不做
 
@@ -64,7 +69,8 @@ local raw files
 -> duckdb query
 -> lance index
 -> metadata registration
--> api/web/sdk/export
+-> Platform API
+-> BFF / SDK / export
 ```
 
 ## 当前 MVP 能力总结
@@ -76,7 +82,9 @@ local raw files
 - DuckDB 查询
 - Lance search preview
 - SQLite metadata 存储
-- dataset / version / task / workspace / export API
+- FastAPI Platform API
+- Node.js TypeScript BFF
 - Web workbench
+- dataset / version / task / workspace / export API
 - 多格式真实导出文件
 - 最小 Python SDK

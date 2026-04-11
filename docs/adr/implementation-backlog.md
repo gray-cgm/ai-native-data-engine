@@ -8,7 +8,7 @@
 - [ ] **P0 Task 1.1.1 - 初始化 TS workspace**
   **输入：** monorepo 根目录、包管理策略、apps/packages 列表
   **输出：** `package.json`、`pnpm-workspace.yaml`、`turbo.json`
-  **验收标准：** pnpm workspace 能正确解析 `apps/*`、`packages/*`、`sdk/*`
+  **验收标准：** pnpm workspace 能正确解析 `apps/*`、`packages/*`、`sdk/*`，并为 `apps/web` 与 `apps/bff` 提供统一 TS workspace 基座
 - [ ] **P0 Task 1.1.2 - 初始化 Python workspace**
   **输入：** Python 包结构与依赖管理策略
   **输出：** 根目录 `pyproject.toml`，并声明 uv workspace members
@@ -32,7 +32,7 @@
 - [ ] **P1 Task 2.1.3 - 定义 TS 侧 contracts 与 profiles**
   **输入：** Python 侧 adapter 与 capability 模型
   **输出：** TS 共享 contracts、profile 名称、capability 类型
-  **验收标准：** Web 与 packages 层共享同一套 profile 语义
+  **验收标准：** Web、BFF 与 packages 层共享同一套 profile 语义
 
 ### Story 2.2 - 实现运行时装配
 - [ ] **P0 Task 2.2.1 - 增加 profile YAML 配置**
@@ -42,7 +42,7 @@
 - [ ] **P0 Task 2.2.2 - 构建 profile resolver**
   **输入：** YAML profile 定义与 adapter 构造逻辑
   **输出：** `build_container()` 与 `RuntimeContainer` 装配逻辑
-  **验收标准：** API 与 workflows 能从 `local-dev.yaml` 解析出 container
+  **验收标准：** Platform API 与 workflows 能从 `local-dev.yaml` 解析出 container
 
 ## Epic 3 - 本地 DataLake MVP 主链路
 
@@ -82,9 +82,9 @@
   **输出：** asset-oriented Dagster definitions
   **验收标准：** Dagster 暴露的是 dataset 相关资产，而不是纯脚本 job
 
-## Epic 4 - API 与工作台
+## Epic 4 - Platform API、BFF 与工作台
 
-### Story 4.1 - 暴露平台 API
+### Story 4.1 - 暴露 Platform API
 - [ ] **P0 Task 4.1.1 - 增加 sample operation API**
   **输入：** container 驱动的 ingestion / query / search 函数
   **输出：** `/samples/ingest-demo`、`/samples/distribution`、`/samples/search-preview`
@@ -102,16 +102,30 @@
   **输出：** 真实文件导出的 API endpoint
   **验收标准：** 发起 export 后会生成输出文件与 metadata 记录
 
-### Story 4.2 - 构建 Web Workbench
-- [ ] **P0 Task 4.2.1 - 搭建 React workbench 骨架**
+### Story 4.2 - 构建 Node.js BFF
+- [ ] **P0 Task 4.2.1 - 搭建 BFF 应用骨架**
+  **输入：** 中后台场景与 monorepo TS workspace 需求
+  **输出：** `apps/bff` 的 Node.js + TypeScript 应用壳
+  **验收标准：** BFF 可本地启动，并能接入共享 TS contracts/schemas
+- [ ] **P0 Task 4.2.2 - 增加 workbench 所需聚合接口**
+  **输入：** Web 页面需求与 Platform API endpoint 列表
+  **输出：** 面向前端的 BFF 场景接口
+  **验收标准：** BFF 通过调用 Platform API 返回页面友好的聚合结果，而不是复制平台 domain logic
+- [ ] **P1 Task 4.2.3 - 增加 BFF 认证/上下文边界**
+  **输入：** session、tenant、permission 的最小需求
+  **输出：** BFF request context 与 auth 占位能力
+  **验收标准：** BFF 能承接浏览器侧的会话与权限上下文，而不污染 Platform API 语义
+
+### Story 4.3 - 构建 Web Workbench
+- [ ] **P0 Task 4.3.1 - 搭建 React workbench 骨架**
   **输入：** Web app 需求
   **输出：** React + Vite 应用壳
   **验收标准：** 本地可启动，并有清晰的运行方式
-- [ ] **P0 Task 4.2.2 - 将 workbench 连接到真实 API**
-  **输入：** dataset / task / workspace / export / search endpoints
-  **输出：** API 驱动的 dashboard 页面
-  **验收标准：** UI 展示真实平台数据而非 mock
-- [ ] **P1 Task 4.2.3 - 增加导出触发 UI**
+- [ ] **P0 Task 4.3.2 - 将 workbench 连接到真实 BFF**
+  **输入：** dataset / task / workspace / export / search 页面需求与 BFF endpoint
+  **输出：** BFF 驱动的 dashboard 页面
+  **验收标准：** UI 通过 BFF 展示真实平台数据而非 mock
+- [ ] **P1 Task 4.3.3 - 增加导出触发 UI**
   **输入：** export endpoint 与 dataset detail 数据
   **输出：** workbench 中的导出操作入口
   **验收标准：** 用户可在 UI 中触发导出并看到状态更新
@@ -120,15 +134,15 @@
 
 ### Story 5.1 - 增加 SDK 访问面
 - [ ] **P1 Task 5.1.1 - 创建最小 Python SDK**
-  **输入：** API endpoint 列表
+  **输入：** Platform API endpoint 列表
   **输出：** 支持 ingest、datasets、exports、search preview 的 Python client
-  **验收标准：** SDK demo 能成功调用真实 API
+  **验收标准：** SDK demo 能成功调用真实 Platform API
 
 ### Story 5.2 - 沉淀架构与入门文档
 - [ ] **P0 Task 5.2.1 - 编写根 README 启动指南**
   **输入：** 实际 install / startup 命令
   **输出：** 根目录 quickstart 文档
-  **验收标准：** README 中仅包含真实可运行命令
+  **验收标准：** README 中仅包含真实可运行命令，并清晰区分 Web、BFF、Platform API 与 Dagster
 - [ ] **P1 Task 5.2.2 - 编写 Beginner Guide**
   **输入：** 本地 MVP 架构与 DDIA 风格解释
   **输出：** 面向初学者的教程文档
@@ -150,6 +164,6 @@
   **输出：** StarRocks、Iceberg/Paimon、OIDC、对象存储等 placeholder adapters
   **验收标准：** 扩展点明确存在，且能正常导入 / 编译
 - [ ] **P2 Task 6.1.3 - 规划多租户平台演进路径**
-  **输入：** 当前 workbench 与 metadata 边界
+  **输入：** 当前 workbench、BFF 与 metadata 边界
   **输出：** 面向 tenant context、auth、governance、quota 的 ADR 或设计说明
   **验收标准：** SaaS 演进方向被清晰记录，同时不过度提前实现 v1
