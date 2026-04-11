@@ -322,7 +322,122 @@ workflow 关心的是“创建 dataset version”“记录 lineage”“创建 e
 - `contracts.py`：定义“能力长什么样”
 - `runtime.py`：定义“能力如何被装配后交给上层使用”
 
-## 9. 最后的总结
+## 9. Python core 和 Node.js BFF 怎么共享一套知识
+
+这是一个跨语言系统里最关键的问题之一。
+
+结论不是让 `apps/bff` 直接复用 `python/core` 的 Python 类，而是让两边共享同一套：
+
+- 领域语义
+- 资源语义
+- 字段结构
+- 状态枚举
+- API contract
+
+也就是说，跨语言共享的核心不是代码文件，而是契约。
+
+### 9.1 推荐的数据与契约流转路径
+
+当前仓库里，最合理的知识流转路径是：
+
+```text
+python/core
+-> 定义平台领域语义与接口契约
+-> apps/api (FastAPI Platform API)
+-> 暴露稳定的 HTTP / JSON contract
+-> apps/bff (Node.js)
+-> 组合为页面友好的 ViewModel
+-> apps/web
+```
+
+其中：
+
+- `python/core` 定义平台里的核心对象和能力边界
+- `apps/api` 把这些平台语义暴露为稳定 API
+- `apps/bff` 消费这些 API，并进行页面聚合
+- `apps/web` 只消费 BFF 返回的 app-facing payload
+
+### 9.2 为什么不是直接共享 Python 代码
+
+因为 `apps/bff` 是 Node.js + TypeScript，无法直接 import Python 类。
+
+因此真正应该共享的是：
+
+- 对“Dataset / Task / ExportJob / DatasetVersion”这些对象的统一理解
+- 对字段命名、状态枚举、资源边界的统一约定
+- 对请求/响应结构的稳定 contract
+
+这意味着：
+
+- 平台事实模型由 Python 平台侧主导
+- 页面聚合模型由 BFF 主导
+- BFF 不重新发明平台事实层，只在其上做 app-facing 编排
+
+### 9.3 两边各自负责什么
+
+可以把边界理解成两套模型：
+
+#### 平台事实模型（Python 侧主导）
+
+例如：
+
+- Dataset
+- DatasetVersion
+- Task
+- ExportJob
+- JobRun
+- Search result 的基础语义
+
+这些模型对应平台真实资源，应该由：
+
+- `python/core`
+- `apps/api`
+
+共同定义和暴露。
+
+#### 页面聚合模型（BFF 侧主导）
+
+例如：
+
+- dashboard payload
+- 页面卡片统计结构
+- 组合多个平台接口后的 ViewModel
+- 前端专用的排序、分组、展示态字段
+
+这些模型不属于平台事实本身，而属于 app-facing 结果，因此应该由：
+
+- `apps/bff`
+
+主导定义。
+
+### 9.4 当前阶段最合适的共享方式
+
+当前阶段最现实的做法是：
+
+1. `python/core` 定义平台领域语义
+2. `apps/api` 提供稳定 Platform API
+3. `apps/bff` 通过 HTTP 调用 Platform API
+4. `apps/bff` 内部用 TS types 表达这些返回结构
+
+这已经足够让 Python backend 与 Node.js BFF 共享同一套平台知识，而不要求直接共享语言级代码。
+
+### 9.5 后续可演进的方式
+
+如果后续希望跨语言一致性更强，可以继续演进为：
+
+- Python 侧领域模型 / API 作为 source of truth
+- 通过 OpenAPI / JSON Schema 导出契约
+- 在 TS 侧生成类型或 client
+- `packages/schemas` / `packages/contracts` 逐步沉淀为 Node/Web 侧共享 contract layer
+
+这样可以进一步减少：
+
+- BFF 手写重复 DTO
+- 字段命名漂移
+- 状态枚举不一致
+- 平台 API 与前端/BFF 类型定义分叉
+
+## 10. 最后的总结
 
 在这个仓库里，推荐始终保持下面的边界：
 
@@ -330,6 +445,8 @@ workflow 关心的是“创建 dataset version”“记录 lineage”“创建 e
 - `python/adapters`：实现这些契约
 - `python/profiles`：选择并装配实现
 - `python/workflows`：编排业务流程
+- `apps/api`：把 Python 侧平台语义暴露成稳定 contract
+- `apps/bff`：消费平台 contract，并转成页面友好的聚合模型
 
 这样做的价值是：
 
@@ -337,5 +454,6 @@ workflow 关心的是“创建 dataset version”“记录 lineage”“创建 e
 - 技术实现可替换
 - 流程逻辑更清晰
 - 多 app / 多 service 更容易共享同一套底座
+- Python backend 与 Node.js BFF 可以共享同一套知识，而不强行共享同一份代码
 
 这也是后续继续演进 query、export、scheduler、labeling、mining 等模块时，最重要的代码组织原则之一。

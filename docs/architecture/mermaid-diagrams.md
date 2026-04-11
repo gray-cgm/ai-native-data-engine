@@ -26,16 +26,18 @@ flowchart LR
     E --> H[FastAPI Platform API]
     F --> H
     G --> H
-    H --> I[BFF / Web]
-    H --> J[Python SDK]
-    H --> K[Export]
+    H --> I[BFF]
+    I --> J[Web]
+    H --> K[Python SDK]
+    H --> L[Export]
 ```
 
 ## 运行时抽象图
 
 ```mermaid
 flowchart TD
-    A[local-dev.yaml / team-dev.yaml / enterprise-saas.yaml] --> B[Profile Resolver]
+    A[python/core\n领域模型 / 接口契约] --> B[Profile Resolver]
+    P[local-dev.yaml / team-dev.yaml / enterprise-saas.yaml] --> B
     B --> C[RuntimeContainer]
     C --> D[StorageAdapter]
     C --> E[MetadataAdapter]
@@ -45,7 +47,21 @@ flowchart TD
     C --> I[ComputeAdapter]
     C --> J[AuthAdapter]
     K[FastAPI Platform API / Dagster / Workflows] --> C
-    L[BFF] --> K
+    K --> M[HTTP / JSON Contract]
+    L[BFF] --> M
+```
+
+## Python core -> BFF 契约流图
+
+```mermaid
+flowchart LR
+    A[python/core\n领域模型 / 接口契约] --> B[apps/api\nPlatform API]
+    B --> C[HTTP / JSON Contract]
+    C --> D[apps/bff\n页面聚合 / ViewModel]
+    D --> E[apps/web\nUI Rendering]
+
+    A1[平台事实模型\nDataset / Task / ExportJob] --> B
+    D1[页面聚合模型\nDashboard Payload / Cards / Tables] --> E
 ```
 
 ## 演进路径图

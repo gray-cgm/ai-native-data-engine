@@ -42,7 +42,7 @@ data/
 - `apps/bff`
   - Node.js + TypeScript BFF
   - 面向浏览器请求、页面聚合、会话与权限上下文
-  - 组合 Platform API 输出前端友好的 ViewModel
+  - 消费 Platform API contract，并输出前端友好的 app-facing ViewModel
 - `apps/api`
   - FastAPI Platform API
   - 提供 datasets、tasks、workspaces、exports 与 sample operations 等平台资源路由
@@ -60,7 +60,7 @@ TypeScript 侧共享包。
 - `packages/schemas`
   - UI 和 TS 集成层共用的数据结构定义
 - `packages/contracts`
-  - TS 侧 adapter 与 runtime contract
+  - Node/Web 侧共享 contract 与 API schema 演进落点
 - `packages/profiles`
   - runtime profile 与 capability 模型
 - `packages/config`

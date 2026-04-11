@@ -19,8 +19,8 @@
    - 未来企业版可以演进到 **Iceberg/Paimon + StarRocks + Flink/Spark/Fluss + Lance**。
    - 切换通过 adapter 和 profile 边界完成，而不是通过产品重写完成。
 
-4. **Platform（工作台层）**
-   - 提供面向用户的工作台、Web-facing BFF、平台控制面，以及后续可独立演进的调度/查询服务入口。
+4. **Platform（平台访问层）**
+   - 提供面向用户的工作台访问层、Platform API，以及后续可独立演进的调度/查询服务入口。
    - 当前 MVP 重点覆盖 datasets、versions、tasks、workspaces、search preview、exports 和基础 operations API。
    - 这一层在实现上进一步拆成 Experience Access（Web + BFF）、Platform API（FastAPI）以及未来可独立部署的 scheduler/query services。
    - 完整协作、多租户治理、复杂 RBAC、生产级标注系统等能力当前刻意延后。
@@ -81,11 +81,13 @@ Web
 -> RuntimeContainer / adapters
 ```
 
+其中跨语言共享的核心不是直接复用 Python 代码，而是通过 Platform API 暴露稳定的 HTTP / JSON contract，让 Node.js BFF 与 Python 平台层共享同一套资源语义、字段结构与状态约定。
+
 其中：
 
 - `apps/web` 负责 UI 呈现
-- `apps/bff` 负责浏览器请求接入、页面聚合、会话与权限上下文，以及把平台资源编排成前端友好的 ViewModel
-- `apps/api` 负责稳定的平台资源语义、控制面能力，以及 Python SDK / 自动化集成访问
+- `apps/bff` 负责浏览器请求接入、页面聚合、会话与权限上下文，以及把平台 contract 编排成前端友好的 ViewModel
+- `apps/api` 负责稳定的平台资源语义、Platform API contract，以及 Python SDK / 自动化集成访问
 - 未来如查询协调或批任务调度演进为独立常驻服务，应作为独立 app/service 部署，而不是继续挤进 BFF 或 route handler
 
 BFF 不拥有底层数据资产事实，也不直接持有 runtime provider；平台 domain 事实、workflow 触发、query/search/export 等能力仍由 Platform API 与其背后的 Python runtime 负责。

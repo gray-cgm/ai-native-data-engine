@@ -2,8 +2,8 @@
 
 当前本地 MVP 存在两层 API 面：
 
-- Web Access API：由 `apps/bff` 提供，面向 React workbench 的页面场景聚合与浏览器友好接口
-- Platform API：由 `apps/api` 中的 FastAPI 提供，面向平台资源、控制面能力、SDK 与自动化访问
+- Experience Access API：由 `apps/bff` 提供，面向 React workbench 的页面场景聚合、浏览器友好接口与 app-facing ViewModel
+- Platform API：由 `apps/api` 中的 FastAPI 提供，面向平台资源语义、Platform API contract、SDK 与自动化访问
 
 ## BFF 首版最小接口
 
@@ -18,7 +18,7 @@
 - `POST /api/datasets/{datasetId}/exports`
   - 转发 dataset export 请求到 Platform API
 
-这些 BFF 接口建立在现有 FastAPI Platform API 之上，负责页面聚合与场景编排，而不是重写平台资源语义。
+这些 BFF 接口建立在现有 FastAPI Platform API 之上，负责消费 Platform API contract、完成页面聚合与场景编排，而不是重写平台资源语义。
 
 ## 主要路由分组
 
@@ -59,7 +59,7 @@
 
 这些接口会在 `data/exports/` 下生成真实导出文件。
 
-当前下面列出的 `/samples/*`、`/datasets/*`、`/workspaces`、`/tasks`、`/exports/*` 等路由，指的都是 FastAPI Platform API 路由。BFF 会在其上进行页面聚合和场景编排，但不会重新定义底层资源语义。
+当前下面列出的 `/samples/*`、`/datasets/*`、`/workspaces`、`/tasks`、`/exports/*` 等路由，指的都是 FastAPI Platform API 路由。BFF 会在其上消费 Platform API contract，进行页面聚合和场景编排，但不会重新定义底层资源语义。
 
 ## 运行时行为
 
@@ -71,7 +71,7 @@ API 通过 `RuntimeContainer` 和 `infra/profiles/local-dev.yaml` 装配当前�
 FastAPI Platform API 不只是 demo 包装层，它实际上已经是平台控制面与统一数据出口的起点：
 
 - React workbench 优先通过 BFF 间接访问平台数据
-- BFF 通过调用 Platform API 聚合多个平台能力，返回页面友好的结果
+- BFF 通过调用 Platform API、消费稳定 contract，并返回页面友好的 app-facing 结果
 - Python SDK 通过 Platform API 访问系统
 - 导出请求通过 Platform API 发起
 - dataset 与 operations 的可见性通过 Platform API 暴露
