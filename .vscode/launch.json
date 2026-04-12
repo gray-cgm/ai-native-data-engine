@@ -1,0 +1,97 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API: FastAPI (uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "module": "uvicorn",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "src.main:app",
+        "--app-dir",
+        "apps/api",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8003",
+        "--reload"
+      ],
+      "envFile": "${workspaceFolder}/.env",
+      "preLaunchTask": "install: uv",
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "API: ingest demo script",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "module": "src.scripts.ingest_demo",
+      "cwd": "${workspaceFolder}/apps/api",
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "API: query demo script",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "module": "src.scripts.query_demo",
+      "cwd": "${workspaceFolder}/apps/api",
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "BFF: tsx watch",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/bff",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "exec",
+        "tsx",
+        "watch",
+        "src/index.ts"
+      ],
+      "envFile": "${workspaceFolder}/.env",
+      "preLaunchTask": "install: pnpm",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "name": "BFF: current file",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/bff",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "exec",
+        "tsx"
+      ],
+      "args": [
+        "${file}"
+      ],
+      "envFile": "${workspaceFolder}/.env",
+      "preLaunchTask": "install: pnpm",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "API + BFF",
+      "configurations": [
+        "API: FastAPI (uvicorn)",
+        "BFF: tsx watch"
+      ]
+    }
+  ]
+}

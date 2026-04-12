@@ -1,0 +1,103 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "install: pnpm",
+      "type": "shell",
+      "command": "pnpm install",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "install: uv",
+      "type": "shell",
+      "command": "uv sync",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: api",
+      "type": "shell",
+      "command": "make dev-api API_PORT=8003",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*uvicorn.*",
+          "endsPattern": ".*Application startup complete\\..*"
+        }
+      }
+    },
+    {
+      "label": "dev: bff",
+      "type": "shell",
+      "command": "make dev-bff",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*tsx watch.*",
+          "endsPattern": ".*BFF server listening on.*"
+        }
+      }
+    },
+    {
+      "label": "dev: all",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "dev: api",
+        "dev: bff"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "demo: ingest",
+      "type": "shell",
+      "command": "make ingest",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "demo: query",
+      "type": "shell",
+      "command": "make query",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "demo: lance",
+      "type": "shell",
+      "command": "make lance",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
