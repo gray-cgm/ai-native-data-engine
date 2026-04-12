@@ -186,7 +186,7 @@ data/
 - `apps/web`：工作台前端
 - `apps/bff`：Node.js + TypeScript BFF，负责页面场景聚合、前端友好接口、会话与权限上下文
 - `apps/api`：FastAPI Platform API，负责平台资源与控制面能力
-- `apps/orchestrator`：Dagster 资产编排
+- `apps/orchestrator`：Dagster OSS user code project / 资产编排入口
 
 ### `packages/`
 TypeScript 共享包：
@@ -535,9 +535,45 @@ make dev-bff
 make dev-api
 ```
 
-### Dagster
+### Dagster（本地单进程开发）
 ```bash
 make dev-dagster
+```
+
+### Dagster OSS Docker Compose 部署
+```bash
+make compose-dagster
+```
+
+该模式会启动 Dagster OSS 的三个服务：
+
+- `dagster-user-code`
+- `dagster-webserver`
+- `dagster-daemon`
+
+其中 `apps/orchestrator` 作为 Dagster code location，通过 gRPC 暴露给 webserver / daemon。
+
+如果你准备专项开发 `apps/*`，推荐先一键启动所有容器化依赖：
+
+```bash
+make compose-deps
+```
+
+该命令会统一启动：
+
+- `postgres`
+- `dagster-user-code`
+- `dagster-webserver`
+- `dagster-daemon`
+- `jupyter`
+- `superset`
+
+然后你可以在宿主机分别启动：
+
+```bash
+make dev-web
+make dev-bff
+make dev-api
 ```
 
 默认端口（推荐）：
@@ -693,6 +729,13 @@ Dagster 在这里不是一个“为了有编排而有编排”的工具。
 - 用 **资产（asset）** 描述数据处理链路
 - 让数据生成、分布更新、版本物化具有明确依赖
 - 为未来 schedule / sensor / partition 留演进空间
+- 作为独立 orchestration control plane 运行，而不是塞进 `apps/api`
+
+在当前仓库里：
+
+- `apps/orchestrator` 是 Dagster OSS user code project / code location
+- 本地可用 `make dev-dagster` 进行单进程开发
+- 更接近正式部署形态时，可用 `make compose-dagster` 启动 `dagster-webserver + dagster-daemon + dagster-user-code`
 
 因此：
 

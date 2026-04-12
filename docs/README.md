@@ -21,3 +21,4 @@
 
 ## 教程
 - [Beginner Guide 入门文档](./tutorials/beginner-guide.md)
+- [DDIA2 × 项目认知地图](./ddia2-cognitive-map.md) - 帮助开发者从数据密集型系统视角理解本项目整体架构
