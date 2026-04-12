@@ -1,7 +1,18 @@
 import type { Context } from 'koa'
-import { Joi, type Route } from 'koa-joi-router'
+import JoiRouter from 'koa-joi-router'
+import type { Route } from 'koa-joi-router'
 
 import { platformFetch } from '../services/platform.js'
+
+const { Joi } = JoiRouter as typeof JoiRouter & {
+  Joi: {
+    string(): {
+      required(): unknown
+      valid(...values: string[]): { optional(): unknown }
+      optional(): unknown
+    }
+  }
+}
 
 const route: Route = {
   method: 'post',

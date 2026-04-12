@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from dataclasses import dataclass
 
 from core.domain.models import ProfileCapabilities, RuntimeProfile
 from core.interfaces.contracts import (
@@ -12,7 +12,8 @@ from core.interfaces.contracts import (
 )
 
 
-class RuntimeContainer(BaseModel):
+@dataclass
+class RuntimeContainer:
     profile: RuntimeProfile
     capabilities: ProfileCapabilities
     storage: StorageAdapter
@@ -22,7 +23,3 @@ class RuntimeContainer(BaseModel):
     search: SearchAdapter
     auth: AuthAdapter
     table: TableAdapter
-
-    model_config = {
-        'arbitrary_types_allowed': True,
-    }

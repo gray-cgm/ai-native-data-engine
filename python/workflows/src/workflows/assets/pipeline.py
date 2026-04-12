@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Any
 
-import lance
-
 from core.domain.models import LineageEvent
 from core.profiles.runtime import RuntimeContainer
 from workflows.ingestion.demo import ingest_local_dataset
@@ -84,5 +82,4 @@ def materialize_local_assets(container: RuntimeContainer, examples_dir: Path) ->
 
 
 def load_lance_rows(container: RuntimeContainer) -> list[dict[str, Any]]:
-    dataset = lance.dataset(str(Path(container.profile.search['uri'])))
-    return dataset.to_table().to_pylist()
+    return container.search.search_by_filters({}, top_k=100)

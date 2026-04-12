@@ -56,13 +56,55 @@ make dev-bff
 make dev-api
 ```
 
-#### Dagster
+#### Dagster（本地单进程开发）
 
 ```bash
 make dev-dagster
 ```
 
-如果你要同时分别启动多个服务，建议开 4 个终端分别执行 Web / BFF / API / Dagster 对应命令。
+#### Dagster OSS Docker Compose 部署
+
+```bash
+make compose-dagster
+```
+
+该模式会启动 Dagster OSS 的 3 个服务：
+
+- `dagster-user-code`
+- `dagster-webserver`
+- `dagster-daemon`
+
+其中：
+
+- `apps/orchestrator` 作为 Dagster code location / user code project
+- `dagster-webserver` 提供 UI
+- `dagster-daemon` 负责后台调度与运行管理
+- `dagster-user-code` 通过 gRPC 暴露 `apps/orchestrator/src/definitions.py`
+
+如果你要同时分别启动多个服务，建议开 4 个终端分别执行 Web / BFF / API / Dagster 对应命令；如果你想更接近 Dagster OSS 正式部署形态，建议直接使用 `make compose-dagster`。
+
+如果你准备专项开发 `apps/*`，推荐先一键启动所有容器化依赖：
+
+```bash
+make compose-deps
+```
+
+该命令会统一启动：
+
+- `postgres`
+- `dagster-user-code`
+- `dagster-webserver`
+- `dagster-daemon`
+- `jupyter`
+- `superset`
+
+然后你可以在宿主机分别执行：
+
+```bash
+make dev-web
+make dev-bff
+make dev-api
+```
 
 默认端口（推荐）：
 
@@ -158,7 +200,7 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 - `apps/web`: React workbench
 - `apps/bff`: Node.js TypeScript BFF
 - `apps/api`: FastAPI Platform API
-- `apps/orchestrator`: Dagster project
+- `apps/orchestrator`: Dagster OSS user code project / code location
 - `apps/scheduler`: future scheduler service placeholder
 - `packages/schemas`: shared schema
 - `packages/config`: shared TS config

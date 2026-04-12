@@ -3,12 +3,126 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_DB: ad_closure
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-ad_closure}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ad_closure}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dagster-user-code:
+    build:
+      context: .
+      dockerfile: docker/python-workspace.Dockerfile
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DAGSTER_CURRENT_IMAGE: ai-data-loop-engine-dagster-user-code
+      UV_PROJECT_ENVIRONMENT: /opt/uv-venv
+    command: >-
+      uv run --package orchestrator dagster api grpc
+      -h 0.0.0.0
+      -p 4000
+      -f apps/orchestrator/src/definitions.py
+    expose:
+      - "4000"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: docker/python-workspace.Dockerfile
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DAGSTER_HOME: /app/docker/dagster
+      UV_PROJECT_ENVIRONMENT: /opt/uv-venv
+    command: >-
+      uv run --package orchestrator dagster-webserver
+      -h 0.0.0.0
+      -p ${DAGSTER_PORT:-3001}
+      -w /app/docker/dagster/workspace.yaml
+    ports:
+      - "${DAGSTER_PORT:-3001}:${DAGSTER_PORT:-3001}"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dagster-user-code:
+        condition: service_started
+
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: docker/python-workspace.Dockerfile
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DAGSTER_HOME: /app/docker/dagster
+      UV_PROJECT_ENVIRONMENT: /opt/uv-venv
+    command: uv run --package orchestrator dagster-daemon run
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dagster-user-code:
+        condition: service_started
+
+  jupyter:
+    image: jupyter/scipy-notebook:python-3.11
+    working_dir: /home/jovyan/work
+    environment:
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-ad-engine}
+    command: start-notebook.sh --NotebookApp.token=${JUPYTER_TOKEN:-ad-engine} --NotebookApp.allow_origin='*'
+    ports:
+      - "${JUPYTER_PORT:-8888}:8888"
+    volumes:
+      - .:/home/jovyan/work
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  superset:
+    image: apache/superset:latest
+    env_file:
+      - .env
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-ai-data-loop-engine-secret}
+      SUPERSET_LOAD_EXAMPLES: "no"
+      SUPERSET_INTERNAL_DB_HOST: postgres
+      SUPERSET_INTERNAL_DB_PORT: 5432
+      SUPERSET_INTERNAL_DB_NAME: ${POSTGRES_DB:-ad_closure}
+      SUPERSET_INTERNAL_DB_USER: ${POSTGRES_USER:-postgres}
+      SUPERSET_INTERNAL_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SUPERSET_PROJECT_ROOT: /workspace
+      SUPERSET_DUCKDB_PATH: /workspace/data/duckdb/app.duckdb
+      SUPERSET_SAMPLES_PARQUET_PATH: /workspace/data/silver/samples.parquet
+      SUPERSET_DATASET_PARQUET_PATH: /workspace/data/gold/dataset_samples.parquet
+    command: /bin/sh /workspace/docker/superset/run.sh
+    ports:
+      - "${SUPERSET_PORT:-8088}:8088"
+    volumes:
+      - superset_home:/app/superset_home
+      - .:/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  superset_home:

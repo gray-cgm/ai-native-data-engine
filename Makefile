@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: install install-web install-py dev dev-web dev-bff dev-api dev-dagster ingest query lance export-parquet export-csv export-jsonl sdk-demo clean
+.PHONY: install install-web install-py dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance export-parquet export-csv export-jsonl sdk-demo clean
 
 install: install-web install-py
 
@@ -25,11 +25,29 @@ dev-bff:
 
 
 dev-api:
-	uv run --package api uvicorn src.main:app --reload --host $(API_HOST) --port $(API_PORT)
+	uv run --package api uvicorn src.main:app --app-dir apps/api --reload --host $(API_HOST) --port $(API_PORT)
 
 
 dev-dagster:
 	uv run --package orchestrator dagster dev -f src/definitions.py -h 0.0.0.0 -p $(DAGSTER_PORT)
+
+
+# Dagster OSS Docker deployment: webserver + daemon + user-code gRPC.
+compose-dagster:
+	docker compose up --build dagster-user-code dagster-webserver dagster-daemon postgres
+
+
+restart-dagster:
+	docker compose restart dagster-user-code dagster-webserver dagster-daemon
+
+
+compose-analytics:
+	docker compose up --build jupyter superset postgres
+
+
+# Start all containerized dependencies so apps can be developed locally against them.
+compose-deps:
+	docker compose up --build postgres dagster-user-code dagster-webserver dagster-daemon jupyter superset
 
 
 ingest:

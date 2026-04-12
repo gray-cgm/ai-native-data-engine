@@ -1,4 +1,4 @@
-profile: local-dev
+name: local-dev
 
 storage:
   provider: local_fs

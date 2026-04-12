@@ -1,25 +1,35 @@
 import Koa from 'koa'
-import type { Context } from 'koa'
 import cors from '@koa/cors'
 import { koaBody } from 'koa-body'
 import JoiRouter from 'koa-joi-router'
+import type { Middleware } from 'koa'
 
 import { handleException } from './middlewares/index.js'
 import { getApiRouter, healthRoute } from './routes/index.js'
 
+const normalizeMiddleware = (middleware: unknown): Middleware => {
+  if (typeof middleware !== 'function') {
+    throw new TypeError('Expected Koa middleware function')
+  }
+  return middleware as Middleware
+}
+
 export function getApp() {
   const app = new Koa()
 
-  app.use(cors())
-  app.use(handleException)
-  app.use(koaBody({ jsonLimit: '10mb' }))
-
+  const corsMiddleware = normalizeMiddleware(cors())
+  const bodyMiddleware = normalizeMiddleware(koaBody({ jsonLimit: '10mb' }))
   const rootRouter = JoiRouter()
   rootRouter.route(healthRoute)
-  app.use(rootRouter.middleware())
-
+  const rootRouterMiddleware = normalizeMiddleware(rootRouter.middleware())
   const apiRouter = getApiRouter()
-  app.use(apiRouter.middleware())
+  const apiRouterMiddleware = normalizeMiddleware(apiRouter.middleware())
+
+  app.use(async (ctx, next) => corsMiddleware(ctx, next))
+  app.use(handleException)
+  app.use(async (ctx, next) => bodyMiddleware(ctx, next))
+  app.use(async (ctx, next) => rootRouterMiddleware(ctx, next))
+  app.use(async (ctx, next) => apiRouterMiddleware(ctx, next))
 
   return app
 }
