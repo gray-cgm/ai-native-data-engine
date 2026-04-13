@@ -1,10 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { DashboardPage } from './pages/DashboardPage'
-import './styles.css'
+import { App } from './app'
+import './styles/tokens.css'
+import './styles/reset.css'
+import './styles/layout.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <DashboardPage />
+    <App />
   </React.StrictMode>
 )

@@ -1,0 +1,118 @@
+/* Main Layout Container */
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg-primary, #ffffff);
+  color: var(--color-text-primary, #000000);
+  overflow: hidden;
+}
+
+.main-layout.fullscreen {
+  --header-height: 0;
+}
+
+/* Variables */
+:root {
+  --header-height: 60px;
+  --micro-menu-width: 100px;
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 60px;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f7fa;
+  --color-bg-hover: #f0f2f5;
+  --color-border: #e8eaed;
+  --color-text-primary: #181818;
+  --color-text-secondary: #6c757d;
+  --color-text-muted: #a0a6ac;
+  --color-primary: #5A7CFF;       
+  --color-primary-light: #B7CCFF;  
+  --color-primary-hover: #4E6DE6;
+  --color-primary-active: #3F59CC;
+  --transition-duration: 0.3s;
+}
+
+/* Header height variable */
+.main-layout:not(.fullscreen) {
+  padding-top: var(--header-height);
+}
+
+/* Main content area */
+.main-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Main outlet */
+.main-outlet {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px;
+  background: var(--color-bg-primary);
+  transition: margin var(--transition-duration) ease;
+}
+
+.main-outlet.menu-collapsed {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Fullscreen button */
+.fullscreen-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  box-shadow: 0 4px 12px rgba(27, 68, 255, 0.3);
+  transition: all var(--transition-duration) ease;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+}
+
+.fullscreen-button:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 6px 16px rgba(27, 68, 255, 0.4);
+  opacity: 1;
+}
+
+.fullscreen-button:active {
+  transform: scale(0.95);
+}
+
+/* Scrollbar styling */
+.main-outlet::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-outlet::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-outlet::-webkit-scrollbar-thumb {
+  background: #bcc0c7;
+  border-radius: 4px;
+  transition: background var(--transition-duration) ease;
+}
+
+.main-outlet::-webkit-scrollbar-thumb:hover {
+  background: #a0a6ac;
+}

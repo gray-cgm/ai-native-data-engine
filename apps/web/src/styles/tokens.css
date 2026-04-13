@@ -1,0 +1,57 @@
+:root {
+  /* Colors - Base */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f7fa;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #f9fafb;
+  --color-border: #e8eaed;
+  --color-border-light: #f0f2f5;
+  --color-border-input: #d1d5db;
+
+  /* Colors - Text */
+  --color-text-primary: #181818;
+  --color-text-muted: #6c757d;
+
+  /* Colors - Accent */
+  --color-accent: #1b44ff;
+  --color-accent-hover: #1639d9;
+  --color-accent-border: #a3b3ff;
+
+  /* Colors - Status */
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-info: #2563eb;
+  --color-muted: #9ca3af;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+  --space-4xl: 48px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* Typography */
+  --font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-stat: 28px;
+
+  /* Layout */
+  --sidebar-width: 240px;
+}

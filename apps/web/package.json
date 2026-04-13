@@ -10,9 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ad-engine/schemas": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@ad-engine/schemas": "workspace:*"
+    "react-router-dom": "^7.14.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
