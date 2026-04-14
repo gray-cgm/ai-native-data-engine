@@ -158,7 +158,7 @@ Dagster Webserver / Daemon
 - dataset materialization workflow
 - search indexing workflow
 - export workflow
-- demo bootstrap workflow
+- scenario bootstrap workflow
 
 ### 2) 消费 `RuntimeContainer`
 

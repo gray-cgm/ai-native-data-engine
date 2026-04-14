@@ -1164,7 +1164,7 @@ App mount
 -> Web BootstrapGuard
 -> POST /api/bootstrap
 -> BFF forward to Platform API /samples/ingest-demo
--> Platform API triggers demo ingestion/materialization
+-> Platform API triggers night intersection VRU scenario triage/materialization
 -> 数据进入 dashboard/catalog/explorer 的可见范围
 ```
 
@@ -1231,7 +1231,7 @@ sequenceDiagram
 
     W->>B: POST /api/bootstrap
     B->>P: POST /samples/ingest-demo
-    P->>R: trigger demo ingestion/materialization
+    P->>R: trigger night intersection VRU scenario triage/materialization
     R-->>P: ingest result
     P-->>B: bootstrap response
     B-->>W: command result
@@ -1323,7 +1323,7 @@ sequenceDiagram
 | Operations `/ops` | 查看任务 | `GET /api/dashboard` | `/tasks` | tasks | 状态观察 |
 | Exports `/ops/exports` | 查看导出记录 | `GET /api/dashboard` | `/exports` | exports | 状态观察 |
 | Pipelines `/pipelines` | 查看运行历史 | `GET /api/dashboard` | 当前主要复用 tasks / runs 语义 | runs / tasks | 状态观察 |
-| Bootstrap action | 初始化 demo 数据环境 | `POST /api/bootstrap` | `POST /samples/ingest-demo` | ingestion result | 初始化数据 |
+| Bootstrap action | 初始化夜间路口弱势交通参与者场景环境 | `POST /api/bootstrap` | `POST /samples/ingest-demo` | scenario triage result | 初始化数据 |
 | Export action | 导出 dataset | `POST /api/datasets/{datasetId}/exports` | `POST /exports/dataset/{datasetId}` | export job | 触发导出 |
 
 ## 当前 MVP 的约束与刻意简化

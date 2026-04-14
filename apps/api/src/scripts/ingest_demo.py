@@ -2,10 +2,10 @@ from pathlib import Path
 from pprint import pprint
 
 from profiles import build_container
-from workflows.assets.pipeline import materialize_local_assets
+from services import run_scenario_triage
 
 
 if __name__ == '__main__':
     container = build_container(Path('infra/profiles/local-dev.yaml'))
-    result = materialize_local_assets(container, Path('examples/datasets/custom-local'))
+    result = run_scenario_triage(container)
     pprint(result)

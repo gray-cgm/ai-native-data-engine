@@ -542,21 +542,22 @@ BFF 不是简单转发层，它在做页面语义聚合。比如 dashboard 聚�
 
 #### 1) 数据集创建与版本登记
 
-在 `materialize_local_assets()` 中，当前会依次做：
+在当前 `Night Intersection VRU Hard-Case Triage` 主链路中，批处理会依次做：
 
 - create workspace
 - create sample table
 - build index
 - overwrite parquet table
+- 计算场景样本打分与 priority sample package
 - create dataset
 - create dataset version
-- submit job
+- submit scenario triage job
 - create job_run
-- create task
+- create review task
 - create export_job
 - append lineage event
 
-见 [python/workflows/src/workflows/assets/pipeline.py:9-80](python/workflows/src/workflows/assets/pipeline.py#L9-L80)
+见 [python/services/src/services/__init__.py](python/services/src/services/__init__.py) 和 [python/workflows/src/workflows/demo/pipeline.py](python/workflows/src/workflows/demo/pipeline.py)
 
 这其实已经是一串跨多个子系统的多步写操作。
 
@@ -678,7 +679,7 @@ BFF 不是简单转发层，它在做页面语义聚合。比如 dashboard 聚�
 - 构建 Lance index
 - 生成导出文件
 
-在 `materialize_local_assets()` 里，这条批式链路已经很清楚：[python/workflows/src/workflows/assets/pipeline.py:9-80](python/workflows/src/workflows/assets/pipeline.py#L9-L80)
+在当前场景筛选主链路里，这条批式链路已经很清楚：[python/services/src/services/__init__.py](python/services/src/services/__init__.py) 和 [python/workflows/src/workflows/demo/pipeline.py](python/workflows/src/workflows/demo/pipeline.py)
 
 ### Dagster 为什么重要
 
@@ -712,7 +713,7 @@ Dagster 在这里承担的是 asset-oriented orchestration，而不是普通任�
 
 ### 为什么现在还不强
 
-当前 demo 的数据导入是显式触发的：
+当前场景筛选的数据导入是显式触发的：
 
 - `POST /samples/ingest-demo`
 - `make ingest`

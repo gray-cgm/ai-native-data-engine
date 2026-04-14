@@ -12,9 +12,9 @@
 - `GET /health`
   - 返回 BFF 服务状态与 upstream Platform API 地址
 - `POST /api/bootstrap`
-  - 触发 demo ingestion bootstrap
+  - 触发夜间路口弱势交通参与者场景筛选 bootstrap
 - `GET /api/dashboard`
-  - 聚合 dashboard 所需的 distribution、datasets、dataset versions、tasks、workspaces、exports、search preview
+  - 聚合 dashboard 所需的 distribution、scenario summary、datasets、dataset versions、tasks、workspaces、exports、search preview
 - `POST /api/datasets/{datasetId}/exports`
   - 转发 dataset export 请求到 Platform API
 
@@ -28,11 +28,11 @@
 
 ### Sample Operations
 - `POST /samples/ingest-demo`
-  - 触发 demo ingestion 与资产物化
+  - 触发 `Night Intersection VRU Hard-Case Triage` 场景筛选与资产物化
 - `GET /samples/distribution`
-  - 从本地 query 层读取 distribution / 统计结果
+  - 从本地 query 层读取 distribution / 统计结果，并返回当前 scenario package 摘要
 - `GET /samples/search-preview`
-  - 从本地 search 层返回基础检索预览
+  - 从本地 search 层返回基础检索预览，并聚焦当前 scenario package 的 priority samples
 
 ### Catalog
 - `GET /workspaces`

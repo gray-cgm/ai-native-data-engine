@@ -8,6 +8,9 @@ class ADEngineClient:
     def ingest_demo(self) -> dict:
         return httpx.post(f'{self.base_url}/samples/ingest-demo', timeout=30).json()
 
+    def get_scenario_summary(self) -> dict:
+        return httpx.get(f'{self.base_url}/samples/distribution', timeout=30).json()
+
     def list_datasets(self) -> dict:
         return httpx.get(f'{self.base_url}/datasets', timeout=30).json()
 

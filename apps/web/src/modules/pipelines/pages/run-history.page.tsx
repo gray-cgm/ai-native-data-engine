@@ -4,7 +4,7 @@ import { PageContainer } from '@/shared/components/page-container'
 import { DataTable } from '@/shared/components/data-table'
 import { StatusBadge } from '@/shared/components/status-badge'
 import { fetchRuns } from '../api'
-import type { RunItem } from '../api'
+import type { RunItem } from '@/shared/types/common'
 
 export default function RunHistoryPage() {
   const fetcher = useCallback(() => fetchRuns(), [])
@@ -17,13 +17,12 @@ export default function RunHistoryPage() {
       <div className="card">
         <DataTable
           columns={[
-            { key: 'task_id', header: 'Run ID' },
-            { key: 'title', header: 'Title' },
-            { key: 'task_type', header: 'Type' },
+            { key: 'run_id', header: 'Run ID' },
+            { key: 'job_name', header: 'Job Name' },
             { key: 'status', header: 'Status', render: (row: RunItem) => <StatusBadge status={row.status} /> },
           ]}
           data={data ?? []}
-          rowKey={(row) => row.task_id}
+          rowKey={(row) => row.run_id}
           emptyText="No pipeline runs found."
         />
       </div>

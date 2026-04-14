@@ -184,7 +184,10 @@ make down-apps
 
 ### 4. 运行本地 MVP 数据链路
 
-#### 导入 demo 数据并物化资产
+当前默认主链路是一个真实自动驾驶场景：`Night Intersection VRU Hard-Case Triage`。
+它会从本地样本里筛出夜间、路口、行人、斑马线、交通灯、遮挡相关样本，生成一个最小 scenario package，用于 review/export/search 的闭环验证。
+
+#### 触发夜间路口弱势交通参与者场景筛选
 
 ```bash
 make ingest
@@ -202,11 +205,17 @@ make query
 make lance
 ```
 
-#### Platform API 触发 demo ingestion / asset materialization
+#### Platform API 触发场景筛选 / asset materialization
 
 ```bash
 curl -X POST http://localhost:8000/samples/ingest-demo
 ```
+
+返回结果中的 `scenario` 字段会包含：
+- `scenario_id`: `night-intersection-vru-triage`
+- `focus_scenes`: `urban-night`, `intersection`
+- `focus_tags`: `night`, `pedestrian`, `crosswalk`, `junction`, `traffic-light`, `occlusion`
+- `priority_sample_ids`: 当前最小 hard-case 样本包
 
 #### Platform API 查看样本分布
 
@@ -219,6 +228,8 @@ curl http://localhost:8000/samples/distribution
 ```bash
 curl http://localhost:8000/samples/search-preview
 ```
+
+这两个接口现在也会返回 `scenario` 字段，用于描述当前场景包的目标、候选样本和优先样本。
 
 #### Platform API 查看数据集、任务、工作空间、导出
 
@@ -251,6 +262,7 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 
 - 本地目录 ingestion：导入图像和 JSON 元数据
 - 统一数据资产模型驱动的样本物化
+- 真实自动驾驶场景 demo：夜间路口弱势交通参与者 hard-case triage
 - Dagster asset-oriented pipeline
 - Parquet 落盘
 - DuckDB 查询 demo
@@ -308,6 +320,8 @@ Browser / Web App
 - `POST /api/datasets/{datasetId}/exports`
 
 这些接口会在 BFF 内部聚合或转发到 FastAPI Platform API。
+
+其中 `POST /api/bootstrap` 当前会触发 `Night Intersection VRU Hard-Case Triage` 场景链路，而不是 generic mock demo。
 
 下面的 `curl` 示例仍然以 FastAPI Platform API 为准，主要用于验证平台能力与本地 MVP 主链路，而不是要求未来 Web 继续直连 FastAPI。
 

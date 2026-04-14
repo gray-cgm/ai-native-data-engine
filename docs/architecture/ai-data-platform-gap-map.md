@@ -210,7 +210,7 @@ AI 数据闭环里，“任务运营系统”不是附属品，而是中台核�
 ### P0-5. 数据接入标准化前门
 
 #### 当前已有
-- demo ingestion workflow
+- night intersection VRU scenario triage workflow
 - local directory ingestion
 
 #### 当前缺失

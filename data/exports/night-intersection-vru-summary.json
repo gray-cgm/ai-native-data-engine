@@ -1,0 +1,83 @@
+{
+  "workspace_id": "local-workspace",
+  "dataset_id": "demo-dataset",
+  "dataset_version_id": "v1",
+  "table_name": "dataset_samples",
+  "profile_name": "local-dev",
+  "scenario_id": "night-intersection-vru-triage",
+  "scenario_name": "Night Intersection VRU Hard-Case Triage",
+  "scenario_goal": "Surface night-time and junction samples that are likely to require braking, yielding, or relabel review.",
+  "focus_scenes": [
+    "urban-night",
+    "intersection"
+  ],
+  "focus_tags": [
+    "night",
+    "pedestrian",
+    "crosswalk",
+    "junction",
+    "traffic-light",
+    "occlusion"
+  ],
+  "record_count": 3,
+  "scenario_sample_count": 2,
+  "dominant_scene": "urban-night",
+  "candidate_sample_ids": [
+    "frame_001",
+    "frame_003"
+  ],
+  "priority_sample_ids": [
+    "frame_001",
+    "frame_003"
+  ],
+  "distribution": [
+    {
+      "scene": "rainy-highway",
+      "sample_count": 1
+    },
+    {
+      "scene": "intersection",
+      "sample_count": 1
+    },
+    {
+      "scene": "urban-night",
+      "sample_count": 1
+    }
+  ],
+  "search_preview": [
+    {
+      "id": "frame_001",
+      "scene": "urban-night",
+      "vector": [
+        11.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "id": "frame_003",
+      "scene": "intersection",
+      "vector": [
+        12.0,
+        3.0,
+        1.0
+      ]
+    }
+  ],
+  "summary_output_uri": "./data/exports/night-intersection-vru-summary.json",
+  "export_id": "export-demo-v1",
+  "export_format": "parquet",
+  "export_output_path": "data/exports/demo-dataset-v1.parquet",
+  "run_id": "dagster-night_intersection_vru_triage_job-20260414121514",
+  "run_status": "success",
+  "orchestrator_job_name": "night_intersection_vru_triage_job",
+  "orchestrator_asset_key": "night_intersection_vru_triage_asset",
+  "operator": {
+    "user_id": "demo-operator",
+    "email": "demo-operator@local.dev",
+    "display_name": "demo-operator",
+    "roles": [
+      "admin"
+    ]
+  }
+}

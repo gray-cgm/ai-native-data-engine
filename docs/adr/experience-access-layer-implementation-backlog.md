@@ -187,11 +187,11 @@
 - [ ] **P0 Task 6.1.1 - 稳定 `/api/bootstrap` 到 Platform API 的转发**
   **输入：** [apps/bff/src/routes/bootstrap.ts](../../apps/bff/src/routes/bootstrap.ts)、Platform API `/samples/ingest-demo`
   **输出：** 可在应用加载时调用的 bootstrap route
-  **验收标准：** `POST /api/bootstrap` 能真实触发 demo ingest；失败时不会导致前端壳整体崩溃；成功后数据能进入 dashboard 可见范围
+  **验收标准：** `POST /api/bootstrap` 能真实触发夜间路口弱势交通参与者场景筛选；失败时不会导致前端壳整体崩溃；成功后数据能进入 dashboard 可见范围
 
 - [ ] **P0 Task 6.1.2 - 在 Web App 中固化 BootstrapGuard 的 best-effort 行为**
   **输入：** Web app mount 流程、bootstrap 交互时序图
-  **输出：** 应用启动时自动尝试初始化 demo 数据的行为
+  **输出：** 应用启动时自动尝试初始化场景筛选数据的行为
   **验收标准：** 首次进入应用时能够 best-effort 触发 bootstrap；即便 bootstrap 已执行过或失败，用户仍能进入 workbench
 
 - [ ] **P0 Task 6.1.3 - 补齐个人开发版 MVP 的启动说明与验收脚本**

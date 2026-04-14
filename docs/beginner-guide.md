@@ -620,10 +620,20 @@ BFF 的作用主要有三个：
 
 # 15. 用 Platform API 验证系统
 
-## 15.1 触发 demo ingestion / asset materialization
+当前默认验证链路不是抽象的 mock ingest，而是一个真实自动驾驶场景：`Night Intersection VRU Hard-Case Triage`。
+它会从样本中筛出夜间行人过街与路口遮挡相关 hard-case，生成可 review、可 export、可 search 的最小 scenario package。
+
+## 15.1 触发场景筛选 / asset materialization
 ```bash
 curl -X POST http://localhost:8000/samples/ingest-demo
 ```
+
+关注返回里的 `scenario` 字段：
+
+- `scenario_name`
+- `priority_sample_ids`
+- `focus_scenes`
+- `focus_tags`
 
 ## 15.2 查看样本分布
 ```bash
@@ -687,6 +697,7 @@ sdk/python
 示例能力：
 
 - `ingest_demo()`
+- `get_scenario_summary()`
 - `list_datasets()`
 - `get_dataset(dataset_id)`
 - `list_exports()`

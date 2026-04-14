@@ -69,10 +69,10 @@
   **验收标准：** search preview 能返回已索引的 sample 行
 
 ### Story 3.2 - 构建本地资产编排链路
-- [ ] **P0 Task 3.2.1 - 实现 demo ingestion workflow**
+- [ ] **P0 Task 3.2.1 - 实现夜间路口弱势交通参与者场景筛选 workflow**
   **输入：** `examples/` 下的本地图像与 JSON metadata
-  **输出：** 归一化后的 sample records
-  **验收标准：** demo 数据可被扫描成统一样本模型
+  **输出：** 归一化后的 sample records 与最小 scenario package
+  **验收标准：** 本地样本可被扫描成统一样本模型，并能筛出 priority samples
 - [ ] **P0 Task 3.2.2 - 通过 container 物化 dataset assets**
   **输入：** runtime container 与 sample records
   **输出：** dataset、version、runs、search index、materialized tables、lineage
@@ -86,7 +86,7 @@
 
 ### Story 4.1 - 暴露 Platform API
 - [ ] **P0 Task 4.1.1 - 增加 sample operation API**
-  **输入：** container 驱动的 ingestion / query / search 函数
+  **输入：** container 驱动的 scenario triage / query / search 函数
   **输出：** `/samples/ingest-demo`、`/samples/distribution`、`/samples/search-preview`
   **验收标准：** 本地 MVP 接口返回真实结果而非 mock
 - [ ] **P0 Task 4.1.2 - 增加 catalog API**
