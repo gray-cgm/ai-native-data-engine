@@ -1,4 +1,3 @@
-version: '3.9'
 services:
   postgres:
     image: postgres:16
@@ -34,7 +33,7 @@ services:
     expose:
       - "4000"
     volumes:
-      - .:/app
+      - ${HOST_WORKSPACE_DIR:-.}:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,7 +56,7 @@ services:
     ports:
       - "${DAGSTER_PORT:-3001}:${DAGSTER_PORT:-3001}"
     volumes:
-      - .:/app
+      - ${HOST_WORKSPACE_DIR:-.}:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,7 +75,7 @@ services:
       UV_PROJECT_ENVIRONMENT: /opt/uv-venv
     command: uv run --package orchestrator dagster-daemon run
     volumes:
-      - .:/app
+      - ${HOST_WORKSPACE_DIR:-.}:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,33 +91,32 @@ services:
     ports:
       - "${JUPYTER_PORT:-8888}:8888"
     volumes:
-      - .:/home/jovyan/work
+      - ${HOST_WORKSPACE_DIR:-.}:/home/jovyan/work
     depends_on:
       postgres:
         condition: service_healthy
 
   superset:
-    image: apache/superset:latest
+    build:
+      context: .
+      dockerfile: docker/superset.Dockerfile
     env_file:
       - .env
     environment:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-ai-data-loop-engine-secret}
       SUPERSET_LOAD_EXAMPLES: "no"
-      SUPERSET_INTERNAL_DB_HOST: postgres
-      SUPERSET_INTERNAL_DB_PORT: 5432
-      SUPERSET_INTERNAL_DB_NAME: ${POSTGRES_DB:-ad_closure}
-      SUPERSET_INTERNAL_DB_USER: ${POSTGRES_USER:-postgres}
-      SUPERSET_INTERNAL_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       SUPERSET_PROJECT_ROOT: /workspace
       SUPERSET_DUCKDB_PATH: /workspace/data/duckdb/app.duckdb
       SUPERSET_SAMPLES_PARQUET_PATH: /workspace/data/silver/samples.parquet
       SUPERSET_DATASET_PARQUET_PATH: /workspace/data/gold/dataset_samples.parquet
-    command: /bin/sh /workspace/docker/superset/run.sh
+    command:
+      - /bin/sh
+      - /workspace/docker/superset/run.sh
     ports:
       - "${SUPERSET_PORT:-8088}:8088"
     volumes:
       - superset_home:/app/superset_home
-      - .:/workspace
+      - ${HOST_WORKSPACE_DIR:-.}:/workspace
     depends_on:
       postgres:
         condition: service_healthy

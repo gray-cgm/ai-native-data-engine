@@ -22,6 +22,7 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 - pnpm 10+
 - Python 3.11+
 - uv
+- Docker Desktop / Docker Engine
 
 安装 uv：
 
@@ -29,14 +30,69 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### 2. 安装依赖
+### 2. 首次启动
 
 ```bash
-cp .env.example .env
-make install
+make setup
+make up
 ```
 
-### 3. 启动方式
+`make setup` 会自动：
+- 检查 `node` / `pnpm` / `python3` / `uv` / `docker` / `docker compose`
+- 若 `.env` 不存在则自动从 `.env.example` 创建
+- 安装前端与 Python 依赖
+
+`make up` 会自动：
+- 启动 `postgres`
+- 启动 `dagster-user-code`
+- 启动 `dagster-webserver`
+- 启动 `dagster-daemon`
+- 启动 `jupyter`
+- 启动 `superset`
+- 启动宿主机开发进程：`web` / `bff` / `api`
+- 启动前检查 Docker、`.env`、关键端口和 Colima 挂载
+
+默认访问地址：
+
+- Web: http://localhost:3000
+- BFF: http://localhost:3100
+- Platform API: http://localhost:8000/docs
+- Dagster: http://localhost:3001
+- Jupyter: http://localhost:8888
+- Superset: http://localhost:8088
+
+### 3. 日常开发
+
+```bash
+make up
+```
+
+停止容器和本地 apps：
+
+```bash
+make down
+```
+
+仅停止本地 apps：
+
+```bash
+make down-apps
+```
+
+查看容器日志：
+
+```bash
+make logs
+```
+
+查看服务地址和诊断：
+
+```bash
+make status
+make doctor
+```
+
+### 4. 单独调试某个服务
 
 #### Web
 
@@ -68,50 +124,63 @@ make dev-dagster
 make compose-dagster
 ```
 
-该模式会启动 Dagster OSS 的 3 个服务：
+#### 仅启动分析相关容器
 
-- `dagster-user-code`
-- `dagster-webserver`
-- `dagster-daemon`
+```bash
+make compose-analytics
+```
 
-其中：
-
-- `apps/orchestrator` 作为 Dagster code location / user code project
-- `dagster-webserver` 提供 UI
-- `dagster-daemon` 负责后台调度与运行管理
-- `dagster-user-code` 通过 gRPC 暴露 `apps/orchestrator/src/definitions.py`
-
-如果你要同时分别启动多个服务，建议开 4 个终端分别执行 Web / BFF / API / Dagster 对应命令；如果你想更接近 Dagster OSS 正式部署形态，建议直接使用 `make compose-dagster`。
-
-如果你准备专项开发 `apps/*`，推荐先一键启动所有容器化依赖：
+#### 仅启动全部容器依赖
 
 ```bash
 make compose-deps
 ```
 
-该命令会统一启动：
+## 常见问题
 
-- `postgres`
-- `dagster-user-code`
-- `dagster-webserver`
-- `dagster-daemon`
-- `jupyter`
-- `superset`
+### Docker / Colima 未启动
 
-然后你可以在宿主机分别执行：
+执行 `make setup` 或 `make up` 时如果提示 Docker 不可用，先启动 Docker Desktop 或 Colima。
 
-```bash
-make dev-web
-make dev-bff
-make dev-api
+### Colima 看不到项目目录
+
+如果 `make up` 提示 Colima 无法访问项目目录，请检查 `~/.colima/default/colima.yaml` 的 `mounts` 配置，并确保包含：
+
+```yaml
+mounts:
+  - location: /Volumes/xdisk
+    writable: true
 ```
 
-默认端口（推荐）：
+修改后执行：
 
-- Web: http://localhost:3000
-- BFF: http://localhost:3100
-- Platform API: http://localhost:8000/docs
-- Dagster: http://localhost:3001
+```bash
+colima stop
+colima start
+```
+
+### 端口冲突
+
+`make up` 会检查容器端口：
+- 5432
+- 3001
+- 8888
+- 8088
+
+`make up-apps` 会检查本地 app 端口：
+- 3000
+- 3100
+- 8000
+
+若提示端口占用，请先执行：
+
+```bash
+make down-apps
+```
+
+### `.env` 缺失
+
+首次执行 `make setup` 会自动创建 `.env`。如果你手动删除了 `.env`，重新执行 `make setup` 即可。
 
 ### 4. 运行本地 MVP 数据链路
 
