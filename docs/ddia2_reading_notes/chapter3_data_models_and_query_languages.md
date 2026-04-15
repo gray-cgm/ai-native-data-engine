@@ -39,6 +39,8 @@ https://xiaopeng.feishu.cn/docx/Zb3FdSMOXoLeAHxbmrkcEt23n9F
 
 规范化和非规范化 tradeoff
 
+> 规范化是把重复、可复用、会变化的信息独立存储成实体，并通过 ID 关联；
+
 规范化，我理解为建一张mapping表，用id来做唯一索引，对应频繁更新关联表是有好处的。
 
 规范化读更慢，要join，写会很快，适合OLTP
