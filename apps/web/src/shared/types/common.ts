@@ -1,3 +1,6 @@
+// Page state machine states
+export type PageState = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
+
 export type StatusEnum = 'pending' | 'running' | 'done' | 'failed' | 'canceled'
 
 export type DistributionRow = { scene: string; sample_count: number }
