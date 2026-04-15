@@ -6,7 +6,7 @@ dependencies = [
   "ad-core",
   "ad-adapters",
   "ad-profiles",
-  "lance>=0.18.0"
+  "pylance>=0.18.0"
 ]
 
 [build-system]

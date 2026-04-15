@@ -18,16 +18,18 @@
 
 的个人开发版 MVP。
 
-这个项目围绕四层架构组织：
+这个项目围绕六层架构组织：
 
-1. **Ingestion**：数据接入层
-2. **Pipeline**：资产编排层
-3. **Lakehouse / DataLake**：本地数据访问层
-4. **Platform**：工作台层
+1. **存储层**：local fs / S3 / MinIO / OSS / HDFS
+2. **湖表格式层**：Iceberg / Paimon / Hudi
+3. **文件格式层**：Parquet / Lance，同类文件格式，当前主格式为 Lance
+4. **计算层**：local Python / Dagster / Spark / Flink / Fluss
+5. **查询层**：DuckDB / Trino / StarRocks
+6. **应用层**：BI、挖掘检索、标注、需求管理、工作台等
 
 它不是一个“文件堆 + 脚本集合”，而是一个：
 
-> 在裸文件（File）之上构建类数据库（DB-like）数据访问体验的本地数据平台。
+> 在存储层、格式层、计算层、查询层之上，逐步长出应用层能力的数据平台。
 
 ---
 
@@ -125,6 +127,15 @@ Raw Data
 - `StorageAdapter`
 - `ComputeAdapter`
 
+如果映射到更完整的系统分层，可以这样理解：
+
+- **存储层**：负责文件和对象放在哪里，例如 local fs、S3、MinIO、OSS、HDFS
+- **湖表格式层**：负责表快照、schema 演进、分区和事务语义，例如 Iceberg、Paimon、Hudi
+- **文件格式层**：负责数据如何编码，例如 Parquet、Lance；它们属于同类文件格式组件，当前主格式为 Lance
+- **计算层**：负责 ingestion、物化、编排、批流处理如何执行，例如 local Python、Dagster、Spark、Flink、Fluss
+- **查询层**：负责 SQL 查询、聚合、交互式分析如何读取数据，例如 DuckDB、Trino、StarRocks
+- **应用层**：负责把底层能力组织成面向角色的产品体验，例如 BI、挖掘检索、标注、需求管理、工作台
+
 ---
 
 ## 4.3 资产导向，而不是脚本导向
@@ -155,10 +166,10 @@ Raw Data
 
 也就是：
 
-- 个人版用 DuckDB，不代表未来不能切 StarRocks
-- 个人版用 Parquet，不代表未来不能切 Iceberg/Paimon
-- 个人版用 SQLite，不代表未来不能切 Postgres
-- 个人版用 local fs，不代表未来不能切 S3 / MinIO
+- 个人版用 DuckDB 作为本地查询引擎，不代表未来不能切 StarRocks 这类分布式查询引擎
+- 个人版直接写裸 Parquet 文件，不代表未来不能演进到由 Iceberg / Paimon / Hudi 管理的湖表层
+- 个人版用 SQLite 作为 metadata 存储，不代表未来不能切 Postgres
+- 个人版用 local fs 作为底层文件存储，不代表未来不能切 S3 / MinIO / OSS / HDFS
 
 ---
 
@@ -322,6 +333,8 @@ profile 配置与本地运行环境。
 
 它是事实层，不负责高级查询。
 
+这一层属于**存储层**。
+
 ---
 
 ## 8.2 Parquet
@@ -330,12 +343,14 @@ profile 配置与本地运行环境。
 为什么要有 Parquet？
 
 因为原始 JSON 不适合作为主查询格式。
-Parquet 是列式存储，更适合：
+Parquet 是列式文件格式，更适合：
 
 - 查询加速
 - 列裁剪
 - 后续导出
-- 未来演进到 Iceberg/Paimon
+- 未来作为 Iceberg / Paimon 等湖表格式的底层数据文件之一
+
+这一层属于**文件格式层**，不是查询层，也不是湖表格式层。当前本地 MVP 的主结构化文件格式是 Lance，Parquet 主要作为同类兼容格式理解。
 
 ---
 
@@ -355,6 +370,8 @@ DuckDB 特别适合个人版，因为：
 - 对 Parquet 支持很好
 - 上手成本低
 
+这一层属于**查询层**。
+
 ---
 
 ## 8.4 Lance
@@ -368,10 +385,12 @@ DuckDB 特别适合个人版，因为：
 
 个人版里先做最小能力，后续可以继续增强。
 
+在这套分层里，Lance 与 Parquet 属于同类文件格式组件；当前主线已经切到 Lance，而真正面向用户的“搜索体验”属于上层应用能力。
+
 ---
 
 ## 8.5 SQLite
-元数据控制面。
+元数据与事务控制层。
 
 它负责：
 
@@ -393,6 +412,8 @@ DuckDB 特别适合个人版，因为：
 
 SQLite 很适合这个阶段。
 但因为我们已经通过 `MetadataAdapter` 抽象，所以未来切 Postgres 不需要推翻业务逻辑。
+
+SQLite 不属于上面五个 lakehouse 主层，而更接近独立的 **元数据与事务控制层**。
 
 ---
 
@@ -435,6 +456,15 @@ SQLite 很适合这个阶段。
 - compute = local dagster
 - auth = local auth
 
+把它翻译成更严格的分层语言，就是：
+
+- 存储层 = local fs
+- 文件格式层 = Parquet / Lance（当前主格式 Lance）
+- 查询层 = DuckDB
+- 计算层 = local Python / Dagster
+- 元数据与事务控制层 = SQLite
+- 应用层 = Web / BFF / Platform API / SDK 提供的工作台、检索预览、导出、运营入口
+
 这样 Platform API、workflow、Dagster 都不需要直接依赖底层实现。BFF 通过调用 Platform API 间接使用这些能力，而不直接持有底层 runtime provider。
 
 ---
@@ -447,15 +477,14 @@ SQLite 很适合这个阶段。
 Local image/json files
 -> ingestion
 -> SampleRecord
--> Parquet table
--> DuckDB query table
--> Lance index
+-> Lance files
+-> DuckDB query
 -> Dataset / DatasetVersion metadata
 -> Platform API
--> BFF / Web or SDK / Export
+-> BFF / Web / SDK / Export / Search experience
 ```
 
-这就是个人版 DataLake 的核心路径。
+这就是个人版在“存储/格式/计算/查询/应用”之间的最小闭环。
 
 ---
 
@@ -620,10 +649,20 @@ BFF 的作用主要有三个：
 
 # 15. 用 Platform API 验证系统
 
-## 15.1 触发 demo ingestion / asset materialization
+当前默认验证链路不是抽象的 mock ingest，而是一个真实自动驾驶场景：`Night Intersection VRU Hard-Case Triage`。
+它会从样本中筛出夜间行人过街与路口遮挡相关 hard-case，生成可 review、可 export、可 search 的最小 scenario package。
+
+## 15.1 触发场景筛选 / asset materialization
 ```bash
 curl -X POST http://localhost:8000/samples/ingest-demo
 ```
+
+关注返回里的 `scenario` 字段：
+
+- `scenario_name`
+- `priority_sample_ids`
+- `focus_scenes`
+- `focus_tags`
 
 ## 15.2 查看样本分布
 ```bash
@@ -651,7 +690,7 @@ curl http://localhost:8000/exports
 
 ## 16.1 导出 Parquet
 ```bash
-curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=parquet"
+curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=lance"
 ```
 
 ## 16.2 导出 CSV
@@ -667,7 +706,7 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 输出文件默认会写到：
 
 ```bash
-./data/exports/demo-dataset-v1.parquet
+./data/exports/demo-dataset-v1.lance
 ./data/exports/demo-dataset-v1.csv
 ./data/exports/demo-dataset-v1.jsonl
 ```
@@ -687,10 +726,11 @@ sdk/python
 示例能力：
 
 - `ingest_demo()`
+- `get_scenario_summary()`
 - `list_datasets()`
 - `get_dataset(dataset_id)`
 - `list_exports()`
-- `export_dataset(dataset_id, format='parquet')`
+- `export_dataset(dataset_id, format='lance')`
 - `search_preview()`
 
 你也可以直接运行：
@@ -712,6 +752,8 @@ make sdk-demo
 - Tasks
 - Workspaces
 - Exports
+
+这些都属于**应用层**，不是查询引擎本身。查询引擎只负责把数据读出来，真正的页面、检索体验、导出运营和工作流入口属于上层产品能力。
 
 这符合个人开发版的目标：
 
@@ -736,6 +778,8 @@ Dagster 在这里不是一个“为了有编排而有编排”的工具。
 - `apps/orchestrator` 是 Dagster OSS user code project / code location
 - 本地可用 `make dev-dagster` 进行单进程开发
 - 更接近正式部署形态时，可用 `make compose-dagster` 启动 `dagster-webserver + dagster-daemon + dagster-user-code`
+
+从分层上看，Dagster 属于**计算层 / 编排层**，不是查询层，也不是应用层。
 
 因此：
 
@@ -800,10 +844,13 @@ Dagster 在这里不是一个“为了有编排而有编排”的工具。
 ## 第四步：理解未来怎么演进
 当你已经理解个人版之后，再去思考：
 
-- DuckDB -> StarRocks
-- Parquet -> Iceberg / Paimon
-- SQLite -> Postgres
-- local fs -> S3 / MinIO
+- 底层存储：local fs -> S3 / MinIO / OSS / HDFS
+- 湖表格式：裸 Parquet 文件集 -> Iceberg / Paimon / Hudi
+- 文件格式：Parquet 与 Lance 属于同类组件；当前主格式是 Lance，并由更上层的湖表与应用能力管理和消费
+- 计算层：local Python / Dagster -> Spark / Flink / Fluss
+- 查询层：DuckDB -> StarRocks / Trino
+- 应用层：从本地工作台扩展到 BI、挖掘检索、标注、需求管理等多角色系统
+- 元数据与事务控制层：SQLite -> Postgres
 
 你会发现，真正重要的是：
 

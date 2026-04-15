@@ -6,7 +6,7 @@ import { PageError } from '@/shared/components/page-error'
 import { DataTable } from '@/shared/components/data-table'
 import { StatusBadge } from '@/shared/components/status-badge'
 import { fetchRuns } from '../api'
-import type { RunItem } from '../api'
+import type { RunItem } from '@/shared/types/common'
 
 export default function RunHistoryPage() {
   const fetcher = useCallback(() => fetchRuns(), [])

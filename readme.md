@@ -4,6 +4,41 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 
 本项目是一个面向自动驾驶/机器人数据闭环的本地可跑 monorepo MVP，目标不仅是搭建一条可运行的数据闭环链路，也希望帮助开发者系统性地学习如何设计数据密集型应用。
 
+当前文档采用统一的六层模型来描述系统底座：
+
+1. 存储层：local fs / S3 / MinIO / OSS / HDFS
+2. 湖表格式层：Iceberg / Paimon / Hudi
+3. 文件格式层：Parquet / Lance，同类文件格式，当前主格式为 Lance
+4. 计算层：local Python / Dagster / Spark / Flink / Fluss
+5. 查询层：DuckDB / Trino / StarRocks
+6. 应用层：BI、挖掘检索、标注、需求管理、工作台等
+
+## 统一架构表
+
+| 层级 | 核心职责 | 代表技术 | 当前 local-first MVP |
+|---|---|---|---|
+| 存储层 | 保存原始文件、导出文件与对象数据 | local fs / S3 / MinIO / OSS / HDFS | local fs |
+| 湖表格式层 | 管理表快照、schema 演进、分区与事务语义 | Iceberg / Paimon / Hudi | 预留演进方向，当前仍是裸文件集 |
+| 文件格式层 | 定义数据如何编码、落盘与索引表达 | Parquet / Lance | 当前主格式 Lance |
+| 计算层 | 执行 ingestion、物化、编排、批流处理 | local Python / Dagster / Spark / Flink / Fluss | local Python + Dagster |
+| 查询层 | 提供 SQL 查询、聚合、交互式分析读取能力 | DuckDB / Trino / StarRocks | DuckDB |
+| 应用层 | 组织面向角色的产品入口与工作流体验 | BI / 挖掘检索 / 标注 / 需求管理 / 工作台 | Web + BFF + FastAPI + SDK |
+
+补充说明：SQLite / Postgres 更接近元数据与事务控制层，用来承载数据集、版本、任务、导出、血缘、权限、审计等控制信息，不直接并入上述六层中的某一层。
+
+### 技术归属速查表
+
+| 技术 / 组件 | 所属层 | 说明 |
+|---|---|---|
+| local fs / S3 / MinIO / OSS / HDFS | 存储层 | 保存原始文件、导出文件与对象数据 |
+| Iceberg / Paimon / Hudi | 湖表格式层 | 管理表快照、schema 演进、分区与事务语义 |
+| Parquet | 文件格式层 | 与 Lance 同类的列式文件格式，可作为兼容/历史格式理解 |
+| Lance | 文件格式层 | 当前主结构化与检索文件格式 |
+| local Python / Dagster / Spark / Flink / Fluss | 计算层 | 执行 ingestion、物化、编排与批流处理 |
+| DuckDB / Trino / StarRocks | 查询层 | 提供 SQL 查询、聚合和分析读取能力 |
+| SQLite / Postgres | 元数据与事务控制层 | 记录数据集、版本、任务、导出、血缘、权限、审计等状态 |
+| Web / BFF / FastAPI / SDK / BI / 标注工作台 | 应用层 | 面向角色提供工作流入口与产品体验 |
+
 ## 技术选型
 
 - Monorepo: pnpm workspace + turborepo
@@ -12,7 +47,7 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 - BFF: Node.js + TypeScript
 - Platform API: FastAPI
 - Orchestration: Dagster
-- Local Lakehouse: DuckDB + Parquet + Lance
+- Local runtime today: local fs storage + Lance-first files + DuckDB query + Dagster orchestration + SQLite metadata + Web/BFF/API application access
 
 ## 快速开始
 
@@ -184,7 +219,10 @@ make down-apps
 
 ### 4. 运行本地 MVP 数据链路
 
-#### 导入 demo 数据并物化资产
+当前默认主链路是一个真实自动驾驶场景：`Night Intersection VRU Hard-Case Triage`。
+它会从本地样本里筛出夜间、路口、行人、斑马线、交通灯、遮挡相关样本，生成一个最小 scenario package，用于 review/export/search 的闭环验证。
+
+#### 触发夜间路口弱势交通参与者场景筛选
 
 ```bash
 make ingest
@@ -202,11 +240,17 @@ make query
 make lance
 ```
 
-#### Platform API 触发 demo ingestion / asset materialization
+#### Platform API 触发场景筛选 / asset materialization
 
 ```bash
 curl -X POST http://localhost:8000/samples/ingest-demo
 ```
+
+返回结果中的 `scenario` 字段会包含：
+- `scenario_id`: `night-intersection-vru-triage`
+- `focus_scenes`: `urban-night`, `intersection`
+- `focus_tags`: `night`, `pedestrian`, `crosswalk`, `junction`, `traffic-light`, `occlusion`
+- `priority_sample_ids`: 当前最小 hard-case 样本包
 
 #### Platform API 查看样本分布
 
@@ -219,6 +263,8 @@ curl http://localhost:8000/samples/distribution
 ```bash
 curl http://localhost:8000/samples/search-preview
 ```
+
+这两个接口现在也会返回 `scenario` 字段，用于描述当前场景包的目标、候选样本和优先样本。
 
 #### Platform API 查看数据集、任务、工作空间、导出
 
@@ -234,7 +280,7 @@ curl http://localhost:8000/exports
 #### Platform API 触发真实导出文件
 
 ```bash
-curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=parquet"
+curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=lance"
 curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=csv"
 curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 ```
@@ -242,7 +288,7 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 导出文件默认写入：
 
 ```bash
-./data/exports/demo-dataset-v1.parquet
+./data/exports/demo-dataset-v1.lance
 ./data/exports/demo-dataset-v1.csv
 ./data/exports/demo-dataset-v1.jsonl
 ```
@@ -251,11 +297,12 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 
 - 本地目录 ingestion：导入图像和 JSON 元数据
 - 统一数据资产模型驱动的样本物化
+- 真实自动驾驶场景 demo：夜间路口弱势交通参与者 hard-case triage
 - Dagster asset-oriented pipeline
-- Parquet 落盘
+- Lance 落盘
 - DuckDB 查询 demo
 - Lance 基础检索 demo
-- 数据导出 demo（支持 Parquet / CSV / JSONL）
+- 数据导出 demo（支持 Lance / CSV / JSONL）
 - Python SDK demo（统一访问 Platform API 上的 datasets / exports / search）
 - React 工作台：搜索、数据集、任务、工作空间、导出视图
 - Node.js TypeScript BFF：面向 Web 的页面聚合与场景编排层
@@ -308,6 +355,8 @@ Browser / Web App
 - `POST /api/datasets/{datasetId}/exports`
 
 这些接口会在 BFF 内部聚合或转发到 FastAPI Platform API。
+
+其中 `POST /api/bootstrap` 当前会触发 `Night Intersection VRU Hard-Case Triage` 场景链路，而不是 generic mock demo。
 
 下面的 `curl` 示例仍然以 FastAPI Platform API 为准，主要用于验证平台能力与本地 MVP 主链路，而不是要求未来 Web 继续直连 FastAPI。
 
@@ -453,5 +502,5 @@ If you want to systematically understand AI Native Data Engine and data-closed-l
 2. 个人本地版可跑，作为整个系统演进的起点
 3. 企业版扩展点已预留在 Python adapters / profiles 中，便于后续演进为可复制的企业级架构
 4. 后续可继续演进到支持多租户 SaaS 的架构形态
-5. local-dev 已采用 SQLite metadata + Parquet table + DuckDB query + Lance search 的轻量 DataLake 组合
+5. local-dev 当前采用 local fs 存储 + Lance 主文件格式 + DuckDB 查询 + SQLite metadata 的轻量组合
 6. 已提供最小 Python SDK 与多格式导出能力，作为统一数据出口的起点

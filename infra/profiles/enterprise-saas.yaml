@@ -1,9 +1,23 @@
 profile: enterprise-saas
 
+# Layer mapping:
+# storage = storage layer
+# query = query layer
+# compute = compute layer
+# search = file-format-backed retrieval capability
+# metadata = 元数据与事务控制层
+# auth = cross-cutting access control capability
+
 storage:
   provider: s3
   bucket: ad-enterprise-data
   region: ap-southeast-1
+
+file_formats:
+  current_primary: lance
+  target_primary: lance
+  retrieval_format: lance
+  export_default: lance
 
 query:
   provider: starrocks

@@ -2,16 +2,16 @@ from pathlib import Path
 from typing import Any
 
 import duckdb
+import lance
 import pyarrow as pa
-import pyarrow.parquet as pq
 
 from core.domain.models import SampleRecord
 
 
 class DuckDBQueryAdapter:
-    def __init__(self, db_path: Path, parquet_path: Path) -> None:
+    def __init__(self, db_path: Path, data_path: Path) -> None:
         self.db_path = db_path
-        self.parquet_path = parquet_path
+        self.data_path = data_path
 
     def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         con = duckdb.connect(str(self.db_path))
@@ -26,9 +26,14 @@ class DuckDBQueryAdapter:
         con.execute(f'create or replace view {name} as {sql}')
         con.close()
 
+    def _load_arrow_table(self, source: str) -> pa.Table:
+        return lance.dataset(source).to_table()
+
     def register_table(self, name: str, source: str) -> None:
         con = duckdb.connect(str(self.db_path))
-        con.execute(f'create or replace table {name} as select * from read_parquet(?)', [source])
+        arrow_table = self._load_arrow_table(source)
+        con.register('__lance_source__', arrow_table)
+        con.execute(f'create or replace table {name} as select * from __lance_source__')
         con.close()
 
     def materialize_table(self, name: str, sql: str) -> None:
@@ -37,7 +42,7 @@ class DuckDBQueryAdapter:
         con.close()
 
     def create_sample_table(self, records: list[SampleRecord]) -> None:
-        self.parquet_path.parent.mkdir(parents=True, exist_ok=True)
+        self.data_path.parent.mkdir(parents=True, exist_ok=True)
         table = pa.table(
             {
                 'id': [r.id for r in records],
@@ -48,8 +53,10 @@ class DuckDBQueryAdapter:
                 'tags': [','.join(r.tags) for r in records],
             }
         )
-        pq.write_table(table, self.parquet_path)
-        self.register_table('samples', str(self.parquet_path))
+        if self.data_path.exists() and not self.data_path.is_dir():
+            self.data_path.unlink()
+        lance.write_dataset(table, self.data_path, mode='create')
+        self.register_table('samples', str(self.data_path))
 
     def query_distribution(self) -> list[dict[str, Any]]:
         return self.query(

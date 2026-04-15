@@ -65,7 +65,7 @@
 local raw files
 -> ingestion
 -> sample materialization
--> parquet table
+-> lance files
 -> duckdb query
 -> lance index
 -> metadata registration

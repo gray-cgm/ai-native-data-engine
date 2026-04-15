@@ -155,7 +155,7 @@ export-jsonl:
 
 
 sdk-demo:
-	uv run --package ad-sdk python -c "from ad_sdk import ADEngineClient; c = ADEngineClient(); print(c.list_datasets())"
+	uv run --package ad-sdk python -c "from ad_sdk import ADEngineClient; c = ADEngineClient(); print(c.get_scenario_summary())"
 
 
 clean:

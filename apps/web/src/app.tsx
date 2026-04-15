@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, useRoutes } from 'react-router-dom'
 import { ErrorBoundary } from '@/shared/components/error-boundary'
 import { apiPost } from '@/shared/api/client'
@@ -9,7 +9,14 @@ function AppRoutes() {
 }
 
 function BootstrapGuard({ children }: { children: React.ReactNode }) {
+  const hasBootstrappedRef = useRef(false)
+
   useEffect(() => {
+    if (hasBootstrappedRef.current) {
+      return
+    }
+    hasBootstrappedRef.current = true
+
     apiPost('/bootstrap').catch(() => {
       /* bootstrap is best-effort */
     })

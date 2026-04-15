@@ -1,8 +1,22 @@
 name: local-dev
 
+# Layer mapping:
+# storage = storage layer
+# query = query layer
+# compute = compute layer
+# search = file-format-backed retrieval capability
+# metadata = 元数据与事务控制层
+# auth = cross-cutting access control capability
+
 storage:
   provider: local_fs
   root_uri: ./data
+
+file_formats:
+  current_primary: lance
+  target_primary: lance
+  retrieval_format: lance
+  export_default: lance
 
 query:
   provider: duckdb
@@ -29,3 +43,34 @@ capabilities:
   distributed_compute: false
   advanced_governance: false
   object_storage: false
+
+scenario:
+  workspace_id: local-workspace
+  dataset_id: demo-dataset
+  dataset_name: Night Intersection VRU Hard Cases
+  dataset_version_id: v1
+  table_name: dataset_samples
+  examples_dir: examples/datasets/custom-local
+  scenario_id: night-intersection-vru-triage
+  scenario_name: Night Intersection VRU Hard-Case Triage
+  scenario_goal: Surface night-time and junction samples that are likely to require braking, yielding, or relabel review.
+  focus_scenes:
+    - urban-night
+    - intersection
+  focus_tags:
+    - night
+    - pedestrian
+    - crosswalk
+    - junction
+    - traffic-light
+    - occlusion
+  summary_output_uri: ./data/exports/night-intersection-vru-summary.json
+  export_output_uri: ./data/exports/demo-dataset-v1.lance
+  export_format: lance
+  export_id: export-demo-v1
+  review_task_id: task-night-intersection-vru-review
+  review_task_title: Review night intersection vulnerable road user hard cases
+  operator_username: demo-operator
+  operator_password: local-demo
+  orchestrator_job_name: night_intersection_vru_triage_job
+  orchestrator_asset_key: night_intersection_vru_triage_asset

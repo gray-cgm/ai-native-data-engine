@@ -1,12 +1,23 @@
 import { StatusBadge } from '@/shared/components/status-badge'
-import type { TaskItem, ExportItem } from '@/shared/types/common'
+import type { ExportItem, RunItem, TaskItem } from '@/shared/types/common'
 
 interface RecentActivityProps {
   tasks: TaskItem[]
   exports: ExportItem[]
+  runs: RunItem[]
 }
 
-export function RecentActivity({ tasks, exports }: RecentActivityProps) {
+export function RecentActivity({ tasks, exports, runs }: RecentActivityProps) {
+  const recentRuns = runs
+    .filter((run) => run.job_name.includes('triage'))
+    .slice(-3)
+    .reverse()
+
+  const scenarioTasks = tasks
+    .filter((task) => task.task_type === 'scenario-triage')
+    .slice(-3)
+    .reverse()
+
   return (
     <div className="card">
       <h3>Recent Activity</h3>
@@ -19,7 +30,14 @@ export function RecentActivity({ tasks, exports }: RecentActivityProps) {
           </tr>
         </thead>
         <tbody>
-          {tasks.slice(0, 3).map((t) => (
+          {recentRuns.map((run) => (
+            <tr key={`run-${run.run_id}`}>
+              <td>run</td>
+              <td>{run.job_name}</td>
+              <td><StatusBadge status={run.status} /></td>
+            </tr>
+          ))}
+          {scenarioTasks.map((t) => (
             <tr key={`task-${t.task_id}`}>
               <td>{t.task_type}</td>
               <td>{t.title}</td>

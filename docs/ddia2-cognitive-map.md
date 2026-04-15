@@ -101,10 +101,10 @@ AI Native Data Loop Engine
 │  └─ 为什么要沿 personal -> enterprise -> SaaS 演进
 ├─ Representation
 │  ├─ Sample / Dataset / DatasetVersion / ExportJob / LineageEvent
-│  ├─ SQLite metadata
-│  ├─ Parquet tables
-│  ├─ DuckDB queries
-│  └─ Lance search
+│  ├─ metadata plane: SQLite
+│  ├─ file format: Parquet
+│  ├─ query layer: DuckDB
+│  └─ search layer: Lance
 ├─ Processing
 │  ├─ ingestion workflows
 │  ├─ asset materialization
@@ -179,7 +179,7 @@ AI Native Data Loop Engine
 
 只有这样，才会自然得到现在这组技术组合：
 
-- SQLite 做 metadata / control plane
+- SQLite 做元数据与事务控制层
 - Parquet 做 analytical table format
 - DuckDB 做 local analytics engine
 - Lance 做 search / vector-like access
@@ -341,7 +341,7 @@ Chapter 3 帮你避免一个常见误区：
 
 如果只用一句话概括本项目当前存储检索组合，就是：
 
-> SQLite metadata + Parquet table + DuckDB query + Lance search
+> local fs storage + SQLite metadata + Parquet file format + DuckDB query + Lance search
 
 这个组合在 README 中已直接说明：[readme.md:387-389](readme.md#L387-L389)
 
@@ -542,21 +542,22 @@ BFF 不是简单转发层，它在做页面语义聚合。比如 dashboard 聚�
 
 #### 1) 数据集创建与版本登记
 
-在 `materialize_local_assets()` 中，当前会依次做：
+在当前 `Night Intersection VRU Hard-Case Triage` 主链路中，批处理会依次做：
 
 - create workspace
 - create sample table
 - build index
 - overwrite parquet table
+- 计算场景样本打分与 priority sample package
 - create dataset
 - create dataset version
-- submit job
+- submit scenario triage job
 - create job_run
-- create task
+- create review task
 - create export_job
 - append lineage event
 
-见 [python/workflows/src/workflows/assets/pipeline.py:9-80](python/workflows/src/workflows/assets/pipeline.py#L9-L80)
+见 [python/services/src/services/__init__.py](python/services/src/services/__init__.py) 和 [python/workflows/src/workflows/demo/pipeline.py](python/workflows/src/workflows/demo/pipeline.py)
 
 这其实已经是一串跨多个子系统的多步写操作。
 
@@ -678,7 +679,7 @@ BFF 不是简单转发层，它在做页面语义聚合。比如 dashboard 聚�
 - 构建 Lance index
 - 生成导出文件
 
-在 `materialize_local_assets()` 里，这条批式链路已经很清楚：[python/workflows/src/workflows/assets/pipeline.py:9-80](python/workflows/src/workflows/assets/pipeline.py#L9-L80)
+在当前场景筛选主链路里，这条批式链路已经很清楚：[python/services/src/services/__init__.py](python/services/src/services/__init__.py) 和 [python/workflows/src/workflows/demo/pipeline.py](python/workflows/src/workflows/demo/pipeline.py)
 
 ### Dagster 为什么重要
 
@@ -712,7 +713,7 @@ Dagster 在这里承担的是 asset-oriented orchestration，而不是普通任�
 
 ### 为什么现在还不强
 
-当前 demo 的数据导入是显式触发的：
+当前场景筛选的数据导入是显式触发的：
 
 - `POST /samples/ingest-demo`
 - `make ingest`
@@ -843,9 +844,9 @@ Chapter 13 会帮你把“仓库里这么多层到底在做什么”这件事看
 | 数据闭环主链路 | ingestion -> lakehouse -> platform | Chapter 1 / Chapter 13 | 这是整体 dataflow 视角，不是单一数据库视角 |
 | 本地 MVP 演进路线 | personal -> enterprise -> SaaS | Chapter 1 / Chapter 2 | 每个阶段的 trade-off 与目标函数不同 |
 | SQLite metadata | `metadata: sqlite` | Chapter 3 / Chapter 8 | 元数据更接近 relational model，且需要事务边界 |
-| Parquet table | 结构化样本物化 | Chapter 4 | Parquet 是列式 analytical storage |
-| DuckDB query | `query: duckdb` | Chapter 4 / Chapter 11 | 本地嵌入式分析查询引擎，适合批式分析 |
-| Lance search | `search: lance` | Chapter 4 | 对应 search / vector-like retrieval |
+| Parquet file format | 结构化样本物化文件 | Chapter 4 | Parquet 是列式文件格式，不是查询引擎 |
+| DuckDB query layer | `query: duckdb` | Chapter 4 / Chapter 11 | 本地嵌入式分析查询引擎，适合批式分析 |
+| Lance search layer | `search: lance` | Chapter 4 | 对应 search / vector-like retrieval |
 | 统一资产模型 | Sample / Dataset / Version / Export / Lineage | Chapter 3 / Chapter 5 | 决定系统的数据表示与演化边界 |
 | 多格式导出 | Parquet / CSV / JSONL | Chapter 5 | 本质是数据编码与跨系统交换边界 |
 | FastAPI Platform API | catalog / operations / exports / samples | Chapter 5 | API 是服务间契约与演化边界 |

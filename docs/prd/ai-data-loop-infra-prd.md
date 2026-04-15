@@ -16,6 +16,17 @@
 
 - **一套面向 AI 垂直场景、支持快速迁移的通用 AI Data Loop Infrastructure**
 
+为避免概念混淆，本文默认使用统一六层模型来讨论系统底座：
+
+1. 存储层：local fs / S3 / MinIO / OSS / HDFS
+2. 湖表格式层：Iceberg / Paimon / Hudi
+3. 文件格式层：Parquet / Lance
+4. 计算层：local Python / Dagster / Spark / Flink / Fluss
+5. 查询层：DuckDB / Trino / StarRocks
+6. 应用层：BI、挖掘检索、标注、需求管理、工作台等
+
+其中元数据与事务控制层作为横切控制能力单独讨论，不简单并入上述任一业务层。
+
 自动驾驶、机器人、座舱、多模态、视觉、语音等领域都可以成为它的落地场景，但都不应被固化为平台本体定义。
 
 ## 产品定位
@@ -46,6 +57,13 @@
    - 支持 lineage、audit、quality gate、policy 与审批边界
 6. **可迁移的领域解决方案底座**
    - 通过 schema、workflow template、adapter、profile 与 policy 快速适配不同 AI 垂直领域
+
+如果映射到六层模型，这些角色大致对应：
+
+- 存储层 / 湖表格式层 / 文件格式层：承接原始数据与结构化数据底座
+- 计算层：承接 ingestion、转换、索引、导出、回流等流程执行
+- 查询层：承接分析、过滤、交互式探索与服务侧读取
+- 应用层：承接 BI、挖掘检索、标注、需求管理、运营工作台等角色入口
 
 ## 为什么不能把产品定义为“自动驾驶数据门户”
 
