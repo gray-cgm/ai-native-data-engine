@@ -1,31 +1,11 @@
-声明式Query Languages VS python java代码，数据库将复杂的查询算法包了，让用户写简单SQL即可实现查询，这对于python来说是巨大工程。
+# 标注系统里关于“关系型 vs 文档型、规范化 vs 反规范化”的思考笔记
 
-关系型和文档型数据模型
+## 思考了过去关于标注系统数据底座的讨论和实践
 
-ORM工具，node常用prisma，N+1问题
-
-错误写法：
-
-```
-const comments = await prisma.comment.findMany()
-
-for (const comment of comments) {
-  const author = await prisma.user.findUnique({
-    where: { id: comment.authorId }
-  })
-}
-```
-
-use select or include
-
-标注数据到底适合关系型数据库or非关系型？\
-杨森关于数据底座设计
-
-https://xiaopeng.feishu.cn/wiki/O8vfwXfEdiSBFskKfoFcH3PHnBf?from=from_lark_index_search&ccm_open_type=from_lark_index_search
-
-https://xiaopeng.feishu.cn/docx/Jy7SdO3qjovwi7xIdG1cW5zZnpe
-
-https://xiaopeng.feishu.cn/docx/UnN0dZ7l3odi2Ex948wcoSJmngd
+> 标注数据到底适合关系型数据库or非关系型？\
+> https://xiaopeng.feishu.cn/wiki/O8vfwXfEdiSBFskKfoFcH3PHnBf?from=from_lark_index_search&ccm_open_type=from_lark_index_search
+> https://xiaopeng.feishu.cn/docx/Jy7SdO3qjovwi7xIdG1cW5zZnpe
+> https://xiaopeng.feishu.cn/docx/UnN0dZ7l3odi2Ex948wcoSJmngd
 
 https://xiaopeng.feishu.cn/wiki/PW6Cw4O2WiNtbMk04PAcGGHTnmB
 
@@ -34,6 +14,319 @@ https://xiaopeng.feishu.cn/wiki/Bzj0waqeki0gAmkSpwmccInUnqe#share-Kengd2OUVojCc7
 https://xiaopeng.feishu.cn/docx/ViM0dYow5obF1exIdlycKeuRntb
 
 https://xiaopeng.feishu.cn/docx/Zb3FdSMOXoLeAHxbmrkcEt23n9F
+
+1. 先说结论
+   对标注系统来说，最重要的不是先选关系型还是文档型，而是先区分两类数据：
+
+管理性数据：项目、任务、用户、权限、工作流、审核、数据集、版本索引
+标注内容数据：label payload，本身是复杂树状、半结构化、多模态、持续演化的数据
+通常：
+
+管理性数据更适合关系型 + 规范化
+标注内容更适合文档型表示 + 局部反规范化
+工程上最常见、也最稳妥的是 混合方案 2. 为什么标注系统天然会遇到这个问题
+标注系统的数据通常有两个明显特点：
+
+2.1 管理侧是强结构化的
+例如：
+
+用户
+项目
+数据集
+任务
+任务分配
+审核状态
+返修记录
+产能统计
+这些对象边界清晰、关系明确、字段稳定，典型适合关系模型。
+
+2.2 标注 payload 是半结构化的
+例如一个 label 里可能有：
+
+数据模态：图片、clip、run、音频
+标注组合：动态 key
+几何形状：bbox、polygon、polyline、3d box、segment
+属性：不同任务字段完全不同
+跨帧信息：track、instance、事件、时序属性
+这类数据通常：
+
+层级深
+结构变化频繁
+字段不稳定
+读取时往往希望一次拿全
+这正是文档模型更舒服的地方。
+
+3. 对关系型 vs 文档型的理解
+   3.1 关系型适合“管理关系”
+   在标注系统里，下面这些关系非常适合关系型：
+
+project -> dataset -> asset
+task -> assignee
+task -> review_record
+annotation -> version_meta
+user -> role
+workflow_node -> next_node
+原因是：
+
+这些关系稳定
+需要事务
+需要约束
+需要统计和筛选
+需要后台管理查询
+所以，凡是“平台管理逻辑”重的地方，优先关系型。
+
+3.2 文档型适合“标注对象整体”
+标注结果本质上更像一个“聚合对象”：
+
+打开任务时读取整份标注
+前端编辑时围绕整棵树操作
+保存时常常整包提交或局部 patch
+新任务类型经常新增字段
+所以 label payload 更接近：
+
+json
+{  
+ "modality": "clip_video",  
+ "objects": [...],  
+ "tracks": [...],  
+ "attrs": {...},  
+ "relations": [...]  
+}  
+这种结构如果强行拆成多张关系表，虽然理论上可以，但实践上常出现：
+
+表太多
+join 太多
+schema 演进痛苦
+前后端心智负担大
+所以，标注内容不宜过度关系化。
+
+4. 对“规范化”的理解：什么该规范化，什么不该
+   4.1 规范化不是为了“好看”，而是为了单一事实来源
+   在标注系统里，适合规范化的通常是：
+
+1. 稳定字典和枚举
+   比如：
+
+label class 定义
+attribute schema
+审核状态
+任务类型
+设备/场景/地域字典
+这些信息会被大量复用，而且将来可能修改。
+所以应当：
+
+独立存一份
+用 ID 引用
+避免到处复制文本 2. 平台主数据
+比如：
+
+user
+organization
+project
+dataset
+asset
+ontology / taxonomy
+这些本来就是独立实体，适合规范化。
+
+3. 需要统一治理的数据
+   例如：
+
+类别名改版
+属性枚举变更
+多语言显示
+统计口径统一
+这种情况下规范化收益很高。
+
+4.2 不该过度规范化的部分
+下面这些通常不值得拆得太细：
+
+1. 单次标注中的局部几何内容
+   比如 polygon 点集、polyline 点集、bbox 参数。
+
+原因：
+
+它们主要服务于当前这份 annotation
+复用性低
+拆成表只会增加 join 和写入复杂度 2. 某个对象的临时属性集合
+例如某个具体实例上的：
+
+遮挡程度
+朝向
+置信度
+局部业务字段
+如果任务差异大、字段常变，用 JSON 放在对象内部往往更合理。
+
+3. 前端编辑态中高度嵌套的数据
+   如果某部分数据只是为了前端一次性渲染、编辑、回放，通常文档内嵌更自然。
+
+4. 对“反规范化”的理解：什么时候值得冗余
+   反规范化的核心不是“偷懒”，而是用冗余换读性能和使用便利性。
+
+在标注系统里，常见合理的反规范化包括：
+
+5.1 在 annotation 中冗余快照信息
+例如：
+
+class_id 之外冗余 class_name
+annotator_id 之外冗余 annotator_name
+ontology_version
+提交时的 schema 快照
+这样做的价值是：
+
+历史版本可回放
+避免后续字典变化影响旧数据解释
+导出时更方便
+这点很重要：
+标注系统往往不仅是“当前值系统”，还是“历史证据系统”。
+所以适度快照冗余非常合理。
+
+5.2 为列表页、统计页做派生表/宽表
+比如：
+
+每任务标注对象数
+每任务时长
+每类别出现次数
+最新版本摘要
+审核缺陷数
+这些如果每次都从原始 payload 实时解析，会很贵。
+可以通过异步任务预计算成：
+
+summary 表
+cache 表
+宽表
+搜索索引
+这是典型的反规范化。
+
+5.3 为查询入口保留少量索引字段
+虽然完整 label 存 JSON，但可以把常用筛选字段单独提升出来，例如：
+
+task_id
+asset_id
+modality
+status
+version
+class_ids
+frame_range
+updated_at
+这也是一种折中式反规范化/索引化设计。
+
+6. 标注系统里的核心 trade-off
+   6.1 规范化的收益
+   数据一致性更好
+   修改字典/实体更容易
+   节省存储
+   更利于治理
+   更利于 OLTP 后台
+   6.2 规范化的代价
+   查询时要 join
+   标注树拆表后读写复杂
+   前端提交/加载链路更重
+   schema 演进成本高
+   6.3 反规范化/文档化的收益
+   一次读全，符合标注编辑器使用习惯
+   更接近前端对象模型
+   扩展字段容易
+   多模态兼容性更好
+   版本快照更直观
+   6.4 反规范化/文档化的代价
+   更新冗余信息麻烦
+   一致性维护更复杂
+   统计分析可能不方便
+   某些跨对象查询能力弱
+   文档过大时也会变笨重
+7. 结合标注系统，可以落出的设计原则
+   原则 1：把“平台管理数据”和“标注内容数据”分开建模
+   不要试图用一种模型统一解决所有问题。
+
+原则 2：把“会被全局复用、会变化、要统一治理”的东西规范化
+例如：
+
+类别体系
+属性定义
+项目配置
+用户与权限
+数据集与任务元信息
+原则 3：把“只服务于单份 annotation 的复杂树”保留为文档
+例如：
+
+几何形状
+点集
+局部属性
+时序对象结构
+前端编辑态结构
+原则 4：把反规范化视为派生数据，而不是真相源
+比如：
+
+summary
+宽表
+搜索索引
+导出快照
+展示字段冗余
+这些都应该从主数据生成，而不是反过来当唯一真相。
+
+原则 5：对“变化快的信息”谨慎反规范化
+如果某字段变化频繁，例如：
+
+用户头像
+用户昵称
+实时统计值
+动态审核状态聚合
+就不一定值得冗余到每份 annotation 里。
+否则更新成本高，历史和实时语义也会混乱。
+
+原则 6：对“历史解释需要稳定”的信息适合做快照冗余
+例如：
+
+提交当时的类别名
+schema 版本
+模型版本
+标注工具版本
+这些信息未来可能变化，但历史记录需要保留当时语义，因此值得冗余。
+
+8. 对你们这类 label 系统的具体启发
+   你前面描述的 label 结构是：
+
+数据模态
+标注组合
+几何形状
+属性
+key 不固定
+多模态差异很大
+这说明：
+
+8.1 label payload 不宜做高度规范化关系建模
+否则你会得到：
+
+annotation_group 表
+shape 表
+point 表
+attribute 表
+attribute_value 表
+modality-specific 表
+很快会进入“表很多、join 很多、改一点 schema 到处动”的状态。
+
+8.2 更合理的是：
+任务/项目/用户/工作流/版本索引 → 关系型、规范化
+label payload 主体 → JSON 文档
+统计查询所需摘要 → 派生宽表或索引表
+超大原始媒体/大几何附件 → 对象存储9. 我对这部分内容的最终理解
+DDIA 这里真正想表达的，不是“关系型 vs 文档型谁赢”，也不是“规范化一定高级”。
+
+而是：
+
+设计数据模型，本质是在几个目标之间取平衡：
+
+一致性
+可演化性
+查询性能
+写入成本
+存储成本
+实现复杂度
+团队认知负担
+对标注系统来说，最现实的答案通常不是纯关系型，也不是纯文档型；不是纯规范化，也不是彻底反规范化。
+而是：
+
+用规范化管理稳定主数据，用文档承载复杂标注对象，用反规范化服务查询、展示和历史快照。
 
 ---
 
@@ -222,3 +515,17 @@ https://xiaopeng.feishu.cn/docx/Zb3FdSMOXoLeAHxbmrkcEt23n9F
 **作者的 trade-off 原则是：根据数据关系、变化频率、读写比例、规模和一致性要求，决定是用 join 保持单一事实来源，还是用冗余换读取性能；最好的设计通常不是纯规范化或纯非规范化，而是有选择地混合。**
 
 如果你愿意，我可以进一步把这套原则**映射到你前面那个标注系统的 label 设计**，直接告诉你哪些字段该规范化、哪些字段该放 JSON 文档里。
+
+设计数据模型，本质是在几个目标之间取平衡：
+
+一致性
+可演化性
+查询性能
+写入成本
+存储成本
+实现复杂度
+团队认知负担
+对标注系统来说，最现实的答案通常不是纯关系型，也不是纯文档型；不是纯规范化，也不是彻底反规范化。
+而是：
+
+用规范化管理稳定主数据，用文档承载复杂标注对象，用反规范化服务查询、展示和历史快照。
