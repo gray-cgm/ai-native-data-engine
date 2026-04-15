@@ -32,8 +32,8 @@ class ScenarioTriageConfig(BaseModel):
     focus_scenes: list[str] = Field(default_factory=lambda: ['urban-night', 'intersection'])
     focus_tags: list[str] = Field(default_factory=lambda: ['night', 'pedestrian', 'crosswalk', 'junction', 'traffic-light', 'occlusion'])
     summary_output_uri: str = './data/exports/night-intersection-vru-summary.json'
-    export_output_uri: str = './data/exports/demo-dataset-v1.parquet'
-    export_format: Literal['parquet', 'csv', 'jsonl'] = 'parquet'
+    export_output_uri: str = './data/exports/demo-dataset-v1.lance'
+    export_format: Literal['lance', 'csv', 'jsonl'] = 'lance'
     export_id: str = 'export-demo-v1'
     review_task_id: str = 'task-night-intersection-vru-review'
     review_task_title: str = 'Review night intersection vulnerable road user hard cases'
@@ -99,9 +99,17 @@ class ProfileCapabilities(BaseModel):
     object_storage: bool = False
 
 
+class FileFormatProfile(BaseModel):
+    current_primary: Literal['parquet', 'lance'] = 'lance'
+    target_primary: Literal['parquet', 'lance'] = 'lance'
+    retrieval_format: Literal['parquet', 'lance'] = 'lance'
+    export_default: Literal['lance', 'csv', 'jsonl'] = 'lance'
+
+
 class RuntimeProfile(BaseModel):
     name: Literal["local-dev", "team-dev", "enterprise-saas"]
     storage: dict[str, Any]
+    file_formats: FileFormatProfile = Field(default_factory=FileFormatProfile)
     query: dict[str, Any]
     compute: dict[str, Any]
     metadata: dict[str, Any]

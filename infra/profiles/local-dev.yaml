@@ -1,8 +1,22 @@
 name: local-dev
 
+# Layer mapping:
+# storage = storage layer
+# query = query layer
+# compute = compute layer
+# search = file-format-backed retrieval capability
+# metadata = 元数据与事务控制层
+# auth = cross-cutting access control capability
+
 storage:
   provider: local_fs
   root_uri: ./data
+
+file_formats:
+  current_primary: lance
+  target_primary: lance
+  retrieval_format: lance
+  export_default: lance
 
 query:
   provider: duckdb
@@ -51,8 +65,8 @@ scenario:
     - traffic-light
     - occlusion
   summary_output_uri: ./data/exports/night-intersection-vru-summary.json
-  export_output_uri: ./data/exports/demo-dataset-v1.parquet
-  export_format: parquet
+  export_output_uri: ./data/exports/demo-dataset-v1.lance
+  export_format: lance
   export_id: export-demo-v1
   review_task_id: task-night-intersection-vru-review
   review_task_title: Review night intersection vulnerable road user hard cases

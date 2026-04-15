@@ -8,7 +8,7 @@ from adapters.compute.dagster_local.adapter import DagsterLocalComputeAdapter
 from adapters.compute.local_python.adapter import LocalPythonComputeAdapter
 from adapters.metadata.postgres.adapter import PostgresMetadataAdapter
 from adapters.metadata.sqlite.adapter import SQLiteMetadataAdapter
-from adapters.table.parquet.adapter import ParquetTableAdapter
+from adapters.table.lance.adapter import LanceTableAdapter
 from adapters.query.duckdb.adapter import DuckDBQueryAdapter
 from adapters.query.starrocks.adapter import StarRocksQueryAdapter
 from adapters.storage.local_fs.adapter import LocalFileStorageAdapter
@@ -38,7 +38,7 @@ def build_container(profile_path: Path) -> RuntimeContainer:
     if profile.query['provider'] == 'duckdb':
         query = DuckDBQueryAdapter(
             db_path=Path(profile.query['database']),
-            parquet_path=Path('./data/silver/samples.parquet'),
+            data_path=Path('./data/silver/samples.lance'),
         )
     else:
         query = StarRocksQueryAdapter(
@@ -58,7 +58,7 @@ def build_container(profile_path: Path) -> RuntimeContainer:
     else:
         metadata = PostgresMetadataAdapter()
     search = LanceVectorAdapter(Path(profile.search['uri']))
-    table = ParquetTableAdapter(Path('./data/gold'))
+    table = LanceTableAdapter(Path('./data/gold'))
 
     if profile.auth['provider'] == 'local':
         auth = LocalAuthAdapter()

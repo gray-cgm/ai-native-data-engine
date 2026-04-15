@@ -31,7 +31,7 @@
    - `python/workflows` 负责流程编排
 
 3. **本地 MVP 主链路已存在**
-   - local fs + Parquet + DuckDB + Lance + SQLite
+   - local fs 存储 + Lance 主文件格式 + DuckDB 查询 + SQLite metadata
    - ingestion -> materialization -> query/search/export 基础链路已跑通
 
 4. **个人版 -> 企业版 -> SaaS 版的演进方向已经写清**
@@ -382,13 +382,21 @@ AI 数据通常涉及图像、视频、位置、人员、车牌、人脸等敏�
 
 #### 当前已有
 - adapter/profile 设计已经预留替换空间
-- 文档里已明确 Iceberg / Paimon / StarRocks / Spark / Flink 方向
+- 文档里已明确湖表、查询、计算、对象存储分层演进方向
 
 #### 当前缺失
 - provider-ready service orchestration
 - table catalog abstraction 的强化
 - distributed query / compute coordination
 - production object storage operational model
+
+这里的关键不是简单说“Parquet 升级成 Iceberg”，而是把企业化补齐为：
+
+- 对象存储层：S3 / OSS / HDFS
+- 湖表格式层：Iceberg / Paimon / Hudi
+- 计算层：Flink / Spark / Fluss
+- 查询层：StarRocks / Trino / DuckDB
+- 文件格式层：Parquet / Lance
 
 #### 建议目录落位
 - `python/adapters/table/*`

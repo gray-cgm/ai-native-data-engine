@@ -14,6 +14,8 @@ const { Joi } = JoiRouter as typeof JoiRouter & {
   }
 }
 
+const ALLOWED_EXPORT_FORMATS = new Set(['lance', 'csv', 'jsonl'])
+
 const route: Route = {
   method: 'post',
   path: '/datasets/:datasetId/exports',
@@ -21,19 +23,20 @@ const route: Route = {
     params: {
       datasetId: Joi.string().required(),
     },
-    type: 'json',
-    body: {
-      format: Joi.string().valid('parquet', 'csv', 'jsonl').optional(),
-    },
   },
   handler: async (ctx: Context) => {
     const request = ctx.request as typeof ctx.request & {
       params: { datasetId: string }
-      body?: { format?: string }
+      body?: unknown
     }
     const datasetId = request.params.datasetId
-    const requestBody = request.body ?? {}
-    const format = requestBody.format ?? 'parquet'
+    const requestBody = request.body && typeof request.body === 'object' ? request.body as { format?: unknown } : {}
+    const format = requestBody.format ?? 'lance'
+    if (typeof format !== 'string' || !ALLOWED_EXPORT_FORMATS.has(format)) {
+      ctx.status = 400
+      ctx.body = { error: { message: 'invalid export format' } }
+      return
+    }
     ctx.body = await platformFetch(`/exports/dataset/${datasetId}?format=${encodeURIComponent(format)}`, {
       method: 'POST',
     })

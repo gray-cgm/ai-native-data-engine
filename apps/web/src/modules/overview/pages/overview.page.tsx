@@ -71,7 +71,7 @@ export default function OverviewPage() {
             <div className="card">
               <h3>What This Validates</h3>
               <p>Web triggers the bootstrap action, BFF aggregates scenario state, API serves stable resource semantics, and SDK reads the same scenario package.</p>
-              <p>DuckDB powers distribution, Lance powers preview retrieval, Parquet stores the exported table, and SQLite tracks runs, tasks, exports, and lineage.</p>
+              <p>DuckDB powers distribution, the platform currently materializes structured files in Parquet, retrieval already uses Lance, and the file-format evolution path is toward Lance as a more unified format family.</p>
             </div>
           </div>
         </div>

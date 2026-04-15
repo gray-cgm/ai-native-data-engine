@@ -2,28 +2,48 @@
 
 `AI Native Data Engine` 是一个面向自动驾驶 / 机器人数据闭环的平台型 monorepo。它从“本地优先”的个人开发版 MVP 起步，通过稳定的抽象层逐步演进到团队版和企业版，而不是中途再拆出第二套系统。
 
-整体架构分为四层：
+整体上需要分成两种视角来理解：
 
-1. **Ingestion（数据接入层）**
-   - 接入本地或远端的原始数据资产，例如图像、JSON metadata、点云、轨迹、日志等。
-   - 将异构数据源结构归一化为统一的数据资产模型。
-   - 保留原始文件作为事实来源（source of truth）。
+1. **业务流程视角**
+   - Ingestion：接入本地或远端原始数据资产，例如图像、JSON metadata、点云、轨迹、日志等。
+   - Pipeline：使用 Dagster 等编排能力表达数据物化、转换、索引、导出和血缘。
+   - Application：把数据能力组织成工作台、BI、挖掘检索、标注、需求管理等面向角色的产品能力。
 
-2. **Pipeline（资产编排层）**
-   - 使用 **Dagster** 以 asset-oriented 的方式表达数据物化、转换、索引、导出和血缘。
-   - 关注的是“资产生命周期”，而不只是某个脚本有没有执行完成。
+2. **系统分层视角**
+   - **存储层**：local fs / S3 / MinIO / OSS / HDFS，决定文件和对象存放位置。
+   - **湖表格式层**：Iceberg / Paimon / Hudi，决定表快照、schema 演进、分区和事务语义。
+   - **文件格式层**：Parquet / Lance，属于同类文件格式组件；当前主格式为 Lance。
+   - **计算层**：local Python / Dagster / Spark / Flink / Fluss，决定 ingestion、物化、批流处理与编排如何执行。
+   - **查询层**：DuckDB / Trino / StarRocks，决定聚合、过滤、分析查询如何读取数据。
+   - **应用层**：BI、挖掘检索、标注、需求管理、工作台等，决定最终用户怎样消费平台能力。
 
-3. **Lakehouse / DataLake（数据访问层）**
-   - 在原始文件之上构建类数据库（DB-like）的数据访问层。
-   - 本地 MVP 使用 **Parquet + DuckDB + Lance + SQLite**。
-   - 未来企业版可以演进到 **Iceberg/Paimon + StarRocks + Flink/Spark/Fluss + Lance**。
-   - 切换通过 adapter 和 profile 边界完成，而不是通过产品重写完成。
+## 统一架构表
 
-4. **Platform（平台访问层）**
-   - 提供面向用户的工作台访问层、Platform API，以及后续可独立演进的调度/查询服务入口。
-   - 当前 MVP 重点覆盖 datasets、versions、tasks、workspaces、search preview、exports 和基础 operations API。
-   - 这一层在实现上进一步拆成 Experience Access（Web + BFF）、Platform API（FastAPI）以及未来可独立部署的 scheduler/query services。
-   - 完整协作、多租户治理、复杂 RBAC、生产级标注系统等能力当前刻意延后。
+| 层级 | 核心职责 | 代表技术 | 当前 local-first MVP |
+|---|---|---|---|
+| 存储层 | 保存原始文件、导出文件与对象数据 | local fs / S3 / MinIO / OSS / HDFS | local fs |
+| 湖表格式层 | 管理表快照、schema 演进、分区与事务语义 | Iceberg / Paimon / Hudi | 预留演进方向，当前仍是裸文件集 |
+| 文件格式层 | 定义数据如何编码、落盘与索引表达 | Parquet / Lance | 当前主格式 Lance |
+| 计算层 | 执行 ingestion、物化、编排、批流处理 | local Python / Dagster / Spark / Flink / Fluss | local Python + Dagster |
+| 查询层 | 提供 SQL 查询、聚合、交互式分析读取能力 | DuckDB / Trino / StarRocks | DuckDB |
+| 应用层 | 组织面向角色的产品入口与工作流体验 | BI / 挖掘检索 / 标注 / 需求管理 / 工作台 | Web + BFF + FastAPI + SDK |
+
+当前 local-first MVP 的现实组合是：**local fs 存储 + Lance 主文件格式 + local Python/Dagster 计算 + DuckDB 查询 + Web/BFF/API 应用访问 + SQLite 元数据与事务控制层**。
+
+SQLite 不属于上述六层中的 lakehouse 主层，更接近独立的元数据与事务控制层。未来切换到底层对象存储、湖表格式、计算引擎、查询引擎时，应通过 adapter 和 profile 边界完成，而不是通过产品重写完成。
+
+### 技术归属速查表
+
+| 技术 / 组件 | 所属层 | 说明 |
+|---|---|---|
+| local fs / S3 / MinIO / OSS / HDFS | 存储层 | 保存原始文件、导出文件与对象数据 |
+| Iceberg / Paimon / Hudi | 湖表格式层 | 存算分离，提供统一、廉价、可靠的数据存储，并通过表格式提供ACID和元数据管理能力 |
+| Parquet | 文件格式层 | 与 Lance 同类的列式文件格式，可作为兼容/历史格式理解 |
+| Lance | 文件格式层 | 当前主结构化与检索文件格式 |
+| local Python / Dagster / Spark / Flink / Fluss | 计算层 | 执行 ingestion、物化、编排与批流处理 |
+| DuckDB / Trino / StarRocks | 查询层 | 提供 SQL 查询、聚合和分析读取能力 |
+| SQLite / Postgres | 元数据与事务控制层 | 记录数据集、版本、任务、导出、血缘、权限、审计等状态 |
+| Web / BFF / FastAPI / SDK / BI / 标注工作台 | 应用层 | 面向角色提供工作流入口与产品体验 |
 
 ## 核心设计原则
 
@@ -63,10 +83,11 @@ Dagster 在这里用于建模 dataset、distribution、export、lineage 等资�
 项目明确从“一台笔记本可启动”的配置开始：
 
 - local filesystem 负责底层存储
-- SQLite 负责 metadata
-- Parquet 负责表层物化
+- Parquet / Lance 属于同类文件格式组件；当前主格式是 Lance
+- local Python / Dagster 负责本地计算与编排
 - DuckDB 负责本地分析与查询加速
-- Lance 负责样本检索与索引
+- SQLite 负责元数据与事务控制层
+- Web / BFF / Platform API 负责应用访问层
 
 这样既保证首版真正可运行，也保证未来升级时系统边界不被推翻。
 

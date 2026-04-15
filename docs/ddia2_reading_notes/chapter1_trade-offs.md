@@ -131,7 +131,7 @@ DDIA 强调，随着工作负载变复杂，系统会越来越趋向专用化；
 - **真正的分析系统应考虑 lakehouse / OLAP 引擎**
 
 这也和项目当前强调的演进方向一致：\
-先打通 `ingestion -> lakehouse -> platform` 闭环，本地版采用 `SQLite + Parquet + DuckDB + Lance` 的轻量组合。
+先打通 `ingestion -> lakehouse -> platform` 闭环，本地版采用 `SQLite + Lance 主文件格式 + DuckDB` 的轻量组合。
 
 ---
 
@@ -231,7 +231,7 @@ DDIA 明确指出，当每个服务拥有自己的数据库后，跨服务数据
 - local-first
 - 一台机器可跑通
 - ingestion -&gt; lakehouse -&gt; platform
-- local-dev 使用 SQLite metadata + Parquet + DuckDB + Lance
+- local-dev 使用 SQLite metadata + Lance 主文件格式 + DuckDB
 
 这说明当前更适合的不是“先上很多微服务”，而是：
 

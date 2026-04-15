@@ -417,7 +417,7 @@ workbench 采用三层导航组织：
 | 字段 | 类型 | 来源 | 必填 | 说明 |
 | --- | --- | --- | --- | --- |
 | `datasetId` | string | 当前 dataset / 当前行 | 是 | 导出目标 |
-| `format` | `'parquet' | 'csv' | 'jsonl'` | 用户选择 / 默认值 | 否 | 导出格式，默认 `parquet` |
+| `format` | `'lance' | 'csv' | 'jsonl'` | 用户选择 / 默认值 | 否 | 导出格式，默认 `lance` |
 | `submitting` | boolean | Web local state | 是 | 是否提交中 |
 | `success` | boolean | BFF 响应 | 否 | 提交是否成功 |
 | `errorMessage` | string | BFF 错误响应 | 否 | 错误信息 |
@@ -940,7 +940,7 @@ type DatasetListViewModel = {
     workspaceId: string
     profile: string
     detailPath: string
-    availableFormats: Array<'parquet' | 'csv' | 'jsonl'>
+    availableFormats: Array<'lance' | 'csv' | 'jsonl'>
   }>
 }
 ```
@@ -963,8 +963,8 @@ type DatasetDetailViewModel = {
   commands: {
     export: {
       endpoint: string
-      defaultFormat: 'parquet'
-      availableFormats: Array<'parquet' | 'csv' | 'jsonl'>
+      defaultFormat: 'lance'
+      availableFormats: Array<'lance' | 'csv' | 'jsonl'>
     }
   }
 }

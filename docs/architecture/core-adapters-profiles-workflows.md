@@ -19,6 +19,13 @@
 - `python/workflows` 负责什么
 - 为什么“领域模型”值得单独抽出来
 
+同时，这篇文档也要回答另一个容易混淆的问题：
+
+- `core / adapters / profiles / workflows` 这种代码分层
+- 与“存储层 / 湖表格式层 / 文件格式层 / 计算层 / 查询层 / 应用层”这种系统分层
+
+不是同一维度。
+
 ## 一句话理解四层关系
 
 可以先记这句：
@@ -34,6 +41,17 @@
 - `python/adapters` 提供这些能力的具体技术实现
 - `python/profiles` 决定当前环境装配哪一套实现
 - `python/workflows` 把这些能力串成 ingestion / query / export / orchestration 流程
+
+如果映射到统一的六层系统模型，可以这样理解：
+
+- `python/adapters/storage/*` 对应存储层
+- `python/adapters/table/*` 对应湖表格式层或表管理层
+- `python/adapters/vector/*`、`python/adapters/table/parquet/*` 对应文件格式层
+- `python/adapters/compute/*` 与 `python/workflows/*` 主要落在计算层
+- `python/adapters/query/*` 对应查询层
+- `apps/web`、`apps/bff`、`apps/api`、SDK 与未来 BI / 标注 / 挖掘产品入口落在应用层
+
+而 `python/core` 与元数据与事务控制层更像横切全层的稳定语义与控制能力，不应被简单归成某一个业务层。
 
 ## 1. `python/core`：领域模型 + 接口契约
 
@@ -152,6 +170,14 @@ workflow 关心的是“创建 dataset version”“记录 lineage”“创建 e
 - 屏蔽底层库的调用细节
 - 让上层不必直接耦合具体实现
 
+在六层模型下，它承担的是“把系统分层落成具体 provider”的职责，例如：
+
+- 存储层：local fs / S3 / OSS / HDFS
+- 湖表格式层：Iceberg / Paimon / Hudi
+- 文件格式层：Parquet / Lance
+- 计算层：local Python / Dagster / Spark / Flink / Fluss
+- 查询层：DuckDB / Trino / StarRocks
+
 理想状态下：
 
 - workflow 不直接拼 SQLite SQL
@@ -191,6 +217,17 @@ workflow 关心的是“创建 dataset version”“记录 lineage”“创建 e
 
 - `profile`
 - `capabilities`
+
+它本质上是在做“代码世界里的分层装配”而不是“重新定义系统分层”。
+
+例如在 `local-dev` 下，更准确的说法是：
+
+- 存储层 provider = local fs
+- 文件格式层 provider = Parquet / Lance
+- 计算层 provider = local Python / Dagster
+- 查询层 provider = DuckDB
+- 元数据与事务控制层 provider = SQLite
+- 应用层入口 = Web / BFF / Platform API / SDK
 
 这意味着上层代码依赖的是“已经装配好的能力集合”，而不是某个具体产品。
 
@@ -241,6 +278,8 @@ workflow 关心的是“创建 dataset version”“记录 lineage”“创建 e
 - 记录 metadata / lineage / task / job run
 
 而不是直接塞满底层实现细节。
+
+从统一分层语言看，`python/workflows` 最接近计算层中的“流程编排子层”。它不应该冒充查询层，也不应该直接变成应用层页面逻辑。
 
 ## 6. 为什么 scheduler server 不应该放在 `python/core`
 

@@ -10,7 +10,8 @@ Proposed
 
 - 访问分层：Web -> BFF -> Platform API
 - Python 分层：`core / adapters / profiles / workflows`
-- local-first 数据底座：local fs + Parquet + DuckDB + Lance + SQLite
+- local-first 数据底座：local fs 存储 + Lance 主文件格式 + DuckDB 查询 + SQLite metadata
+- 统一系统分层：存储层 / 湖表格式层 / 文件格式层 / 计算层 / 查询层 / 应用层
 - profile 驱动的个人版 -> 企业版 -> SaaS 版演进方向
 
 这条主线是正确的，但它当前更准确的定位仍然是：
@@ -153,6 +154,13 @@ Proposed
 
 这部分能力优先通过 `apps/api` + `python/services/query` 暴露，不要求一开始就引入完整外部 BI 产品，但要先建立中台级消费接口。
 
+从统一分层模型看，这一段实际上是在补齐**应用层**，让系统不再只有一个最小工作台，而是开始具备：
+
+- BI / 分析消费面
+- 挖掘检索与 badcase 运营入口
+- 标注与 review 入口
+- 需求管理与任务运营入口
+
 ---
 
 ### 7. 治理层要尽早抽象，而不是最后补
@@ -175,12 +183,22 @@ Proposed
 
 未来从本地 MVP 演进到企业版时，以下替换仍通过现有 adapter/profile 体系完成：
 
-- local fs -> S3 / MinIO / object storage
-- SQLite -> Postgres / service metadata plane
-- Parquet -> Iceberg / Paimon
-- DuckDB -> StarRocks / distributed query
-- local compute -> Spark / Flink / distributed execution
+- local fs -> S3 / MinIO / OSS / HDFS
+- SQLite -> Postgres / 服务化元数据与事务控制层
+- 裸 Parquet 文件集 -> Iceberg / Paimon / Hudi 管理的湖表层
+- DuckDB -> StarRocks / Trino / distributed query
+- local compute -> Spark / Flink / Fluss / distributed execution
 - local auth stub -> OIDC / SSO / tenant-aware auth
+
+这里要特别避免把不同层混写成一条“技术替换链”。更准确的理解是：
+
+- 底层存储层决定文件放在哪
+- 湖表格式决定表快照、schema 演进和事务语义怎样管理
+- 文件格式决定数据如何编码；当前主格式是 Lance
+- 计算层决定批流处理如何执行
+- 查询层决定用户和服务如何读取数据
+- 应用层决定最终有哪些产品和角色入口在消费这些能力
+- 元数据与事务控制层决定版本、任务、血缘、权限、审计与其他控制状态如何被一致记录和管理
 
 也就是说：
 

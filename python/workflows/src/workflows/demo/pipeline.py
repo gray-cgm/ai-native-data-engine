@@ -13,7 +13,7 @@ def run_local_demo(base_dir: Path, examples_dir: Path) -> dict:
 
     duckdb_adapter = DuckDBQueryAdapter(
         db_path=base_dir / 'duckdb' / 'samples.duckdb',
-        parquet_path=base_dir / 'silver' / 'samples.parquet',
+        data_path=base_dir / 'silver' / 'samples.lance',
     )
     duckdb_adapter.create_sample_table(records)
 

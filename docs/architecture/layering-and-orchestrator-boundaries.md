@@ -39,6 +39,17 @@
 
 如果一段逻辑 **离开 Dagster 仍然应该存在**，它通常不应该写死在 `apps/orchestrator`。
 
+这里也要明确：这篇文档说的“Layer”首先是**代码与运行时边界层**，它需要与仓库里统一使用的六层系统模型一起看：
+
+- 存储层
+- 湖表格式层
+- 文件格式层
+- 计算层
+- 查询层
+- 应用层
+
+`apps/orchestrator` 和 `python/workflows` 主要都属于计算层的不同位置：前者是编排运行时入口，后者是可复用流程库。
+
 ---
 
 # 1. 最终分层图
@@ -86,7 +97,12 @@
 │ Capability Implementation Layer                            │
 │ python/adapters                                             │
 │                                                             │
-│ SQLite / DuckDB / Lance / local fs / S3 / ...               │
+│ metadata: SQLite / Postgres / ...                           │
+│ query: DuckDB / StarRocks / Trino / ...                     │
+│ search: Lance / ...                                         │
+│ storage: local fs / S3 / OSS / HDFS / ...                   │
+│ table: Parquet / Iceberg / Paimon / Hudi / ...              │
+│ compute: local Python / Dagster / Spark / Flink / ...       │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
@@ -122,6 +138,13 @@ Dagster Webserver / Daemon
 - API 和 Dagster 都可以成为流程入口
 - 真正可复用的流程能力应该沉淀在 `services` / `workflows`
 - `apps/orchestrator` 不应该成为另一套独立业务系统
+
+如果换成统一六层模型，可以再压缩成一句话：
+
+- `python/adapters` 负责把存储层、湖表格式层、文件格式层、查询层等能力落成 provider
+- `python/workflows` 与 `apps/orchestrator` 负责计算层
+- `apps/web` / `apps/bff` / `apps/api` 负责应用层入口
+- SQLite / Postgres 这类元数据与事务控制层是横切控制能力，而不是应用层本身
 
 ---
 

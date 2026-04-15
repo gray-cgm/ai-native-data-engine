@@ -130,40 +130,60 @@
   **输出：** workbench 中的导出操作入口
   **验收标准：** 用户可在 UI 中触发导出并看到状态更新
 
-## Epic 5 - 统一数据出口与文档
+## Epic 5 - 应用层演进
 
-### Story 5.1 - 增加 SDK 访问面
-- [ ] **P1 Task 5.1.1 - 创建最小 Python SDK**
+### Story 5.1 - 补齐多角色应用入口
+- [ ] **P1 Task 5.1.1 - 规划 BI / 分析消费入口**
+  **输入：** 查询层能力、数据集与版本语义、角色访问诉求
+  **输出：** analysis dashboard / BI 入口设计与最小接口草案
+  **验收标准：** 应用层不再只等于 workbench 页面，而是明确存在分析消费面
+- [ ] **P1 Task 5.1.2 - 规划挖掘检索工作台**
+  **输入：** search preview、scenario triage、样本检索需求
+  **输出：** 面向数据挖掘与 badcase 运营的应用层方案
+  **验收标准：** 明确区分检索引擎能力与应用层检索产品能力
+- [ ] **P1 Task 5.1.3 - 规划标注与 review 入口**
+  **输入：** task system、dataset/version 语义、人工反馈回流诉求
+  **输出：** labeling / review 应用层设计占位
+  **验收标准：** 标注系统被定义为应用层能力，而不是误写进查询层或存储层
+- [ ] **P2 Task 5.1.4 - 规划需求管理与运营入口**
+  **输入：** task、workspace、lineage、audit、approval 语义
+  **输出：** 需求管理 / 任务运营入口设计草案
+  **验收标准：** 应用层包含产品与运营角色入口，而不仅是开发者控制台
+
+## Epic 6 - 统一数据出口与文档
+
+### Story 6.1 - 增加 SDK 访问面
+- [ ] **P1 Task 6.1.1 - 创建最小 Python SDK**
   **输入：** Platform API endpoint 列表
   **输出：** 支持 ingest、datasets、exports、search preview 的 Python client
   **验收标准：** SDK demo 能成功调用真实 Platform API
 
-### Story 5.2 - 沉淀架构与入门文档
-- [ ] **P0 Task 5.2.1 - 编写根 README 启动指南**
+### Story 6.2 - 沉淀架构与入门文档
+- [ ] **P0 Task 6.2.1 - 编写根 README 启动指南**
   **输入：** 实际 install / startup 命令
   **输出：** 根目录 quickstart 文档
   **验收标准：** README 中仅包含真实可运行命令，并清晰区分 Web、BFF、Platform API 与 Dagster
-- [ ] **P1 Task 5.2.2 - 编写 Beginner Guide**
+- [ ] **P1 Task 6.2.2 - 编写 Beginner Guide**
   **输入：** 本地 MVP 架构与 DDIA 风格解释
   **输出：** 面向初学者的教程文档
   **验收标准：** 初学者能理解为什么使用 DuckDB、Parquet、Lance、SQLite 与 adapters
-- [ ] **P1 Task 5.2.3 - 整理 docs 目录**
+- [ ] **P1 Task 6.2.3 - 整理 docs 目录**
   **输入：** 架构、MVP 与 backlog 材料
   **输出：** `docs/architecture`、`docs/adr`、`docs/api`、`docs/tutorials`
   **验收标准：** 所有主要设计产物都能在 `docs/` 下被清晰发现
 
-## Epic 6 - 团队版演进准备
+## Epic 7 - 团队版演进准备
 
-### Story 6.1 - 为团队版扩展做准备
-- [ ] **P1 Task 6.1.1 - 增加 team profile wiring**
+### Story 7.1 - 为团队版扩展做准备
+- [ ] **P1 Task 7.1.1 - 增加 team profile wiring**
   **输入：** `team-dev.yaml` provider map
   **输出：** profile-ready wiring 与 provider gap 文档
   **验收标准：** 即使部分 provider 仍是 placeholder，系统也能表达团队版拓扑
-- [ ] **P2 Task 6.1.2 - 增加企业版 adapter placeholders**
+- [ ] **P2 Task 7.1.2 - 增加企业版 adapter placeholders**
   **输入：** 企业版 provider 目标
   **输出：** StarRocks、Iceberg/Paimon、OIDC、对象存储等 placeholder adapters
   **验收标准：** 扩展点明确存在，且能正常导入 / 编译
-- [ ] **P2 Task 6.1.3 - 规划多租户平台演进路径**
+- [ ] **P2 Task 7.1.3 - 规划多租户平台演进路径**
   **输入：** 当前 workbench、BFF 与 metadata 边界
   **输出：** 面向 tenant context、auth、governance、quota 的 ADR 或设计说明
   **验收标准：** SaaS 演进方向被清晰记录，同时不过度提前实现 v1
