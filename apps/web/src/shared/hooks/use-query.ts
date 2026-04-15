@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PageState } from '@/shared/types/common'
 
 export interface QueryResult<T> {
@@ -17,6 +17,11 @@ export function useQuery<T>(
   const [data, setData] = useState<T | null>(null)
   const [state, setState] = useState<PageState>('loading')
   const [error, setError] = useState<Error | null>(null)
+  const optionsRef = useRef(options)
+
+  useEffect(() => {
+    optionsRef.current = options
+  }, [options])
 
   const refetch = useCallback(async () => {
     setState('loading')
@@ -25,13 +30,13 @@ export function useQuery<T>(
       const result = await fetcher()
       setData(result)
       // Determine if data is empty for collections
-      const isEmpty = options?.isEmpty ? options.isEmpty(result) : false
+      const isEmpty = optionsRef.current?.isEmpty ? optionsRef.current.isEmpty(result) : false
       setState(isEmpty ? 'empty' : 'ready')
     } catch (e) {
       setError(e as Error)
       setState('error')
     }
-  }, [fetcher, options])
+  }, [fetcher])
 
   useEffect(() => {
     refetch()

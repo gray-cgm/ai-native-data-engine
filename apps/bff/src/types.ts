@@ -6,6 +6,9 @@ export type WorkspaceItem = { workspace_id: string; name: string }
 export type ExportItem = { export_id: string; dataset_id: string; format: string; status: string; output_path: string }
 export type SearchRow = { id: string; scene: string; dataset_version_id?: string }
 export type RunItem = { run_id: string; job_name: string; status: string }
+export type PaginationMeta = { total: number; skip: number; limit: number }
+export type PaginatedList<T> = { items: T[]; pagination: PaginationMeta }
+export type DatasetDetail = { item: DatasetItem | null; versions: DatasetVersion[] }
 
 export type ScenarioTriageSummary = {
   workspace_id: string

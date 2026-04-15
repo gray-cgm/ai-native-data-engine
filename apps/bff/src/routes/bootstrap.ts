@@ -1,14 +1,21 @@
-import type { Context } from 'koa'
-import type { Route } from 'koa-joi-router'
+import bootstrapHandler from '../handlers/bootstrapHandler.js'
+import { defineRoute } from './route-types.js'
+import { buildOutputSchema } from './schema.js'
 
-import { platformFetch } from '../services/platform.js'
-
-const route: Route = {
+const route = defineRoute({
   method: 'post',
   path: '/bootstrap',
-  handler: async (ctx: Context) => {
-    ctx.body = await platformFetch('/samples/ingest-demo', { method: 'POST' })
+  validate: {
+    output: buildOutputSchema(),
   },
-}
+  meta: {
+    swagger: {
+      summary: 'Bootstrap demo dataset',
+      description: 'Trigger the demo ingest flow in Platform API.',
+      tags: ['bootstrap'],
+    },
+  },
+  handler: bootstrapHandler.create,
+})
 
 export default route

@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,12 @@ class DuckDBQueryAdapter:
         con.execute(f'create or replace table {name} as {sql}')
         con.close()
 
+    def _reset_data_path(self) -> None:
+        if self.data_path.is_dir():
+            shutil.rmtree(self.data_path)
+        elif self.data_path.exists():
+            self.data_path.unlink()
+
     def create_sample_table(self, records: list[SampleRecord]) -> None:
         self.data_path.parent.mkdir(parents=True, exist_ok=True)
         table = pa.table(
@@ -53,8 +60,8 @@ class DuckDBQueryAdapter:
                 'tags': [','.join(r.tags) for r in records],
             }
         )
-        if self.data_path.exists() and not self.data_path.is_dir():
-            self.data_path.unlink()
+        if self.data_path.exists():
+            self._reset_data_path()
         lance.write_dataset(table, self.data_path, mode='create')
         self.register_table('samples', str(self.data_path))
 

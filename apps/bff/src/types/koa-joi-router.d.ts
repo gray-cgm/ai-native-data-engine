@@ -17,6 +17,11 @@ declare module 'koa-joi-router' {
   }
 
   export const Joi: {
+    any(): any
+    array(): any
+    boolean(): any
+    number(): any
+    object(schema?: Record<string, unknown>): any
     string(): any
   }
 

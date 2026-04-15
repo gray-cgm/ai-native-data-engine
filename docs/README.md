@@ -4,6 +4,7 @@
 - [总体架构说明](./architecture/overview.md) - 包含 Web -> BFF -> Platform API 的总体分层
 - [个人版 vs 企业版分层对比](./architecture/personal-vs-enterprise.md)
 - [Monorepo 模块划分](./architecture/monorepo-modules.md) - 包含 `apps/bff` 的职责与目录结构
+- [Web Access Layer BFF Architecture](./architecture/web-access-layer-bff-architecture.md) - 说明 `apps/bff` 在 Web Access Layer 中的目录职责、分层边界与后续演进方向
 - [FDL 融合设计说明](./architecture/fdl-integration.md) - 说明 management / query / scheduler 如何映射到当前仓库
 - [core / adapters / profiles / workflows 分层说明](./architecture/core-adapters-profiles-workflows.md) - 补充解释 Python 分层与领域模型作用
 - [领域模型草图](./architecture/domain-model.md)

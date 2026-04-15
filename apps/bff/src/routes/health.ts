@@ -1,18 +1,33 @@
-import type { Context } from 'koa'
-import type { Route } from 'koa-joi-router'
-
 import { config } from '../config/index.js'
+import { defineRoute } from './route-types.js'
+import { buildOutputSchema, Joi } from './schema.js'
 
-const route: Route = {
+const route = defineRoute({
   method: 'get',
   path: '/health',
-  handler: async (ctx: Context) => {
+  validate: {
+    output: buildOutputSchema(
+      Joi.object({
+        status: Joi.string().required(),
+        service: Joi.string().required(),
+        upstream: Joi.string().required(),
+      }),
+    ),
+  },
+  meta: {
+    swagger: {
+      summary: 'BFF health status',
+      tags: ['system'],
+    },
+  },
+  handler: async (ctx) => {
+    ctx.state.skipResponseEnvelope = true
     ctx.body = {
       status: 'ok',
       service: 'bff',
       upstream: config.platformApiBaseUrl,
     }
   },
-}
+})
 
 export default route

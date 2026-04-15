@@ -1,14 +1,5 @@
-import JoiRouter from 'koa-joi-router'
-
-import bootstrapRoute from './bootstrap.js'
-import dashboardRoute from './dashboard.js'
-import exportRoute from './exports.js'
-
-export function getApiRouter() {
-  const router = JoiRouter()
-  router.prefix('/api')
-  router.route([bootstrapRoute, dashboardRoute, exportRoute])
-  return router
-}
+export { getApiRouter } from './router.js'
+export { getApiRoutes } from './router.js'
+export { getDocsRouter } from './docs.js'
 
 export { default as healthRoute } from './health.js'

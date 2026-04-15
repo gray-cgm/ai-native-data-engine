@@ -1,5 +1,19 @@
+const defaultPort = 3100;
+function getNumberEnv(name, fallback) {
+    const value = process.env[name];
+    if (!value) {
+        return fallback;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
 export const config = {
+    appName: process.env.BFF_APP_NAME ?? 'ai-data-loop-bff',
+    env: process.env.NODE_ENV ?? 'development',
+    version: process.env.BFF_VERSION ?? '0.1.0',
     host: process.env.BFF_HOST ?? '0.0.0.0',
-    port: Number(process.env.BFF_PORT ?? 3100),
-    platformApiBaseUrl: (process.env.PLATFORM_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, ''),
+    port: getNumberEnv('BFF_PORT', defaultPort),
+    apiPrefix: process.env.BFF_API_PREFIX ?? '/api',
+    bodyLimit: process.env.BFF_BODY_LIMIT ?? '50mb',
+    platformApiBaseUrl: (process.env.PLATFORM_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, ''),
 };

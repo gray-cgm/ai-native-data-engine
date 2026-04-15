@@ -6,7 +6,7 @@ COMPOSE_SERVICES := postgres dagster-user-code dagster-webserver dagster-daemon 
 APP_PORTS := $(WEB_PORT) $(BFF_PORT) $(API_PORT) $(DAGSTER_PORT) $(POSTGRES_PORT) $(JUPYTER_PORT) $(SUPERSET_PORT)
 COLIMA_MOUNT_EXISTS := $(shell colima ssh -- test -d "$(HOST_WORKSPACE_DIR)" >/dev/null 2>&1 && echo yes || echo no)
 
-.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance export-parquet export-csv export-jsonl sdk-demo clean
+.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance export-parquet export-csv export-jsonl sdk-demo clean clean-dev-data
 
 setup: check-tools check-docker
 	@if [ ! -f .env ]; then \
@@ -160,3 +160,7 @@ sdk-demo:
 
 clean:
 	rm -rf .venv node_modules apps/web/node_modules packages/*/node_modules
+
+
+clean-dev-data:
+	bash apps/api/src/scripts/clean-dev-data.sh --yes

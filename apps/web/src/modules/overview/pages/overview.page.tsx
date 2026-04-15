@@ -39,7 +39,7 @@ export default function OverviewPage() {
     )
   }
 
-  const totalSamples = data.distribution.reduce((sum, row) => sum + row.sample_count, 0)
+  const totalSamples = data.distribution?.reduce((sum, row) => sum + row.sample_count, 0) || 0
   const scenarioSampleCount = data.scenario?.scenario_sample_count ?? 0
   const prioritySampleCount = data.scenario?.priority_sample_ids.length ?? 0
 
