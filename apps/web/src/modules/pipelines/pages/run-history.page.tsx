@@ -30,9 +30,8 @@ export default function RunHistoryPage() {
         ) : (
           <DataTable
             columns={[
-              { key: 'task_id', header: 'Run ID' },
-              { key: 'title', header: 'Title' },
-              { key: 'task_type', header: 'Type' },
+              { key: 'run_id', header: 'Run ID' },
+              { key: 'job_name', header: 'Job Name' },
               {
                 key: 'status',
                 header: 'Status',
@@ -40,7 +39,7 @@ export default function RunHistoryPage() {
               },
             ]}
             data={data ?? []}
-            rowKey={(row) => row.task_id}
+            rowKey={(row) => row.run_id}
             emptyText="No pipeline runs found."
           />
         )}

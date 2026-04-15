@@ -40,10 +40,18 @@ export type ExportItem = {
 }
 
 export type RunItem = {
-  task_id: string
   run_id: string
   job_name: string
   status: string
+}
+
+export type PaginatedResponse<T> = {
+  items: T[]
+  pagination: {
+    total: number
+    skip: number
+    limit: number
+  }
 }
 
 export type SearchRow = {
