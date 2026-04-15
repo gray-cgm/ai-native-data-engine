@@ -21,3 +21,4 @@ data/lance/*
 !data/lance/.gitkeep
 data/duckdb/*
 !data/duckdb/.gitkeep
+apps/**/dist
