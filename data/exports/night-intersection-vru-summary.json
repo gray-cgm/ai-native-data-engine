@@ -32,7 +32,7 @@
   ],
   "distribution": [
     {
-      "scene": "urban-night",
+      "scene": "rainy-highway",
       "sample_count": 1
     },
     {
@@ -40,7 +40,7 @@
       "sample_count": 1
     },
     {
-      "scene": "rainy-highway",
+      "scene": "urban-night",
       "sample_count": 1
     }
   ],
@@ -68,7 +68,7 @@
   "export_id": "export-demo-v1",
   "export_format": "lance",
   "export_output_path": "data/exports/demo-dataset-v1.lance",
-  "run_id": "dagster-night_intersection_vru_triage_job-20260415100432",
+  "run_id": "dagster-night_intersection_vru_triage_job-20260415100533",
   "run_status": "success",
   "orchestrator_job_name": "night_intersection_vru_triage_job",
   "orchestrator_asset_key": "night_intersection_vru_triage_asset",
