@@ -73,7 +73,9 @@ services:
     environment:
       DAGSTER_HOME: /app/docker/dagster
       UV_PROJECT_ENVIRONMENT: /opt/uv-venv
-    command: uv run --package orchestrator dagster-daemon run
+    command: >-
+      uv run --package orchestrator dagster-daemon run
+      -w /app/docker/dagster/workspace.yaml
     volumes:
       - ${HOST_WORKSPACE_DIR:-.}:/app
     depends_on:
