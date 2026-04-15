@@ -21,4 +21,12 @@ data/lance/*
 !data/lance/.gitkeep
 data/duckdb/*
 !data/duckdb/.gitkeep
+data/exports/*
+!data/exports/.gitkeep
 apps/**/dist
+notebooks/*
+!notebooks/.gitkeep
+docker/dagster/.nux/
+docker/dagster/.logs_queue/
+docker/dagster/logs/
+docker/dagster/storage/
