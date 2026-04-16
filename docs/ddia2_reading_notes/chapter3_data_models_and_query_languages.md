@@ -6,7 +6,7 @@
 > 标注系统数据库分层设计，https://xiaopeng.feishu.cn/docx/UnN0dZ7l3odi2Ex948wcoSJmngd
 > https://xiaopeng.feishu.cn/wiki/Bzj0waqeki0gAmkSpwmccInUnqe#share-Kengd2OUVojCc7x48nQcTFQQnYc
 
-一、 核心取舍：关系型 vs 文档型
+### 一、 核心取舍：关系型 vs 文档型
 在标注系统中，不应盲目站队关系型或文档型，而是要区分数据的业务属性进行分层建模。
 1. 管理性数据：适合关系型（Relational）
 标注系统的管理侧数据是强结构化的，例如：项目、任务、用户、工作流节点、审核状态等。
@@ -22,7 +22,7 @@
 读时模式（Schema-on-read）：文档数据库通常不强制校验写入数据的结构，这赋予了极大的灵活性。应对字段的新增，应用程序只需在读取时进行兼容解析，而不需要频繁执行沉重的数据库 Schema Migration（Schema-on-write）。
 
 
-二、 规范化 vs 反规范化（Normalization vs. Denormalization）
+### 二、 规范化 vs 反规范化（Normalization vs. Denormalization）
 规范化的核心是建立单一事实来源，而反规范化的核心是用空间（冗余）换取时间（查询性能）。在标注系统中，这两种手段需要配合使用。
 
 1. 什么该规范化？
@@ -36,7 +36,7 @@
 历史快照冗余：在 Annotation 中冗余写入时的 class_name、annotator_name、标注工具版本等。标注系统往往是“历史证据系统”，这种冗余能保证历史回放时语义不被后续的字典修改所破坏。
 派生宽表与索引（OBT）：为了列表页展示或 TPI（产能）统计，如果每次都去解析海量的 JSON payload 会导致极大的性能灾难。更好的做法是通过异步计算构建大宽表（One Big Table, OBT）或搜索索引来满足 OLAP 分析需求
 
-三、 数仓建模与高阶架构模式
+### 三、 数仓建模与高阶架构模式
 在处理复杂的统计与事件追溯时，DDIA 提及的几种模式对标注系统也有很大启发：
 
 1. 事实表（Fact Table） vs 拉链表（Zipper Table）
