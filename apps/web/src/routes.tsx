@@ -10,6 +10,8 @@ const SearchPage = lazy(() => import('./modules/explorer/pages/search.page'))
 const TaskBoardPage = lazy(() => import('./modules/operations/pages/task-board.page'))
 const ExportListPage = lazy(() => import('./modules/operations/pages/export-list.page'))
 const RunHistoryPage = lazy(() => import('./modules/pipelines/pages/run-history.page'))
+const ToolsHomePage = lazy(() => import('./modules/tools/pages/tools-home.page'))
+const ToolWorkspacePage = lazy(() => import('./modules/tools/pages/tool-workspace.page'))
 
 export const routes: RouteObject[] = [
   {
@@ -23,6 +25,8 @@ export const routes: RouteObject[] = [
       { path: '/ops', element: <TaskBoardPage /> },
       { path: '/ops/exports', element: <ExportListPage /> },
       { path: '/pipelines', element: <RunHistoryPage /> },
+      { path: '/tools', element: <ToolsHomePage /> },
+      { path: '/tools/:toolId', element: <ToolWorkspacePage /> },
     ],
   },
 ]

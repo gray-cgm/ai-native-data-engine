@@ -41,4 +41,14 @@ export const navGroups: NavGroup[] = [
     icon: '🔄',
     items: [{ label: 'Run History', path: '/pipelines' }],
   },
+  {
+    label: 'Tools',
+    icon: '🧩',
+    items: [
+      { label: 'Tools Hub', path: '/tools' },
+      { label: 'Dagster', path: '/tools/dagster' },
+      { label: 'Superset', path: '/tools/superset' },
+      { label: 'Jupyter', path: '/tools/jupyter' },
+    ],
+  },
 ]
