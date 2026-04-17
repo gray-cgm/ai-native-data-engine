@@ -2,7 +2,7 @@ import { config } from '../config/index.js'
 import { UpstreamHttpError } from '../errors.js'
 
 export async function platformFetch(pathname: string, init?: RequestInit) {
-  const response = await fetch(`${config.platformApiBaseUrl}${pathname}`, init)
+  const response = await fetchWithRetry(`${config.platformApiBaseUrl}${pathname}`, init)
   const text = await response.text()
   const payload = parseResponseBody(text)
 
@@ -15,6 +15,26 @@ export async function platformFetch(pathname: string, init?: RequestInit) {
   }
 
   return payload
+}
+
+async function fetchWithRetry(input: string, init?: RequestInit) {
+  try {
+    return await fetch(input, init)
+  } catch (error) {
+    if (!isRetriableNetworkError(error)) {
+      throw error
+    }
+    await wait(150)
+    return fetch(input, init)
+  }
+}
+
+function isRetriableNetworkError(error: unknown) {
+  return error instanceof TypeError
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function parseResponseBody(text: string) {

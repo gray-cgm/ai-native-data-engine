@@ -94,9 +94,48 @@ export type ScenarioTriageSummary = {
   }
 }
 
+export type StreamingBatchSummary = {
+  batch_number: number
+  input_events: number
+  accepted_events: number
+  unique_samples: number
+  new_sample_ids: string[]
+  distribution: DistributionRow[]
+  run_id: string
+  run_status: string
+}
+
+export type StreamingTagDistributionRow = {
+  tag: string
+  sample_count: number
+}
+
+export type StreamingSummary = {
+  workspace_id: string
+  dataset_id: string
+  dataset_name: string
+  profile: string
+  event_log_path: string
+  bronze_log_path: string
+  query_db_path: string
+  silver_dataset_path: string
+  search_index_path: string
+  gold_table_root: string
+  export_path: string
+  event_count: number
+  duplicate_events_skipped: number
+  batch_count: number
+  latest_sample_count: number
+  distribution: DistributionRow[]
+  tag_distribution: StreamingTagDistributionRow[]
+  search_preview: SearchRow[]
+  batch_summaries: StreamingBatchSummary[]
+}
+
 export type DashboardPayload = {
   distribution: DistributionRow[]
   scenario: ScenarioTriageSummary | null
+  streaming: StreamingSummary | null
   datasets: DatasetItem[]
   datasetVersions: Record<string, DatasetVersion[]>
   tasks: TaskItem[]

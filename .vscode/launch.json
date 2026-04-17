@@ -6,19 +6,12 @@
       "type": "debugpy",
       "request": "launch",
       "python": "${workspaceFolder}/.venv/bin/python",
-      "module": "uvicorn",
+      "module": "src.scripts.run_api",
       "cwd": "${workspaceFolder}",
-      "args": [
-        "src.main:app",
-        "--app-dir",
-        "apps/api",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8003",
-        "--reload"
-      ],
       "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/apps/api"
+      },
       "preLaunchTask": "install: uv",
       "justMyCode": true,
       "console": "integratedTerminal"
@@ -46,7 +39,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "BFF: tsx watch",
+      "name": "BFF: debug",
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/apps/bff",
@@ -54,7 +47,6 @@
       "runtimeArgs": [
         "exec",
         "tsx",
-        "watch",
         "src/index.ts"
       ],
       "envFile": "${workspaceFolder}/.env",
@@ -90,7 +82,7 @@
       "name": "API + BFF",
       "configurations": [
         "API: FastAPI (uvicorn)",
-        "BFF: tsx watch"
+        "BFF: debug"
       ]
     }
   ]

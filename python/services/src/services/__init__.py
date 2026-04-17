@@ -1,4 +1,4 @@
-"""Application service entrypoints for the local autonomous-driving scenario chain."""
+"""Application service entrypoints for local batch and streaming demo chains."""
 
 import json
 from pathlib import Path
@@ -8,9 +8,11 @@ from typing import Any
 from core.domain.models import LineageEvent, ScenarioTriageConfig
 from core.profiles.runtime import RuntimeContainer
 from workflows.demo import run_scenario_triage_flow
+from workflows.streaming import run_local_streaming_demo
 
 
 _SCENARIO_TRIAGE_LOCK = Lock()
+_STREAMING_DEMO_LOCK = Lock()
 
 
 def _resolve_scenario_config(
@@ -135,4 +137,26 @@ def run_scenario_triage(
 		}
 
 
-__all__ = ['get_scenario_triage_summary', 'run_scenario_triage']
+def get_local_streaming_summary(container: RuntimeContainer) -> dict[str, Any] | None:
+	summary_path = Path('data/exports/local-streaming-summary.json')
+	if not container.storage.exists(str(summary_path)):
+		return None
+	with container.storage.open(str(summary_path), 'r') as handle:
+		return json.load(handle)
+
+
+def run_local_streaming(container: RuntimeContainer) -> dict[str, Any]:
+	with _STREAMING_DEMO_LOCK:
+		summary = run_local_streaming_demo(container)
+		return {
+			'summary': summary,
+			'capabilities': container.capabilities.model_dump(),
+		}
+
+
+__all__ = [
+	'get_local_streaming_summary',
+	'get_scenario_triage_summary',
+	'run_local_streaming',
+	'run_scenario_triage',
+]

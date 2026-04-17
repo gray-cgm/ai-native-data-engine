@@ -6,7 +6,7 @@ from core.domain.models import ComputeRun
 class LocalPythonComputeAdapter:
     def submit_job(self, job_name: str, payload: dict) -> ComputeRun:
         return ComputeRun(
-            run_id=f'local-{job_name}-{datetime.now(UTC).strftime("%Y%m%d%H%M%S")}',
+            run_id=f'local-{job_name}-{datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")}',
             status='success',
             metadata={
                 **payload,

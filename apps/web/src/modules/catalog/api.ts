@@ -19,6 +19,6 @@ export async function fetchDatasetDetail(datasetId: string): Promise<DatasetDeta
   return { dataset, versions }
 }
 
-export async function exportDataset(datasetId: string): Promise<unknown> {
-  return apiPost(`/datasets/${datasetId}/exports`)
+export async function exportDataset(datasetId: string, format: object): Promise<unknown> {
+  return apiPost(`/datasets/${datasetId}/exports`, format)
 }

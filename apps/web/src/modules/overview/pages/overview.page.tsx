@@ -15,10 +15,15 @@ export default function OverviewPage() {
   const fetchDashboard = useCallback(() => apiGet<DashboardPayload>('/dashboard'), [])
   const { data, state, loading, error, refetch } = useQuery(fetchDashboard)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const { loading: runningDemo, mutate } = useMutation(async () => {
+  const { loading: runningDemo, mutate: runScenario } = useMutation(async () => {
     await apiPost('/bootstrap')
     await refetch()
-    return null
+    return 'Night Intersection Triage finished.'
+  })
+  const { loading: runningStreaming, mutate: runStreaming } = useMutation(async () => {
+    await apiPost('/streaming/bootstrap')
+    await refetch()
+    return 'Local streaming demo finished.'
   })
 
   if (state === 'loading') {
@@ -42,6 +47,9 @@ export default function OverviewPage() {
   const totalSamples = data.distribution?.reduce((sum, row) => sum + row.sample_count, 0) || 0
   const scenarioSampleCount = data.scenario?.scenario_sample_count ?? 0
   const prioritySampleCount = data.scenario?.priority_sample_ids.length ?? 0
+  const streamingEventCount = data.streaming?.event_count ?? 0
+  const streamingSampleCount = data.streaming?.latest_sample_count ?? 0
+  const latestStreamingRun = data.streaming?.batch_summaries[data.streaming.batch_summaries.length - 1]?.run_id ?? 'n/a'
 
   return (
     <PageContainer
@@ -62,6 +70,8 @@ export default function OverviewPage() {
         exportCount={data.exports.length}
         scenarioSampleCount={scenarioSampleCount}
         prioritySampleCount={prioritySampleCount}
+        streamingEventCount={streamingEventCount}
+        streamingSampleCount={streamingSampleCount}
       />
       {data.scenario ? (
         <div style={{ display: 'grid', gap: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
@@ -101,8 +111,41 @@ export default function OverviewPage() {
           </div>
         </div>
       ) : null}
+      {data.streaming ? (
+        <div style={{ display: 'grid', gap: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+          <div className="card">
+            <h3>Local-First Streaming Snapshot</h3>
+            <p>
+              Streaming workspace {data.streaming.workspace_id} ingested {data.streaming.event_count} events across {data.streaming.batch_count} micro-batches and materialized {data.streaming.latest_sample_count} current samples.
+            </p>
+            <p>
+              Duplicate events skipped: {data.streaming.duplicate_events_skipped}. Export artifact: {data.streaming.export_path}.
+            </p>
+          </div>
+          <div className="grid-two">
+            <div className="card">
+              <h3>Streaming Materialization</h3>
+              <p>Event log: {data.streaming.event_log_path}</p>
+              <p>Bronze log: {data.streaming.bronze_log_path}</p>
+              <p>Silver snapshot: {data.streaming.silver_dataset_path}</p>
+              <p>Search index: {data.streaming.search_index_path}</p>
+            </div>
+            <div className="card">
+              <h3>Streaming Signals</h3>
+              <p>Top scenes: {data.streaming.distribution.map((row) => `${row.scene} (${row.sample_count})`).join(', ')}</p>
+              <p>Top tags: {data.streaming.tag_distribution.slice(0, 4).map((row) => `${row.tag} (${row.sample_count})`).join(', ')}</p>
+              <p>Latest run: {latestStreamingRun}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="grid-two">
-        <QuickActions onRunScenario={() => mutate()} runningScenario={runningDemo} />
+        <QuickActions
+          onRunScenario={() => runScenario().then((message) => setSuccessMessage(message ?? null))}
+          onRunStreaming={() => runStreaming().then((message) => setSuccessMessage(message ?? null))}
+          runningScenario={runningDemo}
+          runningStreaming={runningStreaming}
+        />
         <RecentActivity
           tasks={data.tasks}
           exports={data.exports}

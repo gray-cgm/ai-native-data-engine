@@ -240,6 +240,21 @@ make query
 make lance
 ```
 
+#### 运行本地 streaming demo
+
+```bash
+make stream-demo
+```
+
+这条 demo 会模拟本地事件流接入，并以 micro-batch 方式完成：
+- `data/raw/streaming/local-events.jsonl` 原始事件日志
+- `data/bronze/streaming/normalized-events.jsonl` 归一化事件日志
+- `data/silver/streaming_samples.lance` 当前流式样本快照
+- `data/lance/streaming_samples.lance` 本地检索索引
+- `data/exports/local-streaming-summary.json` demo 汇总结果
+
+完整说明见 `docs/tutorials/local-first-streaming-demo.md`。
+
 #### Platform API 触发场景筛选 / asset materialization
 
 ```bash
@@ -265,6 +280,17 @@ curl http://localhost:8000/samples/search-preview
 ```
 
 这两个接口现在也会返回 `scenario` 字段，用于描述当前场景包的目标、候选样本和优先样本。
+
+#### Platform API 触发 / 查看 streaming 资源
+
+```bash
+curl -X POST http://localhost:8000/streaming/bootstrap
+curl http://localhost:8000/streaming/summary
+```
+
+其中：
+- `/streaming/bootstrap` 用于触发 local-first streaming demo
+- `/streaming/summary` 用于读取最新的 streaming 物化摘要
 
 #### Platform API 查看数据集、任务、工作空间、导出
 
@@ -302,6 +328,7 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 - Lance 落盘
 - DuckDB 查询 demo
 - Lance 基础检索 demo
+- streaming demo（本地 JSONL event log + micro-batch 物化）
 - 数据导出 demo（支持 Lance / CSV / JSONL）
 - Python SDK demo（统一访问 Platform API 上的 datasets / exports / search）
 - React 工作台：搜索、数据集、任务、工作空间、导出视图

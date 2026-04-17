@@ -52,6 +52,12 @@
 - `GET /samples/search-preview`
   - 从本地 search 层返回基础检索预览，并聚焦当前 scenario package 的 priority samples
 
+### Streaming
+- `POST /streaming/bootstrap`
+  - 触发 local-first streaming demo 的 micro-batch 物化流程
+- `GET /streaming/summary`
+  - 返回最新 streaming snapshot 的摘要，包括 event count、batch summaries、distribution、search preview 与导出工件路径
+
 ### Catalog
 - `GET /workspaces`
   - 列出 workspaces

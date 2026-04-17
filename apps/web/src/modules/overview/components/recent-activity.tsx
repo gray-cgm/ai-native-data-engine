@@ -9,7 +9,7 @@ interface RecentActivityProps {
 
 export function RecentActivity({ tasks, exports, runs }: RecentActivityProps) {
   const recentRuns = runs
-    .filter((run) => run.job_name.includes('triage'))
+    .filter((run) => run.job_name.includes('triage') || run.job_name.includes('streaming'))
     .slice(-3)
     .reverse()
 

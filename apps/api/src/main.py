@@ -8,6 +8,7 @@ from src.api.routes.export import router as export_router
 from src.api.routes.health import router as health_router
 from src.api.routes.operations import router as operations_router
 from src.api.routes.samples import router as samples_router
+from src.api.routes.streaming import router as streaming_router
 from src.core.runtime import get_runtime_container
 
 app = FastAPI(title='AI Native Data Engine API', version='0.1.0')
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(samples_router)
+app.include_router(streaming_router)
 app.include_router(catalog_router)
 app.include_router(operations_router)
 app.include_router(export_router)

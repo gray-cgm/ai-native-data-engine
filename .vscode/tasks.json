@@ -13,7 +13,7 @@
     {
       "label": "install: uv",
       "type": "shell",
-      "command": "uv sync",
+      "command": "uv sync --package api",
       "options": {
         "cwd": "${workspaceFolder}"
       },

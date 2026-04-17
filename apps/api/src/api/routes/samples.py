@@ -28,3 +28,5 @@ def search_preview() -> dict:
     if summary is None:
         summary = run_scenario_triage(container)['scenario']
     return {'rows': summary.get('search_preview', []), 'scenario': summary}
+
+

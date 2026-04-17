@@ -13,6 +13,7 @@
 - [首版 MVP 范围](./architecture/mvp-scope.md) - 包含 BFF 的首版范围边界
 - [Mermaid 架构图](./architecture/mermaid-diagrams.md) - 包含 BFF / Platform API 调用拓扑
 - [界面 Item 设计、页面流转与平台交互细节](./architecture/ui-page-flows-and-platform-interactions.md) - 说明 workbench 信息架构、页面 item、页面流转与 Web/BFF/Platform API 交互边界
+- [Local-First Streaming 演进设计](./architecture/local-first-streaming-evolution.md) - 说明本地 streaming demo 的定位，以及如何从 micro-batch 演进到大规模批流一体平台
 
 ## API
 - [API 概览](./api/overview.md) - 区分 Web Access API（BFF）与 Platform API（FastAPI）
@@ -28,4 +29,5 @@
 
 ## 教程
 - [Beginner Guide 入门文档](./tutorials/beginner-guide.md)
+- [Streaming Pipeline Demo](./tutorials/local-first-streaming-demo.md) - 说明如何运行本地事件流接入与 micro-batch 处理 demo
 - [DDIA2 × 项目认知地图](./ddia2-cognitive-map.md) - 帮助开发者从数据密集型系统视角理解本项目整体架构

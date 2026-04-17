@@ -6,7 +6,7 @@ COMPOSE_SERVICES := postgres dagster-user-code dagster-webserver dagster-daemon 
 APP_PORTS := $(WEB_PORT) $(BFF_PORT) $(API_PORT) $(DAGSTER_PORT) $(POSTGRES_PORT) $(JUPYTER_PORT) $(SUPERSET_PORT)
 COLIMA_MOUNT_EXISTS := $(shell colima ssh -- test -d "$(HOST_WORKSPACE_DIR)" >/dev/null 2>&1 && echo yes || echo no)
 
-.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance export-parquet export-csv export-jsonl sdk-demo clean clean-dev-data
+.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance stream-demo export-parquet export-csv export-jsonl sdk-demo clean clean-dev-data
 
 setup: check-tools check-docker
 	@if [ ! -f .env ]; then \
@@ -140,6 +140,10 @@ query:
 
 lance:
 	uv run --package api python -m src.scripts.lance_demo
+
+
+stream-demo:
+	uv run --package api python -m src.scripts.streaming_demo
 
 
 export-parquet:

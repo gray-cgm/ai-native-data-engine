@@ -20,7 +20,7 @@ export default function DatasetDetailPage() {
     setExporting(true)
     setErrorMessage(null)
     try {
-      await exportDataset(datasetId!)
+      await exportDataset(datasetId!, { format: 'lance' })
       setSuccessMessage(`Export started for dataset ${datasetId}`)
       await refetch()
     } catch (err) {
