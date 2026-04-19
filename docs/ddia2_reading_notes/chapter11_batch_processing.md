@@ -432,3 +432,175 @@ VLA 时代要求更快的闭环速度，湖仓正从离线升级到实时，trig
 ## 10. 一段结尾总结
 
 第11章让我更清楚地理解了，批处理不是“老旧的离线技术”，而是大规模数据系统最稳定、最可控的基础构件。对于自动驾驶数据闭环来说，从原始采集数据到训练集、从问题发现到回填重算、从成本治理到模型评测，背后大量工作都仍然是 batch processing。MapReduce 本身也许已经退场，但它留下的核心思想——**分片、并行、shuffle、容错、重跑、工作流组织**——仍然在今天的 Spark、DataWorks、Airflowy以及Dagster 这类平台里持续发挥作用。批处理的挑战不再只是“能不能跑起来”，而是“能不能透明、稳定、低成本、可治理地长期跑下去”。
+
+---
+
+## 11. 面向项目演讲的一页稿：Batch Processing 怎么讲
+
+如果我要在这个项目演讲中，用一页内容把 batch processing 讲清楚，我会这样组织。
+
+### 11.1 一页演讲稿
+
+今天我们这个项目里的 batch processing，不是按“写几个 ETL 脚本”的思路设计的，而是按“数据资产生产系统”的思路设计的。
+
+它要解决的问题很明确：在 AI 数据闭环里，大量核心工作天然都是离线批处理，包括样本接入、场景筛选、数据集构建、导出交付、质量分析和后续训练前准备。它们共同特点是输入数据有边界、处理逻辑可重复、结果需要稳定沉淀，而不是只在内存里算完即丢。
+
+所以我们把系统拆成了几个清晰层次：
+
+- orchestration layer：决定任务何时触发、以什么 asset / job 组织
+- computation layer：真正执行样本归一化、场景评分、分布统计、导出生成
+- storage and table layer：保存原始数据、结构化表和导出产物
+- query and retrieval layer：一部分面向 DuckDB 分析，一部分面向 Lance 检索
+- metadata layer：记录 dataset、version、job run、task、export、lineage
+- access layer：通过 API、BFF 和 Web 把批处理能力接入产品工作台
+
+当前项目的一个典型 batch job 是 `night_intersection_vru_triage`。它会读取本地样本目录，把图片和 metadata 归一化成 `SampleRecord`，然后物化到查询层和检索层，再基于场景规则做打分，产出候选样本、优先样本、distribution、summary 和 export artifact。最后，这些结果不会只停留在脚本输出里，而是会进一步记录成 dataset version、job run、export job 和 lineage event。
+
+这背后的核心设计思想是：**任务只是过程，资产才是结果**。
+
+也正因为这样，这套 batch processing 不是孤立的离线链路，而是整个 AI 数据闭环的基础生产系统。Web 可以触发它，BFF 可以聚合它，API 可以暴露它，SDK 可以消费它。未来如果规模继续增长，我们也可以把 local-first 的底座逐步切换成对象存储、Postgres、StarRocks 和分布式 compute，而不用推倒重来。
+
+一句话总结就是：
+
+> **这个项目的 batch processing，本质上是一个以数据资产为中心、可重跑、可追踪、可导出的 local-first 批处理系统。**
+
+### 11.2 架构图口播稿
+
+如果现场我要对着架构图讲，我会这样口播：
+
+首先看最左边，输入是 `examples` 或更大规模的 raw data，它们代表有边界的原始输入数据集。  
+输入进入 workflow 以后，不会直接由 Web 或 API 自己处理，而是通过统一的 runtime container 拿到 storage、query、table、search、metadata、compute 这些能力。
+
+接着往中间看，编排层由 Dagster asset 和 compute adapter 承担，它只负责“什么时候跑、跑哪个 job、产出哪个 asset”，而不负责承载全部业务逻辑。真正的 batch processing 逻辑在 workflow / service 里完成，比如样本归一化、场景评分、distribution 统计和导出生成。
+
+再往右看，处理后的结果不会只写一份。系统会同时产出几类资产：
+
+- 一类是结构化表，给后续 dataset version 和 export 使用
+- 一类是 DuckDB 查询结果，支撑 distribution 和分析
+- 一类是 Lance 检索索引，支撑 search preview 和样本检索
+- 一类是 summary / export 文件，供 SDK、API 和人工 review 使用
+
+与此同时，最下方的 metadata 层会把这次 batch run 的控制信息记下来，包括 workspace、dataset、dataset version、job run、task、export job 和 lineage event。这样我们就不只是“跑了一个 job”，而是形成了一个可追踪、可重跑、可演进的数据资产生产链路。
+
+最后看最上层访问层，Web、BFF、API、SDK 都消费的是同一批处理产物。这就意味着 batch processing 不是后台孤岛，而是直接支撑产品体验、任务执行和数据闭环验证的系统主干。
+
+### 11.3 演讲时最值得强调的三句话
+
+- 我们没有把 batch processing 设计成脚本集合，而是设计成数据资产生产系统。
+- 任务只是过程，资产才是结果。
+- 当前实现是 local-first MVP，但边界已经按平台化和分布式演进方式设计好了。
+
+---
+
+## 12. 本项目 Batch Processing Mermaid 架构图
+
+下面这张图适合直接放在本章里，也适合后续搬到 PPT 中。
+
+```mermaid
+flowchart LR
+	subgraph Input[Bounded Input Data]
+		A1[examples datasets\nimages + metadata]
+		A2[data raw / local files\nfuture: object storage]
+	end
+
+	subgraph Access[Access Layer]
+		B1[Web Workbench]
+		B2[BFF Aggregation]
+		B3[FastAPI Platform API]
+		B4[Python SDK]
+	end
+
+	subgraph Control[Control Plane]
+		C1[Dagster Assets / Jobs]
+		C2[Compute Adapter]
+		C3[RuntimeContainer]
+		C4[Profile Resolver]
+	end
+
+	subgraph Processing[Batch Processing Logic]
+		D1[Workflow / Service Layer]
+		D2[Ingestion\nnormalize SampleRecord]
+		D3[Scenario Triage\nscore / filter / rank]
+		D4[Streaming Micro-batch\noptional adjacent path]
+	end
+
+	subgraph Data[Data Plane Outputs]
+		E1[DuckDB Query Layer\ndistribution / analytics]
+		E2[Lance Search Layer\nsearch preview / retrieval]
+		E3[Lance Table Layer\ndataset table / exports]
+		E4[Summary + Export Artifacts\njson / csv / jsonl / lance]
+	end
+
+	subgraph Metadata[Metadata and Governance]
+		F1[Workspace]
+		F2[Dataset]
+		F3[Dataset Version]
+		F4[Job Run]
+		F5[Task]
+		F6[Export Job]
+		F7[Lineage Event]
+		F8[SQLite today\nPostgres future]
+	end
+
+	A1 --> D2
+	A2 --> D2
+
+	B1 --> B2
+	B2 --> B3
+	B4 --> B3
+	B3 --> C3
+	C4 --> C3
+	C1 --> C2
+	C2 --> D1
+	C3 --> D1
+
+	D1 --> D2
+	D1 --> D3
+	D1 -. adjacent evolution .-> D4
+
+	D2 --> E1
+	D2 --> E2
+	D2 --> E3
+	D3 --> E1
+	D3 --> E2
+	D3 --> E4
+	D4 --> E1
+	D4 --> E2
+	D4 --> E3
+	D4 --> E4
+
+	D1 --> F1
+	D1 --> F2
+	D1 --> F3
+	D1 --> F4
+	D1 --> F5
+	D1 --> F6
+	D1 --> F7
+	F1 --- F8
+	F2 --- F8
+	F3 --- F8
+	F4 --- F8
+	F5 --- F8
+	F6 --- F8
+	F7 --- F8
+
+	E1 --> B3
+	E2 --> B3
+	E4 --> B3
+```
+
+### 12.1 这张图要表达的重点
+
+这张图想表达的，不是“系统里有哪些技术名词”，而是以下四个核心事实：
+
+1. 输入是 bounded dataset，所以这是 batch processing 而不是在线事务系统
+2. orchestration、runtime injection、workflow logic 和 data plane 是分层设计的
+3. 批处理产出的是可消费的数据资产，而不是一次性计算结果
+4. metadata 把 job 提升成了长期可治理、可重跑、可演进的平台能力
+
+### 12.2 如果要放到 PPT，可以删减成的短标题
+
+- 左侧：Bounded Input
+- 中间：Orchestration + Workflow
+- 右侧：Query / Search / Export Assets
+- 下方：Metadata / Lineage / Versioning
