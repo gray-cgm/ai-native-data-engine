@@ -5,6 +5,8 @@ import { MainLayout } from './shared/layouts/main-layout'
 const OverviewPage = lazy(() => import('./modules/overview/pages/overview.page'))
 const DatasetListPage = lazy(() => import('./modules/catalog/pages/dataset-list.page'))
 const DatasetDetailPage = lazy(() => import('./modules/catalog/pages/dataset-detail.page'))
+const RequirementListPage = lazy(() => import('./modules/requirements/pages/requirement-list.page'))
+const RequirementDetailPage = lazy(() => import('./modules/requirements/pages/requirement-detail.page'))
 const DistributionPage = lazy(() => import('./modules/explorer/pages/distribution.page'))
 const SearchPage = lazy(() => import('./modules/explorer/pages/search.page'))
 const TaskBoardPage = lazy(() => import('./modules/operations/pages/task-board.page'))
@@ -20,6 +22,8 @@ export const routes: RouteObject[] = [
       { path: '/', element: <OverviewPage /> },
       { path: '/catalog', element: <DatasetListPage /> },
       { path: '/catalog/:datasetId', element: <DatasetDetailPage /> },
+      { path: '/requirements', element: <RequirementListPage /> },
+      { path: '/requirements/:id', element: <RequirementDetailPage /> },
       { path: '/explorer', element: <DistributionPage /> },
       { path: '/explorer/search', element: <SearchPage /> },
       { path: '/ops', element: <TaskBoardPage /> },

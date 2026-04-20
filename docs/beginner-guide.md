@@ -752,6 +752,7 @@ make sdk-demo
 - Tasks
 - Workspaces
 - Exports
+- **Requirements（需求管理）**
 
 这些都属于**应用层**，不是查询引擎本身。查询引擎只负责把数据读出来，真正的页面、检索体验、导出运营和工作流入口属于上层产品能力。
 
@@ -823,6 +824,7 @@ Dagster 在这里不是一个“为了有编排而有编排”的工具。
 - 看 query
 - 看 search
 - 看 export
+- 跑 `make req-demo` 创建 Demo 需求，看 requirements 列表
 
 ## 第二步：理解数据资产模型
 重点看：
@@ -866,5 +868,252 @@ Dagster 在这里不是一个“为了有编排而有编排”的工具。
 > 如何在一台笔记本上，用正确的数据系统思维，搭出一个面向自动驾驶数据闭环的本地 DataLake 工作台。
 
 如果你理解了这件事，后面无论是走向团队版还是企业版，都会自然很多。
+
+---
+
+# 22. 需求管理系统是什么？
+
+前面几节讲的是数据平台的底层能力：采集、物化、查询、检索、导出。
+但在真实的自动驾驶项目里，还有一个更上层的问题：
+
+> **数据是怎么来的？谁提出来的？做了哪些任务？最后有没有被验收？**
+
+这就是需求管理系统要解决的问题。
+
+## 22.1 为什么需要需求管理？
+
+在没有系统的情况下，典型的混乱是：
+
+- 算法工程师口头或用飞书提需求，数据团队不清楚哪些在做、哪些做完了
+- 采集任务和标注任务各自维护进度，没有统一状态视图
+- 数据交付后没有签收流程，"做完了"全靠人工确认
+- 遇到模型问题，回溯不了数据需求链路
+
+需求管理系统把这条链路变成可跟踪的结构化流程：
+
+```
+需求提出  →  评审打合  →  拆解为数据任务
+                              ↓
+             采集作业  →  标注任务  →  流水线运行
+                              ↓
+                         签收交付（Sign-off）
+```
+
+## 22.2 核心概念
+
+| 概念             | 说明                                                           |
+| ---------------- | -------------------------------------------------------------- |
+| **Requirement**  | 由算法/产品/DRE 提出的数据需求，描述需要什么场景的数据         |
+| **DataTask**     | 从需求拆解出来的具体数据工作，如采集/标注/流水线               |
+| **Sign-off**     | 大数据团队对 DataTask 的审批动作，批准后任务才能进入执行状态   |
+| **scene_tags**   | 描述目标场景的标签，如 `["夜间", "十字路口", "VRU"]`           |
+| **vehicle_tags** | 适用车型标签，如 `["L4", "乘用车"]`                           |
+
+需求状态流转：
+
+```
+draft  →  pending_review  →  approved  →  in_progress  →  completed
+                                                        ↘  cancelled
+```
+
+Sign-off 状态流转：
+
+```
+pending  →  approved  （任务变为 in_progress）
+         →  rejected  （任务变为 blocked，等待需求方修改）
+```
+
+## 22.3 系统架构与三层设计
+
+需求管理系统遵循项目的标准三层设计：
+
+- **API 层**（FastAPI）：领域逻辑与 SQLite 持久化，路径前缀 `/api/v1/requirements/*`
+- **BFF 层**（Koa.js）：ViewModel 聚合与分页，路径前缀 `/api/requirements/*`
+- **Web 层**（React）：需求列表页（`/requirements`）和详情页（`/requirements/:id`）
+
+在 Web 工作台的左侧导航栏中，你会看到 📋 **Requirements** 入口。
+
+---
+
+# 23. 需求管理系统快速上手
+
+## 23.1 前置条件
+
+确保 API 服务已启动：
+
+```bash
+make dev-api
+```
+
+新开一个终端，验证 API 正常：
+
+```bash
+curl http://localhost:8000/api/v1/requirements/stats
+# 应返回 {"total":0,...}
+```
+
+## 23.2 创建 Demo 需求与数据任务
+
+```bash
+make req-demo
+```
+
+这个命令会自动创建 3 条自动驾驶场景的 Demo 需求，以及各自的数据任务：
+
+| 需求                             | 优先级 | 任务数 |
+| -------------------------------- | ------ | ------ |
+| 夜间十字路口 VRU Hard-Case 补采  | high   | 3      |
+| 隧道入口强光鬼影场景数据采集     | medium | 2      |
+| 雨天高速切入 Corner Case 闭环    | high   | 2      |
+
+每条需求包含：场景标签、车型标签、预估数据量；每个任务包含：类型（采集/标注/流水线）、负责人、目标数据量。
+
+## 23.3 查看需求列表
+
+```bash
+make req-list
+```
+
+输出示例：
+
+```
+────────────────────────────────────────────────────────────────────────────────
+需求列表  (共 3 条)
+────────────────────────────────────────────────────────────────────────────────
+#   优先级     状态           任务数 标题
+────────────────────────────────────────────────────────────────────────────────
+1   high     draft          3      夜间十字路口 VRU Hard-Case 补采
+2   medium   draft          2      隧道入口强光鬼影场景数据采集
+3   high     draft          2      雨天高速切入 Corner Case 闭环
+────────────────────────────────────────────────────────────────────────────────
+```
+
+## 23.4 查看统计看板
+
+```bash
+make req-stats
+```
+
+输出按状态、优先级、来源分组的聚合统计：
+
+```
+────────────────────────────────────
+需求统计
+────────────────────────────────────
+  总计: 3
+
+  按状态:
+    draft                3
+
+  按优先级:
+    high                 2
+    medium               1
+
+  按来源:
+    algorithm            1
+    dre                  1
+    product              1
+────────────────────────────────────
+```
+
+## 23.5 审批数据任务（Sign-off）
+
+```bash
+make req-sign-off
+```
+
+这会取首个 `pending` 状态的 DataTask，执行 approve 操作。
+审批后任务状态变为 `in_progress`，sign_off_status 变为 `approved`。
+
+## 23.6 用 curl 直接调用 API
+
+```bash
+# 查看所有需求
+curl http://localhost:8000/api/v1/requirements
+
+# 按优先级筛选
+curl "http://localhost:8000/api/v1/requirements?priority=high"
+
+# 按状态筛选
+curl "http://localhost:8000/api/v1/requirements?status=draft"
+
+# 关键词搜索
+curl "http://localhost:8000/api/v1/requirements?keyword=夜间"
+
+# 查看统计
+curl http://localhost:8000/api/v1/requirements/stats
+
+# 获取需求详情（含数据任务列表）
+curl http://localhost:8000/api/v1/requirements/<id>
+
+# 创建新需求
+curl -X POST http://localhost:8000/api/v1/requirements \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "新场景补采",
+    "source": "algorithm",
+    "dre_owner": "you@example.com",
+    "priority": "medium",
+    "scene_tags": ["雨天", "夜间"]
+  }'
+
+# 审批 DataTask
+curl -X POST http://localhost:8000/api/v1/data-tasks/<task_id>/sign-off \
+  -H 'Content-Type: application/json' \
+  -d '{"approved": true, "sign_off_by": "admin", "comment": "LGTM"}'
+```
+
+## 23.7 在 Web 工作台里使用需求管理
+
+同时启动 API、BFF 和 Web 服务：
+
+```bash
+# 终端 1
+make dev-api
+
+# 终端 2
+make dev-bff
+
+# 终端 3
+make dev-web
+```
+
+打开 `http://localhost:3000`，在左侧导航栏点击 📋 **Requirements**，你会看到：
+
+- **统计卡片区**：总计、按状态分布（Draft / In Progress / Completed）、按优先级分布
+- **筛选栏**：状态下拉、优先级下拉、标题关键词搜索
+- **需求列表**：优先级颜色标签、状态 Badge、场景标签 chip、任务数
+
+点击任意一行进入**需求详情页**，你会看到：
+
+- 需求基本信息卡（状态、优先级、DRE负责人、预估数据量等）
+- 描述文字 + 场景标签 + 车型标签
+- 数据任务列表，含签收状态 Badge
+- 对 `pending` 签收状态的任务显示 **Approve / Reject** 按钮，点击即完成签收闭环
+
+---
+
+# 24. 需求管理与数据闭环的关系
+
+需求管理系统不是独立的，它是整个数据闭环中"人"的那一层入口。
+
+```
+算法工程师发现模型缺陷
+        ↓
+在需求管理系统提交 Requirement（描述需要什么场景、多少数据）
+        ↓
+数据团队拆解为 DataTask（采集/标注/流水线）
+        ↓
+大数据 Sign-off 审批后任务进入执行
+        ↓
+数据采集 / 标注 / 流水线运行，结果写入 DataLake（Parquet/Lance/DuckDB）
+        ↓
+通过 Platform API / Web / SDK 验证数据质量
+        ↓
+完成签收，需求状态 → completed，回流训练闭环
+```
+
+这就是为什么这个项目叫 **AI Native Data Engine**：
+数据不是被动存储的，而是由需求驱动、经过完整闭环流程主动生产出来的。
 
 ---

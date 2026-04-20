@@ -6,7 +6,7 @@ COMPOSE_SERVICES := postgres dagster-user-code dagster-webserver dagster-daemon 
 APP_PORTS := $(WEB_PORT) $(BFF_PORT) $(API_PORT) $(DAGSTER_PORT) $(POSTGRES_PORT) $(JUPYTER_PORT) $(SUPERSET_PORT)
 COLIMA_MOUNT_EXISTS := $(shell colima ssh -- test -d "$(HOST_WORKSPACE_DIR)" >/dev/null 2>&1 && echo yes || echo no)
 
-.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance stream-demo export-parquet export-csv export-jsonl sdk-demo clean clean-dev-data
+.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance stream-demo export-parquet export-csv export-jsonl sdk-demo req-demo req-list req-stats req-sign-off clean clean-dev-data
 
 setup: check-tools check-docker
 	@if [ ! -f .env ]; then \
@@ -160,6 +160,25 @@ export-jsonl:
 
 sdk-demo:
 	uv run --package ad-sdk python -c "from ad_sdk import ADEngineClient; c = ADEngineClient(); print(c.get_scenario_summary())"
+
+
+# ── 需求管理系统 demo scripts ────────────────────────────────────────────────
+
+# 创建 demo 需求 + 数据任务（需要 API 已启动：make dev-api）
+req-demo:
+	uv run --package api python -m src.scripts.requirements_demo seed
+
+# 列出所有需求
+req-list:
+	uv run --package api python -m src.scripts.requirements_demo list
+
+# 查看需求统计
+req-stats:
+	uv run --package api python -m src.scripts.requirements_demo stats
+
+# 对首个 pending 任务执行 approve
+req-sign-off:
+	uv run --package api python -m src.scripts.requirements_demo sign-off
 
 
 clean:

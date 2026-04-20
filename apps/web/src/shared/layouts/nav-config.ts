@@ -21,6 +21,11 @@ export const navGroups: NavGroup[] = [
     items: [{ label: 'Datasets', path: '/catalog' }],
   },
   {
+    label: 'Requirements',
+    icon: '📋',
+    items: [{ label: 'Requirements', path: '/requirements' }],
+  },
+  {
     label: 'Explorer',
     icon: '🔍',
     items: [
