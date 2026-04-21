@@ -1,0 +1,246 @@
+.pipeline-eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+/* ── Top summary stat row ──────────────────────────────────── */
+
+.pipeline-summary-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+/* ── Two-column monitor grid ───────────────────────────────── */
+
+.pipeline-monitor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Section card ──────────────────────────────────────────── */
+
+.pipeline-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pipeline-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pipeline-section-header h3 {
+  margin: 0;
+}
+
+.pipeline-section-footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid #edf2f7;
+}
+
+.pipeline-external-link,
+.pipeline-tool-link {
+  font-size: 13px;
+  color: #1f4fd6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.pipeline-external-link:hover,
+.pipeline-tool-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Header action button ──────────────────────────────────── */
+
+.pipeline-dagster-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: #183fcb;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.pipeline-dagster-btn:hover {
+  background: #1535b0;
+}
+
+/* ── Empty / hint states ───────────────────────────────────── */
+
+.pipeline-empty {
+  font-size: 13px;
+  margin: 0;
+}
+
+.pipeline-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pipeline-hint {
+  font-size: 13px;
+}
+
+.pipeline-hint code {
+  font-family: monospace;
+  background: #edf2fb;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* ── Runs table ────────────────────────────────────────────── */
+
+.pipeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pipeline-table th {
+  text-align: left;
+  padding: 8px 10px;
+  background: #f5f7fa;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #e8edf4;
+}
+
+.pipeline-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #f0f4f9;
+  vertical-align: middle;
+}
+
+.pipeline-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pipeline-job-name {
+  font-weight: 500;
+  color: #1e3a5f;
+}
+
+.pipeline-run-id {
+  font-family: monospace;
+  font-size: 12px;
+  color: #8a9bb5;
+}
+
+.pipeline-batch-num {
+  font-weight: 600;
+  color: #41566f;
+}
+
+/* ── Streaming stats row ───────────────────────────────────── */
+
+.pipeline-stream-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* ── Scene distribution bar chart ─────────────────────────── */
+
+.pipeline-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pipeline-dist-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.pipeline-dist-label {
+  color: #1e3a5f;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-dist-bar-wrap {
+  height: 10px;
+  border-radius: 999px;
+  background: #e8edf4;
+  overflow: hidden;
+}
+
+.pipeline-dist-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2175ff, #4f9bff);
+  min-width: 4px;
+  transition: width 0.4s ease;
+}
+
+.pipeline-dist-count {
+  text-align: right;
+  color: #6b7280;
+}
+
+/* ── Batch history table area ──────────────────────────────── */
+
+.pipeline-batch-history {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Error state ───────────────────────────────────────────── */
+
+.pipeline-error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+
+@media (max-width: 1280px) {
+  .pipeline-summary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .pipeline-monitor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-summary-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pipeline-stream-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pipeline-dist-row {
+    grid-template-columns: 100px minmax(0, 1fr) 36px;
+  }
+}

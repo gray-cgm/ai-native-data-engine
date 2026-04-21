@@ -44,7 +44,7 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Pipelines',
     icon: '🔄',
-    items: [{ label: 'Run History', path: '/pipelines' }],
+    items: [{ label: 'Pipeline Monitor', path: '/pipelines' }],
   },
   {
     label: 'Tools',

@@ -2,7 +2,7 @@ import streamingHandler from '../handlers/streamingHandler.js'
 import { defineRoute } from './route-types.js'
 import { buildOutputSchema } from './schema.js'
 
-const route = defineRoute({
+const bootstrapRoute = defineRoute({
   method: 'post',
   path: '/streaming/bootstrap',
   validate: {
@@ -18,4 +18,20 @@ const route = defineRoute({
   handler: streamingHandler.create,
 })
 
-export default route
+const summaryRoute = defineRoute({
+  method: 'get',
+  path: '/streaming/summary',
+  validate: {
+    output: buildOutputSchema(),
+  },
+  meta: {
+    swagger: {
+      summary: 'Get streaming pipeline summary',
+      description: 'Returns event counts, batch summaries, and scene distribution for the local streaming pipeline.',
+      tags: ['streaming'],
+    },
+  },
+  handler: streamingHandler.getSummary,
+})
+
+export default [bootstrapRoute, summaryRoute]

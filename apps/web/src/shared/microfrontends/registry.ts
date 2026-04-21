@@ -28,6 +28,13 @@ export const toolRegistry: ToolDescriptor[] = [
       label: 'Dagster',
     },
     notes: ['Current shell uses direct iframe embedding in local dev.', 'Production should route Dagster through a platform gateway for shared auth and audit headers.'],
+    quickLinks: [
+      { label: 'Asset catalog', path: '/asset-groups' },
+      { label: 'Run history', path: '/runs' },
+      { label: 'Sensors', path: '/sensors' },
+      { label: 'Schedules', path: '/schedules' },
+    ],
+    showLiveRuns: true,
   },
   {
     id: 'superset',
@@ -51,6 +58,12 @@ export const toolRegistry: ToolDescriptor[] = [
       label: 'Superset',
     },
     notes: ['Superset often needs frame and auth hardening before production embedding.', 'Recommended production shape is gateway proxy plus token exchange for embedded sessions.'],
+    quickLinks: [
+      { label: 'Dashboards', path: '/dashboard/list' },
+      { label: 'SQL Lab', path: '/sqllab' },
+      { label: 'Charts', path: '/chart/list' },
+      { label: 'Datasets', path: '/tablemodelview/list' },
+    ],
   },
   {
     id: 'jupyter',
@@ -73,6 +86,10 @@ export const toolRegistry: ToolDescriptor[] = [
       label: 'Jupyter',
     },
     notes: ['The local compose service already mounts the repo into the notebook workspace.', 'Production should isolate kernels per user or per workspace boundary.'],
+    quickLinks: [
+      { label: 'Notebooks', path: '/lab/tree' },
+      { label: 'File browser', path: '/lab' },
+    ],
   },
 ]
 

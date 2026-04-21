@@ -7,6 +7,11 @@ export interface ToolRouteDescriptor {
   label: string
 }
 
+export interface ToolQuickLink {
+  label: string
+  path: string
+}
+
 export interface ToolDescriptor {
   id: string
   name: string
@@ -25,4 +30,8 @@ export interface ToolDescriptor {
   useCases: string[]
   route: ToolRouteDescriptor
   notes?: string[]
+  /** Deep-links into specific sections of the tool */
+  quickLinks?: ToolQuickLink[]
+  /** When true, the workspace sidebar fetches live run data from the platform */
+  showLiveRuns?: boolean
 }
