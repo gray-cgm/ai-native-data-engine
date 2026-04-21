@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Alert, Button, Card } from 'antd'
+import { ExportOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -13,6 +15,7 @@ export default function DatasetListPage() {
   const fetcher = useCallback(() => fetchDatasets(), [])
   const { data, state, error, refetch } = useQuery(fetcher, {
     isEmpty: (d) => (d as DatasetItem[]).length === 0,
+    cacheKey: 'datasets',
   })
   const [exporting, setExporting] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -50,20 +53,15 @@ export default function DatasetListPage() {
         />
       )}
       {errorMessage && (
-        <div
-          style={{
-            backgroundColor: '#f8d7da',
-            border: '1px solid #f5c6cb',
-            color: '#721c24',
-            padding: 'var(--space-md)',
-            borderRadius: '4px',
-            marginBottom: 'var(--space-md)',
-          }}
-        >
-          <p style={{ margin: 0 }}>{errorMessage}</p>
-        </div>
+        <Alert
+          message={errorMessage}
+          type="error"
+          closable
+          onClose={() => setErrorMessage(null)}
+          style={{ marginBottom: 16 }}
+        />
       )}
-      <div className="card">
+      <Card>
         {state === 'empty' ? (
           <p className="text-muted">No datasets found. Run ingestion to get started.</p>
         ) : (
@@ -83,12 +81,15 @@ export default function DatasetListPage() {
                 key: '_action',
                 header: 'Action',
                 render: (row: DatasetItem) => (
-                  <button
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<ExportOutlined />}
                     onClick={() => handleExport(row.dataset_id)}
-                    disabled={exporting === row.dataset_id}
+                    loading={exporting === row.dataset_id}
                   >
-                    {exporting === row.dataset_id ? 'Exporting...' : 'Export'}
-                  </button>
+                    Export
+                  </Button>
                 ),
               },
             ]}
@@ -97,8 +98,7 @@ export default function DatasetListPage() {
             emptyText="No datasets found."
           />
         )}
-      </div>
+      </Card>
     </PageContainer>
   )
 }
-

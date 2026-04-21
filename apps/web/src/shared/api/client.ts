@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:3100/api'
+const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const inflightGetRequests = new Map<string, Promise<unknown>>()
 
 type ApiEnvelope<T> = {

@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { Button, Tag, Space } from 'antd'
+import { LinkOutlined } from '@ant-design/icons'
 import type { ToolDescriptor } from '@/shared/microfrontends/types'
 
 interface ToolCardProps {
@@ -17,8 +19,8 @@ export function ToolCard({ tool }: ToolCardProps) {
       </div>
 
       <div className="tool-card-meta">
-        <span className="tool-chip">{tool.category}</span>
-        <span className="tool-chip">{tool.integrationMode}</span>
+        <Tag color="blue">{tool.category}</Tag>
+        <Tag>{tool.integrationMode}</Tag>
       </div>
 
       <p className="tool-card-description">{tool.description}</p>
@@ -31,14 +33,14 @@ export function ToolCard({ tool }: ToolCardProps) {
         ))}
       </div>
 
-      <div className="tool-card-actions">
-        <Link className="tool-link-button" to={tool.route.path}>
-          Open workspace
+      <Space className="tool-card-actions">
+        <Link to={tool.route.path}>
+          <Button type="primary">Open workspace</Button>
         </Link>
-        <a className="tool-link-secondary" href={tool.baseUrl} target="_blank" rel="noreferrer">
+        <Button type="default" icon={<LinkOutlined />} href={tool.baseUrl} target="_blank" rel="noreferrer">
           Open source app
-        </a>
-      </div>
+        </Button>
+      </Space>
     </article>
   )
 }

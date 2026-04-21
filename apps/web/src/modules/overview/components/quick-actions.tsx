@@ -1,4 +1,15 @@
 import { Link } from 'react-router-dom'
+import { Button, Card, Space, Typography } from 'antd'
+import {
+  ThunderboltOutlined,
+  CloudOutlined,
+  DatabaseOutlined,
+  BarChartOutlined,
+  SearchOutlined,
+  ExportOutlined,
+} from '@ant-design/icons'
+
+const { Title } = Typography
 
 interface QuickActionsProps {
   onRunScenario: () => void
@@ -9,20 +20,30 @@ interface QuickActionsProps {
 
 export function QuickActions({ onRunScenario, onRunStreaming, runningScenario, runningStreaming }: QuickActionsProps) {
   return (
-    <div className="card">
-      <h3>Quick Actions</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
-        <button type="button" className="nav-item" onClick={onRunScenario} disabled={runningScenario}>
+    <Card title="Quick Actions">
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Button
+          block
+          type="primary"
+          icon={<ThunderboltOutlined />}
+          onClick={onRunScenario}
+          loading={runningScenario}
+        >
           {runningScenario ? 'Running Night Intersection Triage...' : 'Run Night Intersection Triage'}
-        </button>
-        <button type="button" className="nav-item" onClick={onRunStreaming} disabled={runningStreaming}>
+        </Button>
+        <Button
+          block
+          icon={<CloudOutlined />}
+          onClick={onRunStreaming}
+          loading={runningStreaming}
+        >
           {runningStreaming ? 'Running Local Streaming Demo...' : 'Run Local Streaming Demo'}
-        </button>
-        <Link to="/catalog" className="nav-item">Browse Datasets</Link>
-        <Link to="/explorer" className="nav-item">Explore Distribution</Link>
-        <Link to="/explorer/search" className="nav-item">Search Samples</Link>
-        <Link to="/ops/exports" className="nav-item">View Exports</Link>
-      </div>
-    </div>
+        </Button>
+        <Link to="/catalog"><Button block type="text" icon={<DatabaseOutlined />}>Browse Datasets</Button></Link>
+        <Link to="/explorer"><Button block type="text" icon={<BarChartOutlined />}>Explore Distribution</Button></Link>
+        <Link to="/explorer/search"><Button block type="text" icon={<SearchOutlined />}>Search Samples</Button></Link>
+        <Link to="/ops/exports"><Button block type="text" icon={<ExportOutlined />}>View Exports</Button></Link>
+      </Space>
+    </Card>
   )
 }

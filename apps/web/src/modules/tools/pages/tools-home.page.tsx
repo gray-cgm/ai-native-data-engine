@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { Button } from 'antd'
+import { RocketOutlined } from '@ant-design/icons'
 import { PageContainer } from '@/shared/components/page-container'
 import { StatCard } from '@/shared/components/stat-card'
 import { toolRegistry } from '@/shared/microfrontends/registry'
@@ -33,8 +35,10 @@ export default function ToolsHomePage() {
       title="Platform Tools"
       description="A microfrontend engine for integrating orchestration, BI, and notebook tools into one data platform shell."
       actions={
-        <Link className="tool-link-button" to="/tools/dagster">
-          Launch first workspace
+        <Link to="/tools/dagster">
+          <Button type="primary" icon={<RocketOutlined />}>
+            Launch first workspace
+          </Button>
         </Link>
       }
     >

@@ -1,21 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate, Outlet } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { KeepAliveOutlet } from '../components/keep-alive-outlet'
 import { navGroups } from './nav-config'
 import { LayoutHeader } from './components/layout-header'
 import { LayoutSidebar } from './components/layout-sidebar'
 import { LayoutMicroMenu } from './components/layout-micro-menu'
+import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
+import { FloatButton } from 'antd'
 import '../../styles/main-layout.css'
 
 export function MainLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [collapseMicroApp, setCollapseMicroApp] = useState(false)
-  const [collapseMenu, setCollapseMenu] = useState(false)
+  const [collapseApp, setCollapseApp] = useState(
+    localStorage.getItem('collapseApp') !== 'false',
+  )
+  const [collapseMenu, setCollapseMenu] = useState(
+    localStorage.getItem('collapseMenu') === 'true',
+  )
   const [fullscreen, setFullscreen] = useState(false)
   const [activeGroupIndex, setActiveGroupIndex] = useState(0)
 
-  // 根据当前路由自动选中对应的模块
+  // Whether the settings page is currently active
+  const isSettingsActive = location.pathname === '/settings' || location.pathname.startsWith('/settings/')
+
+  // Auto-select module based on current route
   useEffect(() => {
+    if (isSettingsActive) {
+      setActiveGroupIndex(-1)
+      return
+    }
     for (let i = 0; i < navGroups.length; i++) {
       for (const item of navGroups[i].items) {
         if (
@@ -27,113 +41,136 @@ export function MainLayout() {
         }
       }
     }
-  }, [location.pathname])
+  }, [location.pathname, isSettingsActive])
 
-  // 当前选中模块
-  const activeGroup = navGroups[activeGroupIndex]
+  // Current active module (undefined when settings is active)
+  const activeGroup = activeGroupIndex >= 0 ? navGroups[activeGroupIndex] : undefined
 
-  // 当前活跃的菜单标签
-  const currentMenuLabel = useMemo(() => {
+  // Current active menu label
+  const activeMenuLabel = useMemo(() => {
     return activeGroup?.label ?? 'Dashboard'
   }, [activeGroup])
 
-  // 当前模块下的菜单项
+  // Current module's side items
   const activeSideItems = useMemo(() => {
     return activeGroup?.items ?? []
   }, [activeGroup])
 
-  // 处理菜单项点击
+  // xproduct logic: hasMicroAppMenu = has side menu items
+  const hasSideMenu = activeSideItems.length > 0
+
+  // xproduct logic: onlyOneSideMenu = single item, no need for sidebar
+  const onlyOneSideMenu = activeSideItems.length <= 1
+
+  // xproduct sidebar visibility:
+  //   width = hasMicroAppMenu && !fullscreen && !onlyOneSideMenu ? 200 : 0
+  //   collapsedWidth = !activeMicroAppConfig || fullscreen || onlyOneSideMenu ? 0 : 50
+  const showSidebar = hasSideMenu && !fullscreen && !onlyOneSideMenu
+
+  // Handle nav item click
   const handleNavItemClick = (path: string) => {
     navigate(path)
   }
 
-  // 处理模块切换
+  // Handle module switch
   const handleGroupChange = (index: number) => {
     setActiveGroupIndex(index)
-    // 切换模块时导航到该模块第一个菜单项
     const firstItem = navGroups[index]?.items[0]
     if (firstItem) {
       navigate(firstItem.path)
     }
   }
 
-  // 处理侧边栏折叠
-  const handleToggleMicroApp = () => {
-    setCollapseMicroApp((prev) => !prev)
-    localStorage.setItem('collapseMicroApp', (!collapseMicroApp).toString())
+  // Handle settings click
+  const handleSettingsClick = () => {
+    navigate('/settings')
   }
 
+  // Handle app sidebar collapse (left micro menu) - xproduct setCollapseApp
+  const handleToggleApp = () => {
+    const next = !collapseApp
+    setCollapseApp(next)
+    localStorage.setItem('collapseApp', next.toString())
+  }
+
+  // Handle inner menu collapse - xproduct setCollapseMenu
   const handleToggleMenu = () => {
-    setCollapseMenu((prev) => !prev)
-    localStorage.setItem('collapseMenu', (!collapseMenu).toString())
+    if (!hasSideMenu) return
+    const next = !collapseMenu
+    setCollapseMenu(next)
+    localStorage.setItem('collapseMenu', next.toString())
   }
 
+  // Handle fullscreen toggle
   const handleToggleFullscreen = () => {
     setFullscreen((prev) => !prev)
   }
 
-  // 从本地存储恢复状态
+  // Restore state from localStorage
   useEffect(() => {
-    const savedCollapseMicroApp = localStorage.getItem('collapseMicroApp')
-    if (savedCollapseMicroApp) {
-      setCollapseMicroApp(savedCollapseMicroApp === 'true')
+    const savedCollapseApp = localStorage.getItem('collapseApp')
+    if (savedCollapseApp !== null) {
+      setCollapseApp(savedCollapseApp !== 'false')
     }
-
     const savedCollapseMenu = localStorage.getItem('collapseMenu')
-    if (savedCollapseMenu) {
+    if (savedCollapseMenu !== null) {
       setCollapseMenu(savedCollapseMenu === 'true')
     }
   }, [])
 
   return (
     <div className={`main-layout ${fullscreen ? 'fullscreen' : ''}`}>
-      {/* Header */}
-      {!fullscreen && (
-        <LayoutHeader
-          currentMenuLabel={currentMenuLabel}
-          onToggleMicroApp={handleToggleMicroApp}
-          collapsed={collapseMicroApp}
-          onToggleMenu={handleToggleMenu}
-          collapseMenu={collapseMenu}
-          onToggleFullscreen={handleToggleFullscreen}
-        />
-      )}
+      {/* Header - xproduct: height 50, hidden when fullscreen */}
+      <LayoutHeader
+        currentMenuLabel={activeMenuLabel}
+        onToggleApp={handleToggleApp}
+        collapseApp={collapseApp}
+        onToggleFullscreen={handleToggleFullscreen}
+        onSearchNavigate={handleNavItemClick}
+      />
 
-      {/* Main content area */}
+      {/* Layout body: Sider + Content - xproduct: <Layout> */}
       <div className="main-content">
-        {/* 左侧模块选择器 */}
-        {!fullscreen && (
-          <LayoutMicroMenu
-            groups={navGroups}
-            activeIndex={activeGroupIndex}
-            collapsed={collapseMicroApp}
-            onGroupChange={handleGroupChange}
+        {/* Left Sider - xproduct: <Sider width={125} collapsedWidth={0}> */}
+        <LayoutMicroMenu
+          groups={navGroups}
+          activeIndex={activeGroupIndex}
+          collapsed={fullscreen || collapseApp}
+          onGroupChange={handleGroupChange}
+          settingsActive={isSettingsActive}
+          onSettingsClick={handleSettingsClick}
+        />
+
+        {/* Content area - xproduct: <Content> > <Layout className={styles.contentLayout}> */}
+        <div
+          className="content-wrapper"
+          style={{
+            height: fullscreen ? '100vh' : 'calc(100vh - 50px)',
+          }}
+        >
+          {/* Inner Sider - xproduct: <Sider width={200} collapsedWidth={50}> with Menu inline */}
+          <LayoutSidebar
+            items={activeSideItems}
+            currentPath={location.pathname}
+            collapsed={collapseMenu}
+            visible={showSidebar}
+            onNavClick={handleNavItemClick}
+            onToggleCollapse={handleToggleMenu}
           />
-        )}
 
-        {/* Navigation and content */}
-        <div className="content-wrapper">
-          {/* 当前模块的子菜单 */}
-          {!fullscreen && (
-            <LayoutSidebar
-              items={activeSideItems}
-              currentPath={location.pathname}
-              collapsed={collapseMenu}
-              onNavClick={handleNavItemClick}
-            />
-          )}
-
-          {/* Main outlet */}
-          <main className={`main-outlet ${collapseMenu ? 'menu-collapsed' : ''}`}>
-            <Outlet />
+          {/* Inner Content - xproduct: <Content className={styles.innerContent}> */}
+          <main className="main-outlet">
+            <KeepAliveOutlet />
           </main>
         </div>
       </div>
 
-      {/* Fullscreen button */}
-      <button className="fullscreen-button" onClick={handleToggleFullscreen}>
-        {fullscreen ? '✕' : '⛶'}
-      </button>
+      {/* FloatButton - antd FloatButton with glassmorphism style */}
+      <FloatButton
+        icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+        onClick={handleToggleFullscreen}
+        className="fullscreen-float-btn"
+      />
     </div>
   )
 }

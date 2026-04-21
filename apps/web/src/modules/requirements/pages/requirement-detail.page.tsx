@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { Button, Card, Descriptions, Row, Col, Space, Tag, Typography } from 'antd'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -10,16 +11,18 @@ import { StatusBadge } from '@/shared/components/status-badge'
 import { fetchRequirementDetail, signOffTask } from '../api'
 import type { DataTaskView } from '../api'
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high: 'var(--color-danger)',
-  medium: 'var(--color-warning)',
-  low: 'var(--color-info)',
+const { Text } = Typography
+
+const PRIORITY_TAG_COLORS: Record<string, string> = {
+  high: 'red',
+  medium: 'orange',
+  low: 'blue',
 }
 
 export default function RequirementDetailPage() {
   const { id } = useParams<{ id: string }>()
   const fetcher = useCallback(() => fetchRequirementDetail(id!), [id])
-  const { data, state, error, refetch } = useQuery(fetcher)
+  const { data, state, error, refetch } = useQuery(fetcher, { cacheKey: `requirement:${id}` })
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [signingOff, setSigningOff] = useState<string | null>(null)
 
@@ -47,10 +50,10 @@ export default function RequirementDetailPage() {
   if (!data) {
     return (
       <PageContainer title="Requirement Not Found">
-        <div className="card">
+        <Card>
           <p className="text-muted">Requirement not found.</p>
-          <Link to="/requirements"><button>Back to Requirements</button></Link>
-        </div>
+          <Link to="/requirements"><Button>Back to Requirements</Button></Link>
+        </Card>
       </PageContainer>
     )
   }
@@ -60,7 +63,7 @@ export default function RequirementDetailPage() {
       title={data.title}
       description={`Requirement ${data.id.slice(0, 8)}… · ${data.source} · ${data.priority}`}
       actions={
-        <Link to="/requirements"><button>Back to list</button></Link>
+        <Link to="/requirements"><Button>Back to list</Button></Link>
       }
     >
       {successMessage && (
@@ -72,115 +75,68 @@ export default function RequirementDetailPage() {
       )}
 
       {/* Requirement Info Card */}
-      <div className="grid-two" style={{ marginBottom: 'var(--space-2xl)' }}>
-        <div className="card">
-          <h3>Requirement Info</h3>
-          <table>
-            <tbody>
-              <tr>
-                <td style={{ fontWeight: 600, width: 160 }}>Status</td>
-                <td><StatusBadge status={data.status} /></td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 600 }}>Priority</td>
-                <td>
-                  <span style={{ color: PRIORITY_COLORS[data.priority] ?? 'inherit', fontWeight: 600 }}>
-                    {data.priority}
-                  </span>
-                </td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 600 }}>Source</td>
-                <td>{data.source}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 600 }}>DRE Owner</td>
-                <td>{data.dre_owner}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 600 }}>Due Date</td>
-                <td>{data.due_date ?? '—'}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 600 }}>Est. Volume</td>
-                <td>{data.estimated_data_volume != null ? data.estimated_data_volume.toLocaleString() : '—'}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 600 }}>Created</td>
-                <td>{new Date(data.created_at).toLocaleString()}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 600 }}>Updated</td>
-                <td>{new Date(data.updated_at).toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="Requirement Info">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Status">
+                <StatusBadge status={data.status} />
+              </Descriptions.Item>
+              <Descriptions.Item label="Priority">
+                <Tag color={PRIORITY_TAG_COLORS[data.priority] ?? 'default'}>
+                  {data.priority}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Source">{data.source}</Descriptions.Item>
+              <Descriptions.Item label="DRE Owner">{data.dre_owner}</Descriptions.Item>
+              <Descriptions.Item label="Due Date">{data.due_date ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Est. Volume">
+                {data.estimated_data_volume != null ? data.estimated_data_volume.toLocaleString() : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Created">{new Date(data.created_at).toLocaleString()}</Descriptions.Item>
+              <Descriptions.Item label="Updated">{new Date(data.updated_at).toLocaleString()}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </Col>
 
-        <div className="card">
-          <h3>Description & Tags</h3>
-          <p style={{ lineHeight: 1.7, marginBottom: 'var(--space-lg)' }}>
-            {data.description || <span className="text-muted">No description provided.</span>}
-          </p>
-          {data.target_scene && (
-            <p style={{ marginBottom: 'var(--space-md)' }}>
-              <strong>Target Scene:</strong> {data.target_scene}
+        <Col xs={24} lg={12}>
+          <Card title="Description & Tags">
+            <p style={{ lineHeight: 1.7, marginBottom: 16 }}>
+              {data.description || <Text type="secondary">No description provided.</Text>}
             </p>
-          )}
-          <div style={{ marginBottom: 'var(--space-md)' }}>
-            <strong>Scene Tags:</strong>{' '}
-            {(data.scene_tags ?? []).length > 0 ? (
-              (data.scene_tags ?? []).map((tag) => (
-                <span
-                  key={tag}
-                  style={{
-                    display: 'inline-block',
-                    padding: '2px 8px',
-                    marginRight: 4,
-                    marginBottom: 2,
-                    borderRadius: 12,
-                    background: 'var(--color-bg-secondary)',
-                    fontSize: 'var(--font-size-xs)',
-                  }}
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              <span className="text-muted">None</span>
+            {data.target_scene && (
+              <p style={{ marginBottom: 12 }}>
+                <strong>Target Scene:</strong> {data.target_scene}
+              </p>
             )}
-          </div>
-          <div>
-            <strong>Vehicle Tags:</strong>{' '}
-            {(data.vehicle_tags ?? []).length > 0 ? (
-              (data.vehicle_tags ?? []).map((tag) => (
-                <span
-                  key={tag}
-                  style={{
-                    display: 'inline-block',
-                    padding: '2px 8px',
-                    marginRight: 4,
-                    marginBottom: 2,
-                    borderRadius: 12,
-                    background: 'var(--color-bg-secondary)',
-                    fontSize: 'var(--font-size-xs)',
-                  }}
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              <span className="text-muted">None</span>
-            )}
-          </div>
-        </div>
-      </div>
+            <div style={{ marginBottom: 12 }}>
+              <strong>Scene Tags:</strong>{' '}
+              {(data.scene_tags ?? []).length > 0 ? (
+                (data.scene_tags ?? []).map((tag) => (
+                  <Tag key={tag}>{tag}</Tag>
+                ))
+              ) : (
+                <Text type="secondary">None</Text>
+              )}
+            </div>
+            <div>
+              <strong>Vehicle Tags:</strong>{' '}
+              {(data.vehicle_tags ?? []).length > 0 ? (
+                (data.vehicle_tags ?? []).map((tag) => (
+                  <Tag key={tag}>{tag}</Tag>
+                ))
+              ) : (
+                <Text type="secondary">None</Text>
+              )}
+            </div>
+          </Card>
+        </Col>
+      </Row>
 
       {/* Data Tasks */}
-      <div className="card">
-        <h3>Data Tasks ({data.data_tasks.length})</h3>
+      <Card title={`Data Tasks (${data.data_tasks.length})`}>
         {data.data_tasks.length === 0 ? (
-          <p className="text-muted">No data tasks created for this requirement.</p>
+          <Text type="secondary">No data tasks created for this requirement.</Text>
         ) : (
           <DataTable
             columns={[
@@ -209,22 +165,24 @@ export default function RequirementDetailPage() {
                   if (row.sign_off_status !== 'pending') return null
                   const isProcessing = signingOff === row.id
                   return (
-                    <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                      <button
+                    <Space>
+                      <Button
+                        type="primary"
+                        size="small"
                         onClick={() => handleSignOff(row.id, true)}
-                        disabled={isProcessing}
-                        style={{ background: 'var(--color-success)', fontSize: 'var(--font-size-xs)', padding: '4px 8px' }}
+                        loading={isProcessing}
                       >
-                        {isProcessing ? '...' : 'Approve'}
-                      </button>
-                      <button
+                        Approve
+                      </Button>
+                      <Button
+                        danger
+                        size="small"
                         onClick={() => handleSignOff(row.id, false)}
-                        disabled={isProcessing}
-                        style={{ background: 'var(--color-danger)', fontSize: 'var(--font-size-xs)', padding: '4px 8px' }}
+                        loading={isProcessing}
                       >
-                        {isProcessing ? '...' : 'Reject'}
-                      </button>
-                    </div>
+                        Reject
+                      </Button>
+                    </Space>
                   )
                 },
               },
@@ -233,7 +191,7 @@ export default function RequirementDetailPage() {
             rowKey={(row) => row.id}
           />
         )}
-      </div>
+      </Card>
     </PageContainer>
   )
 }

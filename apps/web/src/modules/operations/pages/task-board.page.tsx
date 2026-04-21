@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { Card } from 'antd'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -12,6 +13,7 @@ export default function TaskBoardPage() {
   const fetcher = useCallback(() => fetchTasks(), [])
   const { data, state, error, refetch } = useQuery(fetcher, {
     isEmpty: (d) => (d as TaskItem[]).length === 0,
+    cacheKey: 'tasks',
   })
 
   if (state === 'loading') {
@@ -24,7 +26,7 @@ export default function TaskBoardPage() {
 
   return (
     <PageContainer title="Tasks" description="Track mining, labeling, and review tasks.">
-      <div className="card">
+      <Card>
         {state === 'empty' ? (
           <p className="text-muted">No tasks found.</p>
         ) : (
@@ -44,7 +46,7 @@ export default function TaskBoardPage() {
             emptyText="No tasks found."
           />
         )}
-      </div>
+      </Card>
     </PageContainer>
   )
 }

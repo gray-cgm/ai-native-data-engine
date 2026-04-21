@@ -1,3 +1,6 @@
+import { useMemo } from 'react'
+import { Table } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import type { ReactNode } from 'react'
 
 interface Column<T> {
@@ -13,31 +16,33 @@ interface DataTableProps<T> {
   emptyText?: string
 }
 
-export function DataTable<T>({ columns, data, rowKey, emptyText = 'No data' }: DataTableProps<T>) {
-  if (data.length === 0) {
-    return <p className="text-muted">{emptyText}</p>
-  }
+export function DataTable<T extends Record<string, unknown>>({
+  columns,
+  data,
+  rowKey,
+  emptyText = 'No data',
+}: DataTableProps<T>) {
+  const antdColumns: ColumnsType<T> = useMemo(
+    () =>
+      columns.map((col) => ({
+        key: col.key,
+        title: col.header,
+        dataIndex: col.key,
+        render: col.render
+          ? (_: unknown, record: T) => col.render!(record)
+          : undefined,
+      })),
+    [columns],
+  )
 
   return (
-    <table>
-      <thead>
-        <tr>
-          {columns.map((col) => (
-            <th key={col.key}>{col.header}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((row) => (
-          <tr key={rowKey(row)}>
-            {columns.map((col) => (
-              <td key={col.key}>
-                {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '')}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <Table<T>
+      columns={antdColumns}
+      dataSource={data}
+      rowKey={rowKey}
+      pagination={false}
+      size="middle"
+      locale={{ emptyText }}
+    />
   )
 }

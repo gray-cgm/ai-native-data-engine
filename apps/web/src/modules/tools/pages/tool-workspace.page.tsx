@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Button, Tag, Space } from 'antd'
+import { ReloadOutlined, LinkOutlined } from '@ant-design/icons'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageError } from '@/shared/components/page-error'
 import { StatusBadge } from '@/shared/components/status-badge'
@@ -141,14 +143,19 @@ export default function ToolWorkspacePage() {
       title={tool.name}
       description={tool.summary}
       actions={
+<<<<<<< HEAD
         <div className="tool-actions-inline">
           <button type="button" onClick={handleReload}>
+=======
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => setFrameKey((current) => current + 1)}>
+>>>>>>> b0a2d35 (feat: update ui)
             Reload frame
-          </button>
-          <a href={tool.baseUrl} target="_blank" rel="noreferrer">
+          </Button>
+          <Button type="link" icon={<LinkOutlined />} href={tool.baseUrl} target="_blank" rel="noreferrer">
             Open in new tab
-          </a>
-        </div>
+          </Button>
+        </Space>
       }
     >
       <section className="tool-workspace-grid">
@@ -248,9 +255,9 @@ export default function ToolWorkspacePage() {
               <p className="tools-eyebrow">{tool.category} console</p>
               <h3>{tool.baseUrl}</h3>
             </div>
-            <div className={`tool-frame-status tool-frame-status-${frameState}`}>
+            <Tag color={frameState === 'ready' ? 'success' : frameState === 'delayed' ? 'warning' : 'processing'}>
               {statusLabel}
-            </div>
+            </Tag>
           </div>
 
           <div className="tool-frame-shell">

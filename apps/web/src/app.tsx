@@ -1,8 +1,31 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, useRoutes } from 'react-router-dom'
+import { ConfigProvider, theme } from 'antd'
 import { ErrorBoundary } from '@/shared/components/error-boundary'
 import { apiPost } from '@/shared/api/client'
 import { routes } from './routes'
+
+const antdTheme = {
+  algorithm: theme.defaultAlgorithm,
+  token: {
+    colorPrimary: '#2175ff',
+    colorSuccess: '#52c41a',
+    colorWarning: '#faad14',
+    colorError: '#ff4d4f',
+    colorInfo: '#1677ff',
+    borderRadius: 8,
+    fontFamily:
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  },
+  components: {
+    Table: {
+      headerBg: '#fafafa',
+    },
+    Card: {
+      paddingLG: 24,
+    },
+  },
+}
 
 function AppRoutes() {
   return useRoutes(routes)
@@ -27,14 +50,16 @@ function BootstrapGuard({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <BootstrapGuard>
-          <Suspense fallback={<div className="page-loading">Loading...</div>}>
-            <AppRoutes />
-          </Suspense>
-        </BootstrapGuard>
-      </ErrorBoundary>
-    </BrowserRouter>
+    <ConfigProvider theme={antdTheme}>
+      <BrowserRouter>
+        <ErrorBoundary>
+          <BootstrapGuard>
+            <Suspense fallback={<div className="page-loading">Loading...</div>}>
+              <AppRoutes />
+            </Suspense>
+          </BootstrapGuard>
+        </ErrorBoundary>
+      </BrowserRouter>
+    </ConfigProvider>
   )
 }

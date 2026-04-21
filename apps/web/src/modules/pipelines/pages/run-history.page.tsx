@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+=======
+import { useCallback } from 'react'
+import { Card } from 'antd'
+>>>>>>> b0a2d35 (feat: update ui)
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -9,7 +14,16 @@ import type { RunItem, StreamingBatchSummary, StreamingSummary } from '@/shared/
 import { fetchRuns, fetchStreamingSummary } from '../api'
 import '../pipelines.css'
 
+<<<<<<< HEAD
 const PAGE_SIZE = 8
+=======
+export default function RunHistoryPage() {
+  const fetcher = useCallback(() => fetchRuns(), [])
+  const { data, state, error, refetch } = useQuery(fetcher, {
+    isEmpty: (d) => (d as RunItem[]).length === 0,
+    cacheKey: 'runs',
+  })
+>>>>>>> b0a2d35 (feat: update ui)
 
 // ── Filter fns are module-level so their references are stable ─
 
@@ -102,6 +116,7 @@ function Pagination({
   const range = getPageRange(page, pageCount)
 
   return (
+<<<<<<< HEAD
     <div className="pipeline-pagination">
       <span className="pipeline-pagination-info">{total} total</span>
       <div className="pipeline-pagination-controls">
@@ -432,6 +447,29 @@ export default function RunHistoryPage() {
         <BatchRunsSection runs={runList} loading={runsState === 'loading'} />
         <StreamingSection summary={streaming ?? null} loading={streamState === 'loading'} />
       </div>
+=======
+    <PageContainer title="Pipeline Runs" description="View ingestion, materialization, and export job history.">
+      <Card>
+        {state === 'empty' ? (
+          <p className="text-muted">No pipeline runs found.</p>
+        ) : (
+          <DataTable
+            columns={[
+              { key: 'run_id', header: 'Run ID' },
+              { key: 'job_name', header: 'Job Name' },
+              {
+                key: 'status',
+                header: 'Status',
+                render: (row: RunItem) => <StatusBadge status={row.status} />,
+              },
+            ]}
+            data={data ?? []}
+            rowKey={(row) => row.run_id}
+            emptyText="No pipeline runs found."
+          />
+        )}
+      </Card>
+>>>>>>> b0a2d35 (feat: update ui)
     </PageContainer>
   )
 }

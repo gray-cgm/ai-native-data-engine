@@ -2,12 +2,25 @@
   box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#root {
+  position: relative;
+  height: 100%;
+  width: 100%;
   margin: 0;
+  padding: 0;
+}
+
+body {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
+}
+
+iframe {
+  border: none;
 }
 
 a {
@@ -27,20 +40,6 @@ input {
   background: var(--color-bg-input);
   color: var(--color-text-primary);
   font-size: var(--font-size-base);
-}
-
-button {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-accent-border);
-  background: var(--color-accent);
-  color: white;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-}
-
-button:hover {
-  background: var(--color-accent-hover);
 }
 
 table {

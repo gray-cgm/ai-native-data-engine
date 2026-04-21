@@ -1,59 +1,81 @@
+import type { ComponentType } from 'react'
+import {
+  HomeOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  AppstoreOutlined,
+  FileTextOutlined,
+  FormOutlined,
+  SearchOutlined,
+  PieChartOutlined,
+  ControlOutlined,
+  UnorderedListOutlined,
+  ExportOutlined,
+  SyncOutlined,
+  HistoryOutlined,
+  ToolOutlined,
+  RocketOutlined,
+  BarChartOutlined,
+  CodeOutlined,
+} from '@ant-design/icons'
+
 export interface NavItem {
   label: string
   path: string
+  icon?: ComponentType
 }
 
 export interface NavGroup {
   label: string
-  icon: string
+  icon: ComponentType
   items: NavItem[]
 }
 
 export const navGroups: NavGroup[] = [
   {
     label: 'Overview',
-    icon: '🏠',
-    items: [{ label: 'Overview', path: '/' }],
+    icon: HomeOutlined,
+    items: [{ label: 'Overview', path: '/', icon: DashboardOutlined }],
   },
   {
     label: 'Catalog',
-    icon: '📦',
-    items: [{ label: 'Datasets', path: '/catalog' }],
+    icon: DatabaseOutlined,
+    items: [{ label: 'Datasets', path: '/catalog', icon: AppstoreOutlined }],
   },
   {
     label: 'Requirements',
-    icon: '📋',
-    items: [{ label: 'Requirements', path: '/requirements' }],
+    icon: FileTextOutlined,
+    items: [{ label: 'Requirements', path: '/requirements', icon: FormOutlined }],
   },
   {
     label: 'Explorer',
-    icon: '🔍',
+    icon: SearchOutlined,
     items: [
-      { label: 'Distribution', path: '/explorer' },
-      { label: 'Search', path: '/explorer/search' },
+      { label: 'Distribution', path: '/explorer', icon: PieChartOutlined },
+      { label: 'Search', path: '/explorer/search', icon: SearchOutlined },
     ],
   },
   {
     label: 'Operations',
-    icon: '🏭',
+    icon: ControlOutlined,
     items: [
-      { label: 'Tasks', path: '/ops' },
-      { label: 'Exports', path: '/ops/exports' },
+      { label: 'Tasks', path: '/ops', icon: UnorderedListOutlined },
+      { label: 'Exports', path: '/ops/exports', icon: ExportOutlined },
     ],
   },
   {
     label: 'Pipelines',
-    icon: '🔄',
-    items: [{ label: 'Pipeline Monitor', path: '/pipelines' }],
+    icon: SyncOutlined,
+    items: [{ label: 'Pipeline Monitor', path: '/pipelines', icon: HistoryOutlined }],
   },
   {
     label: 'Tools',
-    icon: '🧩',
+    icon: ToolOutlined,
     items: [
-      { label: 'Tools Hub', path: '/tools' },
-      { label: 'Dagster', path: '/tools/dagster' },
-      { label: 'Superset', path: '/tools/superset' },
-      { label: 'Jupyter', path: '/tools/jupyter' },
+      { label: 'Tools Hub', path: '/tools', icon: AppstoreOutlined },
+      { label: 'Dagster', path: '/tools/dagster', icon: RocketOutlined },
+      { label: 'Superset', path: '/tools/superset', icon: BarChartOutlined },
+      { label: 'Jupyter', path: '/tools/jupyter', icon: CodeOutlined },
     ],
   },
 ]

@@ -1,3 +1,6 @@
+import { Select, Input, Space } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
+
 interface RequirementFiltersProps {
   status: string
   priority: string
@@ -34,49 +37,27 @@ export function RequirementFilters({
   onKeywordChange,
 }: RequirementFiltersProps) {
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
-      <select
+    <Space wrap style={{ marginBottom: 16 }}>
+      <Select
         value={status}
-        onChange={(e) => onStatusChange(e.target.value)}
-        style={{
-          padding: '8px 12px',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--color-border-input)',
-          background: 'var(--color-bg-input)',
-          fontSize: 'var(--font-size-base)',
-          minWidth: 140,
-        }}
-      >
-        {STATUS_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <select
+        onChange={onStatusChange}
+        options={STATUS_OPTIONS}
+        style={{ minWidth: 150 }}
+      />
+      <Select
         value={priority}
-        onChange={(e) => onPriorityChange(e.target.value)}
-        style={{
-          padding: '8px 12px',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--color-border-input)',
-          background: 'var(--color-bg-input)',
-          fontSize: 'var(--font-size-base)',
-          minWidth: 140,
-        }}
-      >
-        {PRIORITY_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <input
+        onChange={onPriorityChange}
+        options={PRIORITY_OPTIONS}
+        style={{ minWidth: 150 }}
+      />
+      <Input
         value={keyword}
         onChange={(e) => onKeywordChange(e.target.value)}
         placeholder="Search by title..."
-        style={{ flex: 1, minWidth: 200 }}
+        prefix={<SearchOutlined />}
+        allowClear
+        style={{ minWidth: 240 }}
       />
-    </div>
+    </Space>
   )
 }

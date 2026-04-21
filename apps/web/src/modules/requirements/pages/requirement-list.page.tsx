@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Card, Pagination, Tag } from 'antd'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -11,10 +12,10 @@ import { RequirementFilters } from '../components/requirement-filters'
 import { fetchRequirements, fetchRequirementStats } from '../api'
 import type { RequirementListItem, RequirementStats } from '../api'
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high: 'var(--color-danger)',
-  medium: 'var(--color-warning)',
-  low: 'var(--color-info)',
+const PRIORITY_TAG_COLORS: Record<string, string> = {
+  high: 'red',
+  medium: 'orange',
+  low: 'blue',
 }
 
 export default function RequirementListPage() {
@@ -35,13 +36,13 @@ export default function RequirementListPage() {
       const payload = d as { items?: unknown[] }
       return (payload?.items?.length ?? 0) === 0
     },
+    cacheKey: 'requirements',
   })
 
-  const { data: statsData } = useQuery(statsFetcher)
+  const { data: statsData } = useQuery(statsFetcher, { cacheKey: 'requirement-stats' })
 
   const items = listData?.items ?? []
   const total = listData?.total ?? 0
-  const totalPages = Math.ceil(total / 20)
 
   if (listState === 'loading') {
     return <PageLoading message="Loading requirements..." />
@@ -58,7 +59,7 @@ export default function RequirementListPage() {
     >
       {statsData && <RequirementStatsBar stats={statsData} />}
 
-      <div className="card">
+      <Card>
         <RequirementFilters
           status={status}
           priority={priority}
@@ -88,9 +89,9 @@ export default function RequirementListPage() {
                   key: 'priority',
                   header: 'Priority',
                   render: (row: RequirementListItem) => (
-                    <span style={{ color: PRIORITY_COLORS[row.priority] ?? 'inherit', fontWeight: 600 }}>
+                    <Tag color={PRIORITY_TAG_COLORS[row.priority] ?? 'default'}>
                       {row.priority}
-                    </span>
+                    </Tag>
                   ),
                 },
                 {
@@ -104,20 +105,7 @@ export default function RequirementListPage() {
                   render: (row: RequirementListItem) => (
                     <span>
                       {(row.scene_tags ?? []).map((tag) => (
-                        <span
-                          key={tag}
-                          style={{
-                            display: 'inline-block',
-                            padding: '2px 8px',
-                            marginRight: 4,
-                            marginBottom: 2,
-                            borderRadius: 12,
-                            background: 'var(--color-bg-secondary)',
-                            fontSize: 'var(--font-size-xs)',
-                          }}
-                        >
-                          {tag}
-                        </span>
+                        <Tag key={tag}>{tag}</Tag>
                       ))}
                     </span>
                   ),
@@ -135,22 +123,20 @@ export default function RequirementListPage() {
               emptyText="No requirements found."
             />
 
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
-                <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                  Previous
-                </button>
-                <span style={{ display: 'flex', alignItems: 'center', fontSize: 'var(--font-size-sm)' }}>
-                  Page {page} of {totalPages}
-                </span>
-                <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-                  Next
-                </button>
+            {total > 20 && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                <Pagination
+                  current={page}
+                  total={total}
+                  pageSize={20}
+                  onChange={(p) => setPage(p)}
+                  showSizeChanger={false}
+                />
               </div>
             )}
           </>
         )}
-      </div>
+      </Card>
     </PageContainer>
   )
 }
