@@ -143,13 +143,8 @@ export default function ToolWorkspacePage() {
       title={tool.name}
       description={tool.summary}
       actions={
-<<<<<<< HEAD
-        <div className="tool-actions-inline">
-          <button type="button" onClick={handleReload}>
-=======
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => setFrameKey((current) => current + 1)}>
->>>>>>> b0a2d35 (feat: update ui)
             Reload frame
           </Button>
           <Button type="link" icon={<LinkOutlined />} href={tool.baseUrl} target="_blank" rel="noreferrer">
