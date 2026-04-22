@@ -11,6 +11,7 @@ export default [
       query: buildListQuerySchema({
         status: Joi.string().optional(),
         taskType: Joi.string().optional(),
+        requirementId: Joi.string().optional(),
       }),
       output: buildOutputSchema(buildPaginatedListSchema(taskSchema)),
     },
@@ -29,6 +30,7 @@ export default [
     validate: {
       query: buildListQuerySchema({
         status: Joi.string().optional(),
+        requirementId: Joi.string().optional(),
       }),
       output: buildOutputSchema(buildPaginatedListSchema(runSchema)),
     },

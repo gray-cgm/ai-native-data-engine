@@ -89,6 +89,31 @@ def run_scenario_triage(
 				'run_id': scenario.run_id,
 				'job_name': config.orchestrator_job_name,
 				'status': scenario.run_status,
+				'requirement_id': config.requirement_id,
+				'operation_task_id': config.review_task_id,
+				'trigger_source': 'requirement',
+				'reason_code': 'requirement_fulfillment',
+				'duration_seconds': float(max(scenario.record_count, 1) * 1.5),
+				'cpu_seconds': float(max(scenario.record_count, 1) * 2.2),
+				'gpu_seconds': 0.0,
+				'input_bytes': int(max(scenario.record_count, 1) * 4_000_000),
+				'output_bytes': int(max(scenario.scenario_clip_count, 1) * 2_000_000),
+				'estimated_cost': round(max(scenario.record_count, 1) * 0.0035, 4),
+				'derived_assets': [
+					{
+						'type': 'dataset_version',
+						'id': config.dataset_version_id,
+					},
+					{
+						'type': 'summary',
+						'uri': scenario.summary_output_uri,
+					},
+					{
+						'type': 'export',
+						'id': config.export_id,
+						'path': scenario.export_output_path,
+					},
+				],
 			}
 		)
 		task = container.metadata.create_task(
@@ -97,6 +122,9 @@ def run_scenario_triage(
 				'title': config.review_task_title,
 				'status': 'done',
 				'task_type': 'scenario-triage',
+				'requirement_id': config.requirement_id,
+				'pipeline_run_id': scenario.run_id,
+				'assignee': operator.display_name if operator else None,
 			}
 		)
 		export_job = container.metadata.create_export_job(

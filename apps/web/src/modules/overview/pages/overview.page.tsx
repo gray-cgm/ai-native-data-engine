@@ -94,10 +94,12 @@ export default function OverviewPage() {
                 </Space>
               </div>
               <div>
-                <Text type="secondary">Privacy Pending </Text>
+                <Text type="secondary">Pipeline Desensitization (Auto) </Text>
                 <Text strong>
-                  {(opsOverview?.modules.find((m) => m.module === 'privacy')?.counts.queued ?? 0) +
-                    (opsOverview?.modules.find((m) => m.module === 'privacy')?.counts.processing ?? 0)}
+                  {payload.runs.filter((r) =>
+                    r.job_name.toLowerCase().includes('privacy') ||
+                    r.job_name.toLowerCase().includes('desensit')
+                  ).length}
                 </Text>
               </div>
             </Space>

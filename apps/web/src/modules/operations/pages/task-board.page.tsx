@@ -25,7 +25,10 @@ export default function TaskBoardPage() {
   }
 
   return (
-    <PageContainer title="Tasks" description="Track mining, labeling, and review tasks.">
+    <PageContainer
+      title="Operations Tasks"
+      description="Human-in-the-loop execution queue across mining, labeling, tagging, checking, and release."
+    >
       <Card>
         {state === 'empty' ? (
           <p className="text-muted">No tasks found.</p>
@@ -35,6 +38,21 @@ export default function TaskBoardPage() {
               { key: 'task_id', header: 'ID' },
               { key: 'title', header: 'Title' },
               { key: 'task_type', header: 'Type' },
+              {
+                key: 'requirement_id',
+                header: 'Requirement',
+                render: (row: TaskItem) => row.requirement_id ?? '—',
+              },
+              {
+                key: 'pipeline_run_id',
+                header: 'Run',
+                render: (row: TaskItem) => row.pipeline_run_id ?? '—',
+              },
+              {
+                key: 'assignee',
+                header: 'Assignee',
+                render: (row: TaskItem) => row.assignee ?? '—',
+              },
               {
                 key: 'status',
                 header: 'Status',

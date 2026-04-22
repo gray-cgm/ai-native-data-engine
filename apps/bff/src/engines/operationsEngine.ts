@@ -22,6 +22,7 @@ async function listExports() {
 export async function queryTasks(query: Query) {
   const status = getString(query.status)
   const taskType = getString(query.taskType)
+  const requirementId = getString(query.requirementId)
   const items = await listTasks()
 
   return applyCollectionQuery<TaskItem>(items, {
@@ -34,14 +35,18 @@ export async function queryTasks(query: Query) {
       if (taskType && item.task_type !== taskType) {
         return false
       }
+      if (requirementId && item.requirement_id !== requirementId) {
+        return false
+      }
       return true
     },
-    searchableText: (item) => `${item.task_id} ${item.title} ${item.status} ${item.task_type}`,
+    searchableText: (item) => `${item.task_id} ${item.title} ${item.status} ${item.task_type} ${item.requirement_id ?? ''} ${item.pipeline_run_id ?? ''} ${item.assignee ?? ''}`,
   })
 }
 
 export async function queryRuns(query: Query) {
   const status = getString(query.status)
+  const requirementId = getString(query.requirementId)
   const items = await listRuns()
 
   return applyCollectionQuery<RunItem>(items, {
@@ -51,9 +56,12 @@ export async function queryRuns(query: Query) {
       if (status && item.status !== status) {
         return false
       }
+      if (requirementId && item.requirement_id !== requirementId) {
+        return false
+      }
       return true
     },
-    searchableText: (item) => `${item.run_id} ${item.job_name} ${item.status}`,
+    searchableText: (item) => `${item.run_id} ${item.job_name} ${item.status} ${item.requirement_id ?? ''} ${item.operation_task_id ?? ''} ${item.trigger_source ?? ''} ${item.reason_code ?? ''}`,
   })
 }
 

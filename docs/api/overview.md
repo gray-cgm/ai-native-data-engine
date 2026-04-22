@@ -110,11 +110,24 @@
 
 ### Operations
 - `GET /tasks`
-  - 列出平台 tasks
+  - 列出运营任务（人工运营与协作任务池）
 - `GET /runs`
-  - 列出 job runs
+  - 列出 pipeline 执行 run（自动化计算执行记录）
 - `GET /exports`
   - 列出 export jobs
+
+语义边界补充：
+
+- `tasks`：面向人机协作执行与管理，包含 mining / labeling / tagging / checking / release 等运营任务。
+- `runs`：面向计算执行与资源消耗，记录 pipeline 的执行过程、产出与成本。
+
+补充：脱敏（privacy / PII）默认作为 pipeline workflow 自动化步骤执行，归入 `runs` 追踪而不是 `tasks` 人工任务池。
+
+推荐为 `runs` 增加需求关联与成本归因字段（后续迭代）：
+
+- requirement_id / operation_task_id / trigger_source / reason_code
+- duration_seconds / cpu_seconds / gpu_seconds / input_bytes / output_bytes / estimated_cost
+- derived_assets（dataset version / index / report / export）
 
 ### Tools (BFF access layer)
 - `GET /tools/registry`

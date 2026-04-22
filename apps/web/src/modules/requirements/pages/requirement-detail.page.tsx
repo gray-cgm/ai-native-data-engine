@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Button, Card, Descriptions, Row, Col, Space, Tag, Typography } from 'antd'
-import { ExperimentOutlined, SearchOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ExperimentOutlined, SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -90,6 +90,11 @@ export default function RequirementDetailPage() {
           <Link to={miningHref}>
             <Button icon={<ExperimentOutlined />}>
               Open mining
+            </Button>
+          </Link>
+          <Link to={`/requirements/${data.id}/report`}>
+            <Button icon={<BarChartOutlined />}>
+              Open report
             </Button>
           </Link>
           <Link to={explorerSearchHref}>

@@ -186,6 +186,100 @@ Requirement
 
 不要把这三种状态混成一个字段；它们是三个独立视角。
 
+## Requirement / OperationsTask / PipelineRun 三层定位
+
+这一节回答三个关键问题：
+
+1. Operations/Tasks 是否应该覆盖 Labeling、Mining、Tagging、Checking 等人工运营任务？
+2. Pipeline Run 如何表达“为什么而跑”，并和需求及成本关联？
+3. 如何支撑 DA 与研发发起需求后的平台自动化闭环？
+
+### 1) Operations/Tasks 的定位（结论：应该包含）
+
+Operations/Tasks 是运营执行层，应该统一承载需要人工运营、执行和管理的任务对象，包括但不限于：
+
+- Labeling
+- Mining
+- Tagging
+- Checking
+- Release
+
+补充：脱敏（Privacy/PII）默认属于 Pipeline workflow 的自动化步骤，不作为人工运营任务池的一类模块。
+
+这些任务的共同点是：
+
+- 需要 owner / assignee / SLA / handoff
+- 需要人工确认或运营决策
+- 需要跨角色协作和可追踪状态
+
+因此它们都属于 OperationsTask，而不是 Requirement 本体，也不是 PipelineRun 本体。
+
+### 2) PipelineRun 的定位（执行与成本层）
+
+PipelineRun 是计算执行记录，关注“如何执行、产出了什么、消耗了多少成本”。
+
+PipelineRun 必须支持“执行动机”字段，建议最小字段：
+
+- trigger_source: requirement | operations_task | schedule | manual | api
+- reason_code: requirement_fulfillment | quality_regression | periodic_refresh | backfill | incident_fix
+- requirement_id: 可选，但推荐强绑定
+- operation_task_id: 可选，用于把人工任务与自动执行串起来
+- case_template_id: 可选，用于复用策略模板
+
+成本与产出归因字段建议：
+
+- input_rows / output_rows
+- input_bytes / output_bytes
+- cpu_seconds / gpu_seconds / memory_gb_seconds
+- io_read_bytes / io_write_bytes
+- duration_seconds
+- estimated_cost
+- derived_assets: 产生的数据集版本、索引、报表、导出路径
+
+这样 Pipeline Monitor 不仅展示成功/失败，还能回答：
+
+- 这次 run 是为哪个需求执行的？
+- 生成了哪些派生数据？
+- 花费了多少计算与存储成本？
+
+### 3) 端到端自动化闭环（目标 user case）
+
+目标流程：
+
+```text
+DA/研发提交 Requirement
+-> Requirement 解析成 CaseTemplate / 执行策略
+-> 系统自动生成 OperationsTask（可人工审批）
+-> Scheduler/Orchestrator 自动触发 PipelineRun
+-> 产出派生数据与分析报告
+-> 自动回写 Requirement 进度与结果摘要
+-> 通知需求提交人（站内消息/IM/Webhook）
+```
+
+在该模型下：
+
+- Requirement 是业务承诺和验收口径
+- OperationsTask 是人机协同运营对象
+- PipelineRun 是自动计算执行对象
+
+三者关系建议：
+
+```text
+Requirement 1 --- n OperationsTask
+Requirement 1 --- n PipelineRun
+OperationsTask 1 --- n PipelineRun
+PipelineRun 1 --- n DerivedAsset
+Requirement 1 --- n RequirementReport
+```
+
+其中 RequirementReport 是面向需求方的交付物视图，聚合：
+
+- 结果摘要（新增数据量、覆盖场景、质量指标变化）
+- 成本摘要（计算耗时、资源消耗、估算费用）
+- 风险与待办（失败步骤、人工待处理项）
+
+该设计可以把“需求沟通”转为“系统可追踪对象的状态流”，显著降低跨部门同步成本。
+
 ## API 与数据模型建议（下一步）
 
 为彻底消除概念重叠，后续建议补两类对象：

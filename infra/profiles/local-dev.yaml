@@ -70,6 +70,8 @@ scenario:
   export_id: export-demo-v1
   review_task_id: task-night-intersection-vru-review
   review_task_title: Review night intersection vulnerable road user hard cases
+  requirement_id: req-night-intersection-vru
+  requirement_title: Night intersection VRU hard-case requirement
   operator_username: demo-operator
   operator_password: local-demo
   orchestrator_job_name: night_intersection_vru_triage_job

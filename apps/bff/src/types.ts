@@ -1,11 +1,37 @@
 export type DistributionRow = { scene: string; sample_count: number }
 export type DatasetVersion = { version_id: string; dataset_id: string; sample_count: number; table_name: string }
 export type DatasetItem = { dataset_id: string; name: string; workspace_id: string; profile: string }
-export type TaskItem = { task_id: string; title: string; status: string; task_type: string }
+export type TaskItem = {
+  task_id: string
+  title: string
+  status: string
+  task_type: string
+  requirement_id?: string | null
+  pipeline_run_id?: string | null
+  assignee?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
 export type WorkspaceItem = { workspace_id: string; name: string }
 export type ExportItem = { export_id: string; dataset_id: string; format: string; status: string; output_path: string }
 export type SearchRow = { id: string; scene: string; dataset_version_id?: string }
-export type RunItem = { run_id: string; job_name: string; status: string }
+export type RunItem = {
+  run_id: string
+  job_name: string
+  status: string
+  requirement_id?: string | null
+  operation_task_id?: string | null
+  trigger_source?: string | null
+  reason_code?: string | null
+  duration_seconds?: number | null
+  cpu_seconds?: number | null
+  gpu_seconds?: number | null
+  input_bytes?: number | null
+  output_bytes?: number | null
+  estimated_cost?: number | null
+  derived_assets?: Array<Record<string, unknown>>
+  created_at?: string | null
+}
 export type PaginationMeta = { total: number; skip: number; limit: number }
 export type PaginatedList<T> = { items: T[]; pagination: PaginationMeta }
 export type DatasetDetail = { item: DatasetItem | null; versions: DatasetVersion[] }

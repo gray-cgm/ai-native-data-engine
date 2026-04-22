@@ -5,7 +5,6 @@ export const OPS_MODULES = [
   'tagging',
   'checking',
   'mining',
-  'privacy',
   'release',
 ] as const
 
@@ -90,11 +89,6 @@ export const MODULE_META: Record<
     label: 'Mining',
     description: 'Hard-case / active-learning / similarity candidate discovery.',
     accent: '#722ed1',
-  },
-  privacy: {
-    label: 'Privacy',
-    description: 'PII desensitization jobs — face / plate / audio.',
-    accent: '#eb2f96',
   },
   release: {
     label: 'Release',

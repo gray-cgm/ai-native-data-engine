@@ -9,6 +9,7 @@ import {
   submitDataTask,
   patchDataTask,
   approveOrRejectDataTask,
+  buildRequirementReport,
 } from '../engines/requirementEngine.js'
 
 class RequirementHandler {
@@ -51,6 +52,11 @@ class RequirementHandler {
   async signOffTask(ctx: Context) {
     const request = ctx.request as typeof ctx.request & { params: { id: string } }
     ctx.body = await approveOrRejectDataTask(request.params.id, ctx.request.body as Record<string, unknown>)
+  }
+
+  async report(ctx: Context) {
+    const request = ctx.request as typeof ctx.request & { params: { id: string } }
+    ctx.body = await buildRequirementReport(request.params.id)
   }
 }
 

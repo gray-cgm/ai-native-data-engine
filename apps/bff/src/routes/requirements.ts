@@ -68,6 +68,24 @@ export default [
     handler: requirementHandler.get,
   }),
   defineRoute({
+    method: 'get',
+    path: '/requirements/:id/report',
+    validate: {
+      params: {
+        id: Joi.string().required(),
+      },
+      output: buildOutputSchema(Joi.object().unknown(true)),
+    },
+    meta: {
+      swagger: {
+        summary: 'Get requirement report',
+        description: 'Aggregate result summary and cost summary linked to requirement tasks and runs.',
+        tags: ['requirements'],
+      },
+    },
+    handler: requirementHandler.report,
+  }),
+  defineRoute({
     method: 'post',
     path: '/requirements',
     validate: {

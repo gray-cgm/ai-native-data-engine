@@ -231,6 +231,8 @@ class ScenarioTriageConfig(BaseModel):
     export_id: str = 'export-demo-v1'
     review_task_id: str = 'task-night-intersection-vru-review'
     review_task_title: str = 'Review night intersection vulnerable road user hard cases'
+    requirement_id: str = 'req-night-intersection-vru'
+    requirement_title: str = 'Night intersection VRU hard-case requirement'
     operator_username: str = 'demo-operator'
     operator_password: str = 'local-demo'
     orchestrator_job_name: str = 'night_intersection_vru_triage_job'

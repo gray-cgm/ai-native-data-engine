@@ -7,6 +7,7 @@ const DatasetListPage = lazy(() => import('./modules/catalog/pages/dataset-list.
 const DatasetDetailPage = lazy(() => import('./modules/catalog/pages/dataset-detail.page'))
 const RequirementListPage = lazy(() => import('./modules/requirements/pages/requirement-list.page'))
 const RequirementDetailPage = lazy(() => import('./modules/requirements/pages/requirement-detail.page'))
+const RequirementReportPage = lazy(() => import('./modules/requirements/pages/requirement-report.page'))
 const DistributionPage = lazy(() => import('./modules/explorer/pages/distribution.page'))
 const SearchPage = lazy(() => import('./modules/explorer/pages/search.page'))
 const ClipListPage = lazy(() => import('./modules/explorer/pages/clip-list.page'))
@@ -17,7 +18,6 @@ const LabelingPage = lazy(() => import('./modules/operations/pages/labeling.page
 const TaggingPage = lazy(() => import('./modules/operations/pages/tagging.page'))
 const CheckingPage = lazy(() => import('./modules/operations/pages/checking.page'))
 const MiningPage = lazy(() => import('./modules/operations/pages/mining.page'))
-const PrivacyPage = lazy(() => import('./modules/operations/pages/privacy.page'))
 const ReleasePage = lazy(() => import('./modules/operations/pages/release.page'))
 const RunHistoryPage = lazy(() => import('./modules/pipelines/pages/run-history.page'))
 const ToolsHomePage = lazy(() => import('./modules/tools/pages/tools-home.page'))
@@ -33,6 +33,7 @@ export const routes: RouteObject[] = [
       { path: '/catalog/:datasetId', element: <DatasetDetailPage /> },
       { path: '/requirements', element: <RequirementListPage /> },
       { path: '/requirements/:id', element: <RequirementDetailPage /> },
+      { path: '/requirements/:id/report', element: <RequirementReportPage /> },
       { path: '/explorer', element: <DistributionPage /> },
       { path: '/explorer/search', element: <SearchPage /> },
       { path: '/explorer/clips', element: <ClipListPage /> },
@@ -42,7 +43,6 @@ export const routes: RouteObject[] = [
       { path: '/ops/tagging', element: <TaggingPage /> },
       { path: '/ops/checking', element: <CheckingPage /> },
       { path: '/ops/mining', element: <MiningPage /> },
-      { path: '/ops/privacy', element: <PrivacyPage /> },
       { path: '/ops/release', element: <ReleasePage /> },
       { path: '/ops/exports', element: <ExportListPage /> },
       { path: '/pipelines', element: <RunHistoryPage /> },

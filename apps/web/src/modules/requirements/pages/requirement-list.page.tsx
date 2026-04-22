@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Card, Pagination, Space, Tag, Tooltip } from 'antd'
-import { ExperimentOutlined, SearchOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ExperimentOutlined, SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -144,6 +144,13 @@ export default function RequirementListPage() {
                           <Link to={`/ops/mining?${miningParams.toString()}`}>
                             <Button size="small" icon={<ExperimentOutlined />}>
                               Open mining
+                            </Button>
+                          </Link>
+                        </Tooltip>
+                        <Tooltip title="Open aggregated requirement report (result + cost)">
+                          <Link to={`/requirements/${row.id}/report`}>
+                            <Button size="small" icon={<BarChartOutlined />}>
+                              Open report
                             </Button>
                           </Link>
                         </Tooltip>

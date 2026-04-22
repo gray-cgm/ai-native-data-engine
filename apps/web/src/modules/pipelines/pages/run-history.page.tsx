@@ -67,6 +67,30 @@ const batchRunColumns: ColumnsType<RunItem> = [
     render: (_: unknown, record) => <StatusBadge status={record.status} />,
   },
   {
+    key: 'requirement_id',
+    title: 'Requirement',
+    dataIndex: 'requirement_id',
+    render: (text?: string | null) => text ?? '—',
+  },
+  {
+    key: 'operation_task_id',
+    title: 'Ops Task',
+    dataIndex: 'operation_task_id',
+    render: (text?: string | null) => text ?? '—',
+  },
+  {
+    key: 'estimated_cost',
+    title: 'Est. Cost',
+    dataIndex: 'estimated_cost',
+    render: (value?: number | null) => (typeof value === 'number' ? `$${value.toFixed(4)}` : '—'),
+  },
+  {
+    key: 'duration_seconds',
+    title: 'Duration(s)',
+    dataIndex: 'duration_seconds',
+    render: (value?: number | null) => (typeof value === 'number' ? Math.round(value) : '—'),
+  },
+  {
     key: 'run_id',
     title: 'Run ID',
     dataIndex: 'run_id',
@@ -277,7 +301,10 @@ export default function RunHistoryPage() {
 
   if (runsState === 'error') {
     return (
-      <PageContainer title="Pipeline Monitor" description="Batch and streaming pipeline activity.">
+      <PageContainer
+        title="Pipeline Runs"
+        description="Batch and streaming execution history with requirement-driven traceability."
+      >
         <Alert
           type="error"
           showIcon
@@ -295,8 +322,8 @@ export default function RunHistoryPage() {
 
   return (
     <PageContainer
-      title="Pipeline Monitor"
-      description="Unified view of batch and streaming pipeline activity."
+      title="Pipeline Runs"
+      description="Unified execution view for batch and streaming runs, intended to link each run to requirement purpose and cost attribution."
       actions={
         <Space>
           <Button

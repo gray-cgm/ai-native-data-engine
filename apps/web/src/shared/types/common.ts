@@ -24,6 +24,11 @@ export type TaskItem = {
   title: string
   status: string
   task_type: string
+  requirement_id?: string | null
+  pipeline_run_id?: string | null
+  assignee?: string | null
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export type WorkspaceItem = {
@@ -43,6 +48,18 @@ export type RunItem = {
   run_id: string
   job_name: string
   status: string
+  requirement_id?: string | null
+  operation_task_id?: string | null
+  trigger_source?: string | null
+  reason_code?: string | null
+  duration_seconds?: number | null
+  cpu_seconds?: number | null
+  gpu_seconds?: number | null
+  input_bytes?: number | null
+  output_bytes?: number | null
+  estimated_cost?: number | null
+  derived_assets?: Array<Record<string, unknown>>
+  created_at?: string | null
 }
 
 export type PaginatedResponse<T> = {

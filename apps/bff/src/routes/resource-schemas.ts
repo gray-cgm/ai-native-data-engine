@@ -24,12 +24,29 @@ export const taskSchema = Joi.object({
   title: Joi.string().required(),
   status: Joi.string().required(),
   task_type: Joi.string().required(),
+  requirement_id: Joi.string().allow(null),
+  pipeline_run_id: Joi.string().allow(null),
+  assignee: Joi.string().allow(null),
+  created_at: Joi.string().allow(null),
+  updated_at: Joi.string().allow(null),
 }).unknown(true)
 
 export const runSchema = Joi.object({
   run_id: Joi.string().required(),
   job_name: Joi.string().required(),
   status: Joi.string().required(),
+  requirement_id: Joi.string().allow(null),
+  operation_task_id: Joi.string().allow(null),
+  trigger_source: Joi.string().allow(null),
+  reason_code: Joi.string().allow(null),
+  duration_seconds: Joi.number().allow(null),
+  cpu_seconds: Joi.number().allow(null),
+  gpu_seconds: Joi.number().allow(null),
+  input_bytes: Joi.number().allow(null),
+  output_bytes: Joi.number().allow(null),
+  estimated_cost: Joi.number().allow(null),
+  derived_assets: Joi.array().items(Joi.object().unknown(true)).optional(),
+  created_at: Joi.string().allow(null),
 }).unknown(true)
 
 export const exportSchema = Joi.object({

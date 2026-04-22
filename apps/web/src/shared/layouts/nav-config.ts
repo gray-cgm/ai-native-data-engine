@@ -22,7 +22,6 @@ import {
   HighlightOutlined,
   SafetyCertificateOutlined,
   ExperimentOutlined,
-  EyeInvisibleOutlined,
   SendOutlined,
 } from '@ant-design/icons'
 
@@ -67,12 +66,11 @@ export const navGroups: NavGroup[] = [
     label: 'Operations',
     icon: ControlOutlined,
     items: [
-      { label: 'Tasks', path: '/ops', icon: UnorderedListOutlined },
+      { label: 'Operations Tasks', path: '/ops', icon: UnorderedListOutlined },
       { label: 'Labeling', path: '/ops/labeling', icon: HighlightOutlined },
       { label: 'Tagging', path: '/ops/tagging', icon: TagsOutlined },
       { label: 'Checking', path: '/ops/checking', icon: SafetyCertificateOutlined },
       { label: 'Mining', path: '/ops/mining', icon: ExperimentOutlined },
-      { label: 'Privacy', path: '/ops/privacy', icon: EyeInvisibleOutlined },
       { label: 'Release', path: '/ops/release', icon: SendOutlined },
       { label: 'Exports', path: '/ops/exports', icon: ExportOutlined },
     ],
@@ -80,7 +78,7 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Pipelines',
     icon: SyncOutlined,
-    items: [{ label: 'Pipeline Monitor', path: '/pipelines', icon: HistoryOutlined }],
+    items: [{ label: 'Pipeline Runs', path: '/pipelines', icon: HistoryOutlined }],
   },
   {
     label: 'Tools',

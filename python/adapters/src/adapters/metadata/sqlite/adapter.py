@@ -1,6 +1,7 @@
 import json
 import sqlite3
 from pathlib import Path
+from datetime import datetime, timezone
 
 from core.domain.models import LineageEvent
 
@@ -62,8 +63,35 @@ class SQLiteMetadataAdapter:
             );
             '''
         )
+        self._ensure_column(connection, 'job_runs', 'requirement_id', 'text')
+        self._ensure_column(connection, 'job_runs', 'operation_task_id', 'text')
+        self._ensure_column(connection, 'job_runs', 'trigger_source', 'text')
+        self._ensure_column(connection, 'job_runs', 'reason_code', 'text')
+        self._ensure_column(connection, 'job_runs', 'duration_seconds', 'real')
+        self._ensure_column(connection, 'job_runs', 'cpu_seconds', 'real')
+        self._ensure_column(connection, 'job_runs', 'gpu_seconds', 'real')
+        self._ensure_column(connection, 'job_runs', 'input_bytes', 'integer')
+        self._ensure_column(connection, 'job_runs', 'output_bytes', 'integer')
+        self._ensure_column(connection, 'job_runs', 'estimated_cost', 'real')
+        self._ensure_column(connection, 'job_runs', 'derived_assets_json', 'text')
+        self._ensure_column(connection, 'job_runs', 'created_at', 'text')
+
+        self._ensure_column(connection, 'tasks', 'requirement_id', 'text')
+        self._ensure_column(connection, 'tasks', 'pipeline_run_id', 'text')
+        self._ensure_column(connection, 'tasks', 'assignee', 'text')
+        self._ensure_column(connection, 'tasks', 'created_at', 'text')
+        self._ensure_column(connection, 'tasks', 'updated_at', 'text')
         connection.commit()
         connection.close()
+
+    def _ensure_column(self, connection: sqlite3.Connection, table_name: str, column_name: str, column_type: str) -> None:
+        rows = connection.execute(f'pragma table_info({table_name})').fetchall()
+        existing = {row['name'] for row in rows}
+        if column_name in existing:
+            return
+        connection.execute(
+            f'alter table {table_name} add column {column_name} {column_type}'
+        )
 
     def create_workspace(self, payload: dict) -> dict:
         connection = self._connect()
@@ -126,34 +154,102 @@ class SQLiteMetadataAdapter:
         return [dict(row) for row in rows]
 
     def create_job_run(self, payload: dict) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        created_at = payload.get('created_at') or now
+        derived_assets_json = json.dumps(payload.get('derived_assets', []))
         connection = self._connect()
         connection.execute(
-            'insert or replace into job_runs (run_id, job_name, status) values (?, ?, ?)',
-            (payload['run_id'], payload['job_name'], payload['status']),
+            (
+                'insert or replace into job_runs '
+                '(run_id, job_name, status, requirement_id, operation_task_id, trigger_source, reason_code, '
+                'duration_seconds, cpu_seconds, gpu_seconds, input_bytes, output_bytes, estimated_cost, '
+                'derived_assets_json, created_at) '
+                'values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ),
+            (
+                payload['run_id'],
+                payload['job_name'],
+                payload['status'],
+                payload.get('requirement_id'),
+                payload.get('operation_task_id'),
+                payload.get('trigger_source'),
+                payload.get('reason_code'),
+                payload.get('duration_seconds'),
+                payload.get('cpu_seconds'),
+                payload.get('gpu_seconds'),
+                payload.get('input_bytes'),
+                payload.get('output_bytes'),
+                payload.get('estimated_cost'),
+                derived_assets_json,
+                created_at,
+            ),
         )
         connection.commit()
         connection.close()
-        return payload
+        return {
+            **payload,
+            'created_at': created_at,
+            'derived_assets': payload.get('derived_assets', []),
+        }
 
     def list_job_runs(self) -> list[dict]:
         connection = self._connect()
-        rows = connection.execute('select run_id, job_name, status from job_runs order by run_id').fetchall()
+        rows = connection.execute(
+            (
+                'select run_id, job_name, status, requirement_id, operation_task_id, trigger_source, reason_code, '
+                'duration_seconds, cpu_seconds, gpu_seconds, input_bytes, output_bytes, estimated_cost, '
+                'derived_assets_json, created_at '
+                'from job_runs order by run_id desc'
+            )
+        ).fetchall()
         connection.close()
-        return [dict(row) for row in rows]
+        items: list[dict] = []
+        for row in rows:
+            item = dict(row)
+            item['derived_assets'] = json.loads(item.get('derived_assets_json') or '[]')
+            item.pop('derived_assets_json', None)
+            items.append(item)
+        return items
 
     def create_task(self, payload: dict) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        created_at = payload.get('created_at') or now
+        updated_at = payload.get('updated_at') or now
         connection = self._connect()
         connection.execute(
-            'insert or replace into tasks (task_id, title, status, task_type) values (?, ?, ?, ?)',
-            (payload['task_id'], payload['title'], payload['status'], payload['task_type']),
+            (
+                'insert or replace into tasks '
+                '(task_id, title, status, task_type, requirement_id, pipeline_run_id, assignee, created_at, updated_at) '
+                'values (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ),
+            (
+                payload['task_id'],
+                payload['title'],
+                payload['status'],
+                payload['task_type'],
+                payload.get('requirement_id'),
+                payload.get('pipeline_run_id'),
+                payload.get('assignee'),
+                created_at,
+                updated_at,
+            ),
         )
         connection.commit()
         connection.close()
-        return payload
+        return {
+            **payload,
+            'created_at': created_at,
+            'updated_at': updated_at,
+        }
 
     def list_tasks(self) -> list[dict]:
         connection = self._connect()
-        rows = connection.execute('select task_id, title, status, task_type from tasks order by task_id').fetchall()
+        rows = connection.execute(
+            (
+                'select task_id, title, status, task_type, requirement_id, pipeline_run_id, assignee, created_at, updated_at '
+                'from tasks order by task_id'
+            )
+        ).fetchall()
         connection.close()
         return [dict(row) for row in rows]
 

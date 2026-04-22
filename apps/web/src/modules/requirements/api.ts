@@ -51,6 +51,45 @@ export type RequirementStats = {
   by_source: Record<string, number>
 }
 
+export type RequirementReportView = {
+  requirement: RequirementDetailView
+  result_summary: {
+    data_task_count: number
+    data_task_completed_count: number
+    data_task_signed_off_count: number
+    operations_task_count: number
+    run_count: number
+    latest_run_status: string | null
+    export_count: number
+    total_actual_count: number
+    total_target_count: number
+  }
+  cost_summary: {
+    estimated_cost: number
+    duration_seconds: number
+    cpu_seconds: number
+    gpu_seconds: number
+    input_bytes: number
+    output_bytes: number
+  }
+  linked_items: {
+    operations_tasks: Array<Record<string, unknown>>
+    runs: Array<Record<string, unknown>>
+    exports: Array<Record<string, unknown>>
+  }
+  automation: {
+    superset: {
+      status: string
+      can_auto_create: boolean
+      dashboard_name: string
+    }
+    llm_analysis: {
+      status: string
+      trigger: string
+    }
+  }
+}
+
 type PaginatedList<T> = {
   total: number
   page: number
@@ -87,6 +126,10 @@ export async function fetchRequirementDetail(id: string): Promise<RequirementDet
 
 export async function fetchRequirementStats(): Promise<RequirementStats> {
   return apiGet<RequirementStats>('/requirements/stats')
+}
+
+export async function fetchRequirementReport(id: string): Promise<RequirementReportView> {
+  return apiGet<RequirementReportView>(`/requirements/${id}/report`)
 }
 
 export async function signOffTask(taskId: string, approved: boolean, signOffBy: string, comment?: string) {
