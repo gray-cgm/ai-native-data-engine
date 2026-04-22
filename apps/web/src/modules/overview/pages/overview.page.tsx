@@ -14,6 +14,8 @@ import { RecentActivity } from '../components/recent-activity'
 
 const { Paragraph, Title } = Typography
 
+const CARD_TEXT: React.CSSProperties = { fontSize: 15, lineHeight: 1.7 }
+
 export default function OverviewPage() {
   const fetchDashboard = useCallback(() => apiGet<DashboardPayload>('/dashboard'), [])
   const { data, state, loading, error, refetch } = useQuery(fetchDashboard, { cacheKey: 'dashboard' })
@@ -79,40 +81,40 @@ export default function OverviewPage() {
       {data.scenario ? (
         <div style={{ display: 'grid', gap: 16, marginBottom: 16 }}>
           <Card>
-            <Title level={5}>{data.scenario.scenario_name}</Title>
-            <Paragraph>{data.scenario.scenario_goal}</Paragraph>
-            <Paragraph>
+            <Title level={4}>{data.scenario.scenario_name}</Title>
+            <Paragraph style={CARD_TEXT}>{data.scenario.scenario_goal}</Paragraph>
+            <Paragraph style={CARD_TEXT}>
               Run {data.scenario.run_id} processed {data.scenario.record_count} samples and selected {data.scenario.scenario_sample_count} scenario candidates.
             </Paragraph>
           </Card>
           <Row gutter={16}>
             <Col xs={24} lg={12}>
               <Card title="Scenario Definition">
-                <Paragraph>Focus scenes: {data.scenario.focus_scenes.join(', ')}</Paragraph>
-                <Paragraph>Risk signals: {data.scenario.focus_tags.join(', ')}</Paragraph>
-                <Paragraph>Dominant scene: {data.scenario.dominant_scene}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Focus scenes: {data.scenario.focus_scenes.join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Risk signals: {data.scenario.focus_tags.join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Dominant scene: {data.scenario.dominant_scene}</Paragraph>
               </Card>
             </Col>
             <Col xs={24} lg={12}>
               <Card title="Priority Package">
-                <Paragraph>Priority samples: {data.scenario.priority_sample_ids.join(', ')}</Paragraph>
-                <Paragraph>Candidate samples: {data.scenario.candidate_sample_ids.join(', ')}</Paragraph>
-                <Paragraph>Search preview returns the same priority package for Web and SDK verification.</Paragraph>
+                <Paragraph style={CARD_TEXT}>Priority samples: {data.scenario.priority_sample_ids.join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Candidate samples: {data.scenario.candidate_sample_ids.join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Search preview returns the same priority package for Web and SDK verification.</Paragraph>
               </Card>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col xs={24} lg={12}>
               <Card title="Loop Outputs">
-                <Paragraph>Summary artifact: {data.scenario.summary_output_uri}</Paragraph>
-                <Paragraph>Export artifact: {data.scenario.export_output_path}</Paragraph>
-                <Paragraph>Orchestrator asset: {data.scenario.orchestrator_asset_key}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Summary artifact: {data.scenario.summary_output_uri}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Export artifact: {data.scenario.export_output_path}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Orchestrator asset: {data.scenario.orchestrator_asset_key}</Paragraph>
               </Card>
             </Col>
             <Col xs={24} lg={12}>
               <Card title="What This Validates">
-                <Paragraph>Web triggers the bootstrap action, BFF aggregates scenario state, API serves stable resource semantics, and SDK reads the same scenario package.</Paragraph>
-                <Paragraph>DuckDB powers distribution, the platform currently materializes structured files in Parquet, retrieval already uses Lance, and the file-format evolution path is toward Lance as a more unified format family.</Paragraph>
+                <Paragraph style={CARD_TEXT}>Web triggers the bootstrap action, BFF aggregates scenario state, API serves stable resource semantics, and SDK reads the same scenario package.</Paragraph>
+                <Paragraph style={CARD_TEXT}>DuckDB powers distribution, the platform currently materializes structured files in Parquet, retrieval already uses Lance, and the file-format evolution path is toward Lance as a more unified format family.</Paragraph>
               </Card>
             </Col>
           </Row>
@@ -121,28 +123,28 @@ export default function OverviewPage() {
       {data.streaming ? (
         <div style={{ display: 'grid', gap: 16, marginBottom: 16 }}>
           <Card>
-            <Title level={5}>Local-First Streaming Snapshot</Title>
-            <Paragraph>
+            <Title level={4}>Local-First Streaming Snapshot</Title>
+            <Paragraph style={CARD_TEXT}>
               Streaming workspace {data.streaming.workspace_id} ingested {data.streaming.event_count} events across {data.streaming.batch_count} micro-batches and materialized {data.streaming.latest_sample_count} current samples.
             </Paragraph>
-            <Paragraph>
+            <Paragraph style={CARD_TEXT}>
               Duplicate events skipped: {data.streaming.duplicate_events_skipped}. Export artifact: {data.streaming.export_path}.
             </Paragraph>
           </Card>
           <Row gutter={16}>
             <Col xs={24} lg={12}>
               <Card title="Streaming Materialization">
-                <Paragraph>Event log: {data.streaming.event_log_path}</Paragraph>
-                <Paragraph>Bronze log: {data.streaming.bronze_log_path}</Paragraph>
-                <Paragraph>Silver snapshot: {data.streaming.silver_dataset_path}</Paragraph>
-                <Paragraph>Search index: {data.streaming.search_index_path}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Event log: {data.streaming.event_log_path}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Bronze log: {data.streaming.bronze_log_path}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Silver snapshot: {data.streaming.silver_dataset_path}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Search index: {data.streaming.search_index_path}</Paragraph>
               </Card>
             </Col>
             <Col xs={24} lg={12}>
               <Card title="Streaming Signals">
-                <Paragraph>Top scenes: {data.streaming.distribution.map((row) => `${row.scene} (${row.sample_count})`).join(', ')}</Paragraph>
-                <Paragraph>Top tags: {data.streaming.tag_distribution.slice(0, 4).map((row) => `${row.tag} (${row.sample_count})`).join(', ')}</Paragraph>
-                <Paragraph>Latest run: {latestStreamingRun}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Top scenes: {data.streaming.distribution.map((row) => `${row.scene} (${row.sample_count})`).join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Top tags: {data.streaming.tag_distribution.slice(0, 4).map((row) => `${row.tag} (${row.sample_count})`).join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Latest run: {latestStreamingRun}</Paragraph>
               </Card>
             </Col>
           </Row>

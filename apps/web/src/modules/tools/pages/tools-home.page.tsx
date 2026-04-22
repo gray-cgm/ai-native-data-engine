@@ -45,7 +45,8 @@ export default function ToolsHomePage() {
       <section className="tools-hero card">
         <div>
           <p className="tools-eyebrow">Microfrontend engine</p>
-          <h3>One platform shell, many specialized data tools</h3>
+          <h3>One platform shell, </h3>
+          <h3> many specialized data tools</h3>
           <p className="text-muted tools-hero-copy">
             The shell stays responsible for navigation, tenancy, auth, and context. Individual tools stay specialized. That split lets you integrate Dagster, Superset, and Jupyter without collapsing everything into one oversized frontend.
           </p>

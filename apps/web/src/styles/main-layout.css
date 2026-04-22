@@ -1,4 +1,3 @@
-/* Main Layout Container - aligned with xproduct MainLayout */
 .main-layout {
   height: 100vh;
   width: 100vw;
@@ -58,7 +57,7 @@
 .fullscreen-float-btn {
   inset-inline-end: 20px !important;
   inset-block-end: 50% !important;
-  opacity: 0.5;
+  opacity: 0.3;
   transition: all var(--transition-duration) ease;
   z-index: 100;
 }
@@ -89,7 +88,6 @@
   color: rgba(24, 144, 255, 0.85);
 }
 
-/* Scrollbar styling - aligned with xproduct */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

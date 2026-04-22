@@ -1,5 +1,5 @@
 :root {
-  /* Colors - Base (aligned with xproduct) */
+  /* Colors - Base */
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f5f7fa;
   --color-bg-card: #ffffff;
@@ -13,6 +13,7 @@
   --color-text-primary: #181818;
   --color-text-secondary: #333333;
   --color-text-muted: #6c757d;
+  --color-text-highlight: #1677ff;
 
   /* Colors - Accent (aligned with antd blue) */
   --color-accent: #1677ff;
@@ -55,7 +56,7 @@
   --font-size-2xl: 24px;
   --font-size-stat: 28px;
 
-  /* Layout (aligned with xproduct dimensions) */
+  /* Layout */
   --header-height: 50px;
   --micro-menu-width: 125px;
   --sidebar-width: 200px;
