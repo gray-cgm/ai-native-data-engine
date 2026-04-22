@@ -101,15 +101,15 @@ export default function RequirementDetailPage() {
 
         <Col xs={24} lg={12}>
           <Card title="Description & Tags">
-            <p style={{ lineHeight: 1.7, marginBottom: 16 }}>
+            <p style={{ fontSize: 15, lineHeight: 1.7, marginBottom: 16 }}>
               {data.description || <Text type="secondary">No description provided.</Text>}
             </p>
             {data.target_scene && (
-              <p style={{ marginBottom: 12 }}>
+              <p style={{ fontSize: 15, marginBottom: 12 }}>
                 <strong>Target Scene:</strong> {data.target_scene}
               </p>
             )}
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 15, marginBottom: 12 }}>
               <strong>Scene Tags:</strong>{' '}
               {(data.scene_tags ?? []).length > 0 ? (
                 (data.scene_tags ?? []).map((tag) => (
@@ -119,7 +119,7 @@ export default function RequirementDetailPage() {
                 <Text type="secondary">None</Text>
               )}
             </div>
-            <div>
+            <div style={{ fontSize: 15 }}>
               <strong>Vehicle Tags:</strong>{' '}
               {(data.vehicle_tags ?? []).length > 0 ? (
                 (data.vehicle_tags ?? []).map((tag) => (

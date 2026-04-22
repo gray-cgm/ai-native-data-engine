@@ -108,7 +108,7 @@
 
 .grid-four {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-md);
 }
 
@@ -125,8 +125,8 @@
 }
 
 .stat-card span {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  color: var(--color-text-highlight);
+  font-size: var(--font-size);
 }
 
 /* Status badge */

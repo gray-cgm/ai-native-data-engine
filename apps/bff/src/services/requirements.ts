@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger.js'
 import { platformFetch } from './platform.js'
 
 export type RequirementItem = {
@@ -58,7 +59,12 @@ type PaginatedList<T> = {
 
 export async function listRequirements(query: Record<string, string>) {
   const params = new URLSearchParams(query)
-  return (await platformFetch(`/api/v1/requirements?${params.toString()}`)) as PaginatedList<RequirementItem>
+  return platformFetch(`/api/v1/requirements?${params.toString()}`)
+    .then((res) => res as PaginatedList<RequirementItem>)
+    .catch((err) => {
+      logger.error('requirements fetch failed', { endpoint: '/api/v1/requirements', error: String(err) })
+      return { total: 0, page: 1, page_size: 20, items: [] } as PaginatedList<RequirementItem>
+    })
 }
 
 export async function getRequirement(id: string) {
@@ -66,7 +72,12 @@ export async function getRequirement(id: string) {
 }
 
 export async function getRequirementStats() {
-  return (await platformFetch('/api/v1/requirements/stats')) as RequirementStats
+  return platformFetch('/api/v1/requirements/stats')
+    .then((res) => res as RequirementStats)
+    .catch((err) => {
+      logger.error('requirements stats fetch failed', { endpoint: '/api/v1/requirements/stats', error: String(err) })
+      return { total: 0, by_status: {}, by_priority: {}, by_source: {} } as RequirementStats
+    })
 }
 
 export async function createRequirement(body: Record<string, unknown>) {

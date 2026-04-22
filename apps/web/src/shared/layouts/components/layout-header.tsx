@@ -66,7 +66,6 @@ export function LayoutHeader({
 
   return (
     <header className="layout-header">
-      {/* Logo Container - xproduct logoContainer */}
       <div
         className={`logo-container ${collapseApp ? 'collapsed' : ''}`}
         onClick={onToggleApp}
@@ -74,7 +73,6 @@ export function LayoutHeader({
         <img className="logo-icon" src="/logo.png" alt="logo" />
       </div>
 
-      {/* Label Prefix - xproduct labelPrefix "数据生产" */}
       <div
         className={`label-prefix ${collapseApp ? 'collapsed' : ''}`}
         onClick={onToggleApp}
@@ -82,9 +80,7 @@ export function LayoutHeader({
         AI Data
       </div>
 
-      {/* Header Right - xproduct headerRight */}
       <div className="header-right">
-        {/* Label - xproduct .label */}
         <div className={`header-label ${collapseApp ? 'collapsed' : ''}`}>
           <span className="active-menu-label">
             {currentMenuLabel}
@@ -152,7 +148,6 @@ export function LayoutHeader({
           </Button>
         </Space>
 
-        {/* Avatar Section - xproduct Dropdown > <section className={styles.avatarSection}> */}
         <Dropdown
           menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
           trigger={['click']}

@@ -1,5 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Alert, Button, Card, Col, Input, Progress, Row, Space, Table, Typography } from 'antd'
+import { ExportOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import type { ColumnsType } from 'antd/es/table'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -7,11 +10,19 @@ import { StatusBadge } from '@/shared/components/status-badge'
 import { StatCard } from '@/shared/components/stat-card'
 import type { RunItem, StreamingBatchSummary, StreamingSummary } from '@/shared/types/common'
 import { fetchRuns, fetchStreamingSummary } from '../api'
-import '../pipelines.css'
 
+const { Title, Text } = Typography
 const PAGE_SIZE = 8
 
-// ── Filter fns are module-level so their references are stable ─
+const EYEBROW: React.CSSProperties = {
+  fontSize: 12,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  display: 'block',
+  marginBottom: 4,
+}
+
+// ── Filter helpers ────────────────────────────────────────────
 
 function filterRun(run: RunItem, q: string) {
   return (
@@ -25,339 +36,226 @@ function filterBatch(batch: StreamingBatchSummary, q: string) {
   return String(batch.batch_number).includes(q) || batch.run_status.toLowerCase().includes(q)
 }
 
-function getPageRange(current: number, total: number): (number | '…')[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  if (current <= 4) return [1, 2, 3, 4, 5, '…', total]
-  if (current >= total - 3) return [1, '…', total - 4, total - 3, total - 2, total - 1, total]
-  return [1, '…', current - 1, current, current + 1, '…', total]
-}
+// ── useFilteredData ───────────────────────────────────────────
 
-// ── usePaginatedSearch ────────────────────────────────────── 
-
-function usePaginatedSearch<T>(
-  items: T[],
-  filterFn: (item: T, keyword: string) => boolean,
-) {
+function useFilteredData<T>(items: T[], filterFn: (item: T, keyword: string) => boolean) {
   const [keyword, setKeyword] = useState('')
-  const [page, setPage] = useState(1)
 
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase()
     return q ? items.filter((item) => filterFn(item, q)) : items
   }, [items, keyword, filterFn])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, pageCount)
-  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const onKeyword = useCallback((v: string) => setKeyword(v), [])
 
-  const onKeyword = useCallback((v: string) => {
-    setKeyword(v)
-    setPage(1)
-  }, [])
-
-  return { keyword, onKeyword, page: safePage, setPage, pageCount, pageItems, total: filtered.length }
+  return { keyword, onKeyword, filtered }
 }
 
-// ── SearchBar ─────────────────────────────────────────────── 
+// ── Column definitions ────────────────────────────────────────
 
-function SearchBar({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-}) {
-  return (
-    <label className="pipeline-search">
-      <span className="pipeline-search-icon" aria-hidden>
-        🔍
-      </span>
-      <input
-        type="search"
-        className="pipeline-search-input"
-        placeholder={placeholder ?? 'Search…'}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
-  )
-}
+const batchRunColumns: ColumnsType<RunItem> = [
+  {
+    key: 'job_name',
+    title: 'Job name',
+    dataIndex: 'job_name',
+    render: (text: string) => <Text strong>{text}</Text>,
+  },
+  {
+    key: 'status',
+    title: 'Status',
+    dataIndex: 'status',
+    render: (_: unknown, record) => <StatusBadge status={record.status} />,
+  },
+  {
+    key: 'run_id',
+    title: 'Run ID',
+    dataIndex: 'run_id',
+    render: (text: string) => (
+      <Text code type="secondary" style={{ fontSize: 12 }}>
+        {text.slice(0, 12)}…
+      </Text>
+    ),
+  },
+]
 
-// ── Pagination ────────────────────────────────────────────── 
+const streamingBatchColumns: ColumnsType<StreamingBatchSummary> = [
+  {
+    key: 'batch_number',
+    title: 'Batch',
+    dataIndex: 'batch_number',
+    render: (val: number) => <Text strong>#{val}</Text>,
+  },
+  { key: 'input_events', title: 'Events in', dataIndex: 'input_events' },
+  { key: 'accepted_events', title: 'Accepted', dataIndex: 'accepted_events' },
+  { key: 'unique_samples', title: 'New samples', dataIndex: 'unique_samples' },
+  {
+    key: 'run_status',
+    title: 'Run status',
+    dataIndex: 'run_status',
+    render: (_: unknown, record) => <StatusBadge status={record.run_status} />,
+  },
+]
 
-function Pagination({
-  page,
-  pageCount,
-  total,
-  onPage,
-}: {
-  page: number
-  pageCount: number
-  total: number
-  onPage: (p: number) => void
-}) {
-  if (pageCount <= 1) return null
-  const range = getPageRange(page, pageCount)
-
-  return (
-    <div className="pipeline-pagination">
-      <span className="pipeline-pagination-info">{total} total</span>
-      <div className="pipeline-pagination-controls">
-        <button
-          type="button"
-          className="pipeline-page-btn"
-          disabled={page === 1}
-          onClick={() => onPage(page - 1)}
-          aria-label="Previous page"
-        >
-          ‹
-        </button>
-
-        {range.map((item, idx) =>
-          item === '…' ? (
-            // biome-ignore lint: index key is fine for stable ellipsis separators
-            <span key={`ellipsis-${idx}`} className="pipeline-page-ellipsis">
-              …
-            </span>
-          ) : (
-            <button
-              key={item}
-              type="button"
-              className={`pipeline-page-btn ${item === page ? 'pipeline-page-btn-active' : ''}`}
-              onClick={() => onPage(item as number)}
-              aria-current={item === page ? 'page' : undefined}
-            >
-              {item}
-            </button>
-          ),
-        )}
-
-        <button
-          type="button"
-          className="pipeline-page-btn"
-          disabled={page === pageCount}
-          onClick={() => onPage(page + 1)}
-          aria-label="Next page"
-        >
-          ›
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── BatchRunsSection ──────────────────────────────────────── 
+// ── BatchRunsSection ──────────────────────────────────────────
 
 function BatchRunsSection({ runs, loading }: { runs: RunItem[]; loading: boolean }) {
-  const { keyword, onKeyword, page, setPage, pageCount, pageItems, total } = usePaginatedSearch(
-    runs,
-    filterRun,
-  )
+  const { keyword, onKeyword, filtered } = useFilteredData(runs, filterRun)
 
   return (
-    <section className="pipeline-section card">
-      <div className="pipeline-section-header">
-        <div>
-          <p className="pipeline-eyebrow">Batch processing</p>
-          <h3>Dagster runs</h3>
-        </div>
-        <a
-          className="pipeline-external-link"
-          href="http://localhost:3001"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open Dagster console ↗
-        </a>
-      </div>
-
-      {loading && <p className="pipeline-empty text-muted">Loading runs…</p>}
+    <Card
+      title={
+        <>
+          <Text type="secondary" style={EYEBROW}>Batch processing</Text>
+          <Title level={4} style={{ margin: 0 }}>Dagster runs</Title>
+        </>
+      }
+      extra={
+        <Button type="link" href="http://localhost:3001" target="_blank" icon={<ExportOutlined />}>
+          Open Dagster console
+        </Button>
+      }
+    >
+      {loading && <Text type="secondary">Loading runs…</Text>}
 
       {!loading && runs.length === 0 && (
-        <div className="pipeline-empty-state">
-          <p className="text-muted">No batch runs recorded yet.</p>
-          <p className="text-muted pipeline-hint">
-            Run <code>make ingest</code> or trigger a Dagster job to see results here.
-          </p>
-        </div>
+        <Space direction="vertical" size={4}>
+          <Text type="secondary">No batch runs recorded yet.</Text>
+          <Text type="secondary">
+            Run <Text code>make ingest</Text> or trigger a Dagster job to see results here.
+          </Text>
+        </Space>
       )}
 
       {!loading && runs.length > 0 && (
         <>
-          <div className="pipeline-toolbar">
-            <SearchBar
-              value={keyword}
-              onChange={onKeyword}
-              placeholder="Search by job name, run ID or status…"
-            />
-            <span className="pipeline-count">
-              {total} run{total !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          {pageItems.length === 0 ? (
-            <p className="text-muted pipeline-empty">No runs match &ldquo;{keyword}&rdquo;.</p>
-          ) : (
-            <table className="pipeline-table">
-              <thead>
-                <tr>
-                  <th>Job name</th>
-                  <th>Status</th>
-                  <th>Run ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageItems.map((run) => (
-                  <tr key={run.run_id}>
-                    <td className="pipeline-job-name">{run.job_name}</td>
-                    <td>
-                      <StatusBadge status={run.status} />
-                    </td>
-                    <td className="pipeline-run-id">{run.run_id.slice(0, 12)}…</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          <Pagination page={page} pageCount={pageCount} total={total} onPage={setPage} />
+          <Input
+            prefix={<SearchOutlined />}
+            placeholder="Search by job name, run ID or status…"
+            allowClear
+            value={keyword}
+            onChange={(e) => onKeyword(e.target.value)}
+            style={{ marginBottom: 16 }}
+          />
+          <Table<RunItem>
+            columns={batchRunColumns}
+            dataSource={filtered}
+            rowKey={(row) => row.run_id}
+            size="small"
+            pagination={{
+              pageSize: PAGE_SIZE,
+              size: 'small',
+              showTotal: (t) => `${t} run${t !== 1 ? 's' : ''}`,
+              showSizeChanger: false,
+            }}
+            locale={{ emptyText: `No runs match "${keyword}".` }}
+          />
         </>
       )}
 
-      <div className="pipeline-section-footer">
-        <Link to="/tools/dagster" className="pipeline-tool-link">
-          View full Dagster workspace →
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+        <Link to="/tools/dagster">
+          <Button type="link" size="small" style={{ padding: 0 }}>
+            View full Dagster workspace →
+          </Button>
         </Link>
       </div>
-    </section>
+    </Card>
   )
 }
 
-// ── StreamingSection ──────────────────────────────────────── 
+// ── StreamingSection ──────────────────────────────────────────
 
-function StreamingSection({
-  summary,
-  loading,
-}: {
-  summary: StreamingSummary | null
-  loading: boolean
-}) {
+function StreamingSection({ summary, loading }: { summary: StreamingSummary | null; loading: boolean }) {
   const batches = summary?.batch_summaries ?? []
-  const { keyword, onKeyword, page, setPage, pageCount, pageItems, total } = usePaginatedSearch(
-    batches,
-    filterBatch,
-  )
+  const { keyword, onKeyword, filtered } = useFilteredData(batches, filterBatch)
 
   return (
-    <section className="pipeline-section card">
-      <div className="pipeline-section-header">
-        <div>
-          <p className="pipeline-eyebrow">Streaming processing</p>
-          <h3>Event pipeline</h3>
-        </div>
-      </div>
-
-      {loading && <p className="pipeline-empty text-muted">Loading summary…</p>}
+    <Card
+      title={
+        <>
+          <Text type="secondary" style={EYEBROW}>Streaming processing</Text>
+          <Title level={4} style={{ margin: 0 }}>Event pipeline</Title>
+        </>
+      }
+    >
+      {loading && <Text type="secondary">Loading summary…</Text>}
 
       {!loading && !summary && (
-        <div className="pipeline-empty-state">
-          <p className="text-muted">No streaming data available yet.</p>
-          <p className="text-muted pipeline-hint">
-            Run <code>make lance</code> to bootstrap the local streaming pipeline.
-          </p>
-        </div>
+        <Space direction="vertical" size={4}>
+          <Text type="secondary">No streaming data available yet.</Text>
+          <Text type="secondary">
+            Run <Text code>make lance</Text> to bootstrap the local streaming pipeline.
+          </Text>
+        </Space>
       )}
 
       {!loading && summary && (
-        <>
-          <div className="pipeline-stream-stats">
-            <StatCard label="Total events" value={summary.event_count} />
-            <StatCard
-              label="Deduplicated"
-              value={summary.event_count - summary.duplicate_events_skipped}
-            />
-            <StatCard label="Batches" value={summary.batch_count} />
-            <StatCard label="Latest samples" value={summary.latest_sample_count} />
-          </div>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Row gutter={[12, 12]}>
+            <Col span={6}><StatCard label="Total events" value={summary.event_count} /></Col>
+            <Col span={6}><StatCard label="Deduplicated" value={summary.event_count - summary.duplicate_events_skipped} /></Col>
+            <Col span={6}><StatCard label="Batches" value={summary.batch_count} /></Col>
+            <Col span={6}><StatCard label="Latest samples" value={summary.latest_sample_count} /></Col>
+          </Row>
 
           {summary.distribution.length > 0 && (
-            <div className="pipeline-distribution">
-              <p className="pipeline-eyebrow" style={{ marginBottom: 10 }}>
-                Scene distribution
-              </p>
-              {summary.distribution.map((row) => (
-                <div key={row.scene} className="pipeline-dist-row">
-                  <span className="pipeline-dist-label">{row.scene}</span>
-                  <div className="pipeline-dist-bar-wrap">
-                    <div
-                      className="pipeline-dist-bar"
-                      style={{
-                        width: `${Math.round((row.sample_count / summary.latest_sample_count) * 100)}%`,
-                      }}
+            <div>
+              <Text type="secondary" style={{ ...EYEBROW, marginBottom: 10 }}>Scene distribution</Text>
+              <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                {summary.distribution.map((row) => (
+                  <div key={row.scene} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Text
+                      strong
+                      style={{ width: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 13 }}
+                    >
+                      {row.scene}
+                    </Text>
+                    <Progress
+                      percent={summary.latest_sample_count > 0 ? Math.round((row.sample_count / summary.latest_sample_count) * 100) : 0}
+                      showInfo={false}
+                      strokeColor={{ from: '#2175ff', to: '#4f9bff' }}
+                      style={{ flex: 1, margin: 0 }}
                     />
+                    <Text type="secondary" style={{ width: 40, textAlign: 'right', flexShrink: 0, fontSize: 13 }}>
+                      {row.sample_count}
+                    </Text>
                   </div>
-                  <span className="pipeline-dist-count">{row.sample_count}</span>
-                </div>
-              ))}
+                ))}
+              </Space>
             </div>
           )}
 
           {batches.length > 0 && (
-            <div className="pipeline-batch-history">
-              <div className="pipeline-toolbar">
-                <SearchBar
-                  value={keyword}
-                  onChange={onKeyword}
-                  placeholder="Search by batch # or status…"
-                />
-                <span className="pipeline-count">
-                  {total} batch{total !== 1 ? 'es' : ''}
-                </span>
-              </div>
-
-              {pageItems.length === 0 ? (
-                <p className="text-muted pipeline-empty">
-                  No batches match &ldquo;{keyword}&rdquo;.
-                </p>
-              ) : (
-                <table className="pipeline-table">
-                  <thead>
-                    <tr>
-                      <th>Batch</th>
-                      <th>Events in</th>
-                      <th>Accepted</th>
-                      <th>New samples</th>
-                      <th>Run status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageItems.map((b) => (
-                      <tr key={b.batch_number}>
-                        <td className="pipeline-batch-num">#{b.batch_number}</td>
-                        <td>{b.input_events}</td>
-                        <td>{b.accepted_events}</td>
-                        <td>{b.unique_samples}</td>
-                        <td>
-                          <StatusBadge status={b.run_status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              <Pagination page={page} pageCount={pageCount} total={total} onPage={setPage} />
-            </div>
+            <>
+              <Input
+                prefix={<SearchOutlined />}
+                placeholder="Search by batch # or status…"
+                allowClear
+                value={keyword}
+                onChange={(e) => onKeyword(e.target.value)}
+              />
+              <Table<StreamingBatchSummary>
+                columns={streamingBatchColumns}
+                dataSource={filtered}
+                rowKey={(row) => String(row.batch_number)}
+                size="small"
+                pagination={{
+                  pageSize: PAGE_SIZE,
+                  size: 'small',
+                  showTotal: (t) => `${t} batch${t !== 1 ? 'es' : ''}`,
+                  showSizeChanger: false,
+                }}
+                locale={{ emptyText: `No batches match "${keyword}".` }}
+              />
+            </>
           )}
-        </>
+        </Space>
       )}
-    </section>
+    </Card>
   )
 }
 
-// ── Page ──────────────────────────────────────────────────── 
+// ── Page ──────────────────────────────────────────────────────
 
 export default function RunHistoryPage() {
   const runsFetcher = useCallback(() => fetchRuns(), [])
@@ -380,12 +278,13 @@ export default function RunHistoryPage() {
   if (runsState === 'error') {
     return (
       <PageContainer title="Pipeline Monitor" description="Batch and streaming pipeline activity.">
-        <div className="card pipeline-error">
-          <p className="text-muted">{runsError?.message ?? 'Failed to load pipeline runs.'}</p>
-          <button type="button" onClick={refetchRuns}>
-            Retry
-          </button>
-        </div>
+        <Alert
+          type="error"
+          showIcon
+          message="Failed to load pipeline runs"
+          description={runsError?.message ?? 'An unexpected error occurred.'}
+          action={<Button onClick={refetchRuns}>Retry</Button>}
+        />
       </PageContainer>
     )
   }
@@ -399,39 +298,38 @@ export default function RunHistoryPage() {
       title="Pipeline Monitor"
       description="Unified view of batch and streaming pipeline activity."
       actions={
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            type="button"
+        <Space>
+          <Button
+            icon={<ReloadOutlined />}
             onClick={() => {
               void refetchRuns()
               void refetchStream()
             }}
           >
             Refresh
-          </button>
-          <a
-            className="pipeline-dagster-btn"
-            href="http://localhost:3001"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open Dagster ↗
-          </a>
-        </div>
+          </Button>
+          <Button type="primary" href="http://localhost:3001" target="_blank">
+            Open Dagster <ExportOutlined />
+          </Button>
+        </Space>
       }
     >
-      <div className="pipeline-summary-row">
-        <StatCard label="Total runs" value={runList.length} />
-        <StatCard label="Completed" value={doneCount} />
-        <StatCard label="Failed" value={failedCount} />
-        <StatCard label="Streaming batches" value={streaming?.batch_count ?? '—'} />
-        <StatCard label="Streaming events" value={streaming?.event_count ?? '—'} />
-      </div>
+      <Row gutter={[14, 14]} style={{ marginBottom: 24 }}>
+        <Col flex="1"><StatCard label="Total runs" value={runList.length} /></Col>
+        <Col flex="1"><StatCard label="Completed" value={doneCount} /></Col>
+        <Col flex="1"><StatCard label="Failed" value={failedCount} /></Col>
+        <Col flex="1"><StatCard label="Streaming batches" value={streaming?.batch_count ?? '—'} /></Col>
+        <Col flex="1"><StatCard label="Streaming events" value={streaming?.event_count ?? '—'} /></Col>
+      </Row>
 
-      <div className="pipeline-monitor-grid">
-        <BatchRunsSection runs={runList} loading={runsState === 'loading'} />
-        <StreamingSection summary={streaming ?? null} loading={streamState === 'loading'} />
-      </div>
+      <Row gutter={20} align="top">
+        <Col xs={24} lg={12}>
+          <BatchRunsSection runs={runList} loading={runsState === 'loading'} />
+        </Col>
+        <Col xs={24} lg={12}>
+          <StreamingSection summary={streaming ?? null} loading={streamState === 'loading'} />
+        </Col>
+      </Row>
     </PageContainer>
   )
 }

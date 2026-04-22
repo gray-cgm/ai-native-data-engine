@@ -23,6 +23,12 @@ const antdTheme = {
     },
     Card: {
       paddingLG: 24,
+      headerFontSize: 18,
+      headerFontSizeSM: 16,
+    },
+    Statistic: {
+      contentFontSize: 28,
+      titleFontSize: 14,
     },
   },
 }

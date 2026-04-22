@@ -56,15 +56,10 @@ export function MainLayout() {
     return activeGroup?.items ?? []
   }, [activeGroup])
 
-  // xproduct logic: hasMicroAppMenu = has side menu items
   const hasSideMenu = activeSideItems.length > 0
 
-  // xproduct logic: onlyOneSideMenu = single item, no need for sidebar
   const onlyOneSideMenu = activeSideItems.length <= 1
 
-  // xproduct sidebar visibility:
-  //   width = hasMicroAppMenu && !fullscreen && !onlyOneSideMenu ? 200 : 0
-  //   collapsedWidth = !activeMicroAppConfig || fullscreen || onlyOneSideMenu ? 0 : 50
   const showSidebar = hasSideMenu && !fullscreen && !onlyOneSideMenu
 
   // Handle nav item click
@@ -86,14 +81,14 @@ export function MainLayout() {
     navigate('/settings')
   }
 
-  // Handle app sidebar collapse (left micro menu) - xproduct setCollapseApp
+  // Handle app sidebar collapse (left micro menu) - setCollapseApp
   const handleToggleApp = () => {
     const next = !collapseApp
     setCollapseApp(next)
     localStorage.setItem('collapseApp', next.toString())
   }
 
-  // Handle inner menu collapse - xproduct setCollapseMenu
+  // Handle inner menu collapse - setCollapseMenu
   const handleToggleMenu = () => {
     if (!hasSideMenu) return
     const next = !collapseMenu
@@ -120,7 +115,6 @@ export function MainLayout() {
 
   return (
     <div className={`main-layout ${fullscreen ? 'fullscreen' : ''}`}>
-      {/* Header - xproduct: height 50, hidden when fullscreen */}
       <LayoutHeader
         currentMenuLabel={activeMenuLabel}
         onToggleApp={handleToggleApp}
@@ -129,9 +123,7 @@ export function MainLayout() {
         onSearchNavigate={handleNavItemClick}
       />
 
-      {/* Layout body: Sider + Content - xproduct: <Layout> */}
       <div className="main-content">
-        {/* Left Sider - xproduct: <Sider width={125} collapsedWidth={0}> */}
         <LayoutMicroMenu
           groups={navGroups}
           activeIndex={activeGroupIndex}
@@ -141,14 +133,12 @@ export function MainLayout() {
           onSettingsClick={handleSettingsClick}
         />
 
-        {/* Content area - xproduct: <Content> > <Layout className={styles.contentLayout}> */}
         <div
           className="content-wrapper"
           style={{
             height: fullscreen ? '100vh' : 'calc(100vh - 50px)',
           }}
         >
-          {/* Inner Sider - xproduct: <Sider width={200} collapsedWidth={50}> with Menu inline */}
           <LayoutSidebar
             items={activeSideItems}
             currentPath={location.pathname}
@@ -158,7 +148,6 @@ export function MainLayout() {
             onToggleCollapse={handleToggleMenu}
           />
 
-          {/* Inner Content - xproduct: <Content className={styles.innerContent}> */}
           <main className="main-outlet">
             <KeepAliveOutlet />
           </main>

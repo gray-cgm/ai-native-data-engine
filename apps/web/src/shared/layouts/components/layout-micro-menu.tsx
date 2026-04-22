@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { SettingOutlined } from '@ant-design/icons'
-import { Button, Tooltip } from 'antd'
+import { Button } from 'antd'
 import '../../../styles/layout-micro-menu.css'
 import type { NavGroup } from '../nav-config'
 
@@ -24,7 +24,6 @@ export function LayoutMicroMenu({
   return (
     <aside className={`layout-micro-menu ${collapsed ? 'collapsed' : ''}`}>
       <div className="micro-menu-wrap">
-        {/* App list - card style like xproduct MicroAppMenu */}
         <div className="micro-app-list">
           {groups.map((group, index) => (
             <button
@@ -43,7 +42,6 @@ export function LayoutMicroMenu({
 
         {/* System menu section at the bottom */}
         <div className="system-menu-list">
-          <Tooltip title="Settings" placement="right">
             <Button
               type="text"
               block
@@ -53,7 +51,6 @@ export function LayoutMicroMenu({
             >
               Settings
             </Button>
-          </Tooltip>
         </div>
       </div>
     </aside>
