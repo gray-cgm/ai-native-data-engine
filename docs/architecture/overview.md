@@ -10,9 +10,9 @@
    - Application：把数据能力组织成工作台、BI、挖掘检索、标注、需求管理等面向角色的产品能力。
 
 2. **系统分层视角**
+   - **文件格式层**：Parquet / Lance / Mcap / Lerobot，属于同类文件格式组件；当前主格式为 Lance。
    - **存储层**：local fs / S3 / MinIO / OSS / HDFS，决定文件和对象存放位置。
    - **湖表格式层**：Iceberg / Paimon / Hudi，决定表快照、schema 演进、分区和事务语义。
-   - **文件格式层**：Parquet / Lance，属于同类文件格式组件；当前主格式为 Lance。
    - **计算层**：local Python / Dagster / Spark / Flink / Fluss，决定 ingestion、物化、批流处理与编排如何执行。
    - **查询层**：DuckDB / Trino / StarRocks，决定聚合、过滤、分析查询如何读取数据。
    - **应用层**：BI、挖掘检索、标注、需求管理、工作台等，决定最终用户怎样消费平台能力。
