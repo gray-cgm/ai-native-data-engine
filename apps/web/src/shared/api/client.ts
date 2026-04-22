@@ -70,6 +70,20 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return handleResponse<T>(res)
 }
 
+export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  return handleResponse<T>(res)
+}
+
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE' })
+  return handleResponse<T>(res)
+}
+
 function parseJson(text: string) {
   if (!text) {
     return null

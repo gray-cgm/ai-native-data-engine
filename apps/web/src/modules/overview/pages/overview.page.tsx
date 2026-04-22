@@ -1,172 +1,182 @@
-import { useCallback, useState } from 'react'
-import { Card, Row, Col, Typography } from 'antd'
-import { apiGet, apiPost } from '@/shared/api/client'
-import { useMutation } from '@/shared/hooks/use-mutation'
+import { useCallback } from 'react'
+import { Card, Col, Collapse, Row, Space, Tag, Typography } from 'antd'
+import { apiGet } from '@/shared/api/client'
 import { useQuery } from '@/shared/hooks/use-query'
 import type { DashboardPayload } from '@/shared/types/common'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
-import { PageSuccess } from '@/shared/components/page-success'
-import { PlatformStats } from '../components/platform-stats'
-import { QuickActions } from '../components/quick-actions'
-import { RecentActivity } from '../components/recent-activity'
+import { fetchOpsOverview, type OpsOverview } from '@/modules/operations/ops-modules-api'
+import { PlatformPulse } from '../components/platform-pulse'
+import { OperationsPulse } from '../components/operations-pulse'
+import { QuickActionsV2 } from '../components/quick-actions-v2'
+import { RecentActivityV2 } from '../components/recent-activity-v2'
 
-const { Paragraph, Title } = Typography
+const { Paragraph, Title, Text } = Typography
 
-const CARD_TEXT: React.CSSProperties = { fontSize: 15, lineHeight: 1.7 }
+type ScenarioSummaryItem = {
+  scenario_id: string
+  scenario_name: string
+  clip_count: number
+  keyframe_count: number
+  duration_seconds: number
+  first_start_time?: number | null
+  last_end_time?: number | null
+}
+
+type ScenarioSummaryResponse = { items: ScenarioSummaryItem[] }
 
 export default function OverviewPage() {
   const fetchDashboard = useCallback(() => apiGet<DashboardPayload>('/dashboard'), [])
-  const { data, state, loading, error, refetch } = useQuery(fetchDashboard, { cacheKey: 'dashboard' })
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const { loading: runningDemo, mutate: runScenario } = useMutation(async () => {
-    await apiPost('/bootstrap')
-    await refetch()
-    return 'Night Intersection Triage finished.'
-  })
-  const { loading: runningStreaming, mutate: runStreaming } = useMutation(async () => {
-    await apiPost('/streaming/bootstrap')
-    await refetch()
-    return 'Local streaming demo finished.'
-  })
+  const { data, state, error, refetch } = useQuery(fetchDashboard, { cacheKey: 'dashboard' })
 
-  if (state === 'loading') {
-    return <PageLoading message="Loading dashboard..." />
-  }
+  const fetchScenarios = useCallback(
+    () => apiGet<ScenarioSummaryResponse>('/clips/scenarios'),
+    [],
+  )
+  const { data: scenarios } = useQuery(fetchScenarios, { cacheKey: 'clips-scenarios' })
 
-  if (state === 'error') {
-    return <PageError message={error?.message} onRetry={refetch} />
-  }
+  const fetchOpsData = useCallback(() => fetchOpsOverview(), [])
+  const { data: opsOverview } = useQuery<OpsOverview>(fetchOpsData, { cacheKey: 'ops-overview' })
 
-  if (state === 'empty' || !data) {
-    return (
-      <PageContainer title="Overview">
-        <Card>
-          <Typography.Text type="secondary">No data available yet. Start by ingesting data to see dashboard metrics.</Typography.Text>
-        </Card>
-      </PageContainer>
-    )
-  }
+  if (state === 'loading') return <PageLoading message="Loading overview..." />
+  if (state === 'error') return <PageError message={error?.message} onRetry={refetch} />
 
-  const totalSamples = data.distribution?.reduce((sum, row) => sum + row.sample_count, 0) || 0
-  const scenarioSampleCount = data.scenario?.scenario_clip_count ?? 0
-  const prioritySampleCount = data.scenario?.priority_clip_ids.length ?? 0
-  const streamingEventCount = data.streaming?.event_count ?? 0
-  const streamingSampleCount = data.streaming?.latest_sample_count ?? 0
-  const latestStreamingRun = data.streaming?.batch_summaries[data.streaming.batch_summaries.length - 1]?.run_id ?? 'n/a'
+  const payload = data ?? ({ datasets: [], tasks: [], exports: [], runs: [] } as unknown as DashboardPayload)
+  const scenarioItems = scenarios?.items ?? []
+  const clipCount = scenarioItems.reduce((sum, s) => sum + s.clip_count, 0)
+  const keyframeCount = scenarioItems.reduce((sum, s) => sum + s.keyframe_count, 0)
+  const durationSeconds = scenarioItems.reduce((sum, s) => sum + s.duration_seconds, 0)
+  const durationHours = durationSeconds / 3600
+
+  const releaseStats = opsOverview?.modules.find((m) => m.module === 'release')?.counts ?? {}
+  const releasedCount = (releaseStats.approved ?? 0) + (releaseStats.published ?? 0)
+  const pendingReleaseCount = (releaseStats.drafted ?? 0) + (releaseStats.gated ?? 0)
+  const activeWork =
+    (opsOverview?.modules ?? []).reduce((sum, m) => sum + (m.counts.total ?? 0), 0) +
+    payload.tasks.filter((t) => t.status !== 'done' && t.status !== 'archived').length
 
   return (
     <PageContainer
       title="Overview"
-      description="AI Data Closed-Loop Workbench — unified data asset management, exploration, and export."
+      description="Clip-centric data ops console — monitor clip health, ongoing work, release readiness, and recent activity."
     >
-      {successMessage && (
-        <PageSuccess
-          message={successMessage}
-          onDismiss={() => setSuccessMessage(null)}
-          autoCloseDuration={3000}
-        />
-      )}
-      <PlatformStats
-        datasetCount={data.datasets.length}
-        taskCount={data.tasks.length}
-        sampleCount={totalSamples}
-        exportCount={data.exports.length}
-        scenarioSampleCount={scenarioSampleCount}
-        prioritySampleCount={prioritySampleCount}
-        streamingEventCount={streamingEventCount}
-        streamingSampleCount={streamingSampleCount}
+      <PlatformPulse
+        clipCount={clipCount}
+        scenarioCount={scenarioItems.length}
+        datasetCount={payload.datasets.length}
+        activeWork={activeWork}
+        releasedCount={releasedCount}
+        pendingReleaseCount={pendingReleaseCount}
+        exportCount={payload.exports.length}
+        durationHours={durationHours}
       />
-      {data.scenario ? (
-        <div style={{ display: 'grid', gap: 16, marginBottom: 16 }}>
-          <Card>
-            <Title level={4}>{data.scenario.scenario_name}</Title>
-            <Paragraph style={CARD_TEXT}>{data.scenario.scenario_goal}</Paragraph>
-            <Paragraph style={CARD_TEXT}>
-              Run {data.scenario.run_id} processed {data.scenario.record_count} clips and selected {data.scenario.scenario_clip_count} scenario candidates.
-            </Paragraph>
-          </Card>
-          <Row gutter={16}>
-            <Col xs={24} lg={12}>
-              <Card title="Scenario Definition">
-                <Paragraph style={CARD_TEXT}>Focus scenes: {data.scenario.focus_scenes.join(', ')}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Risk signals: {data.scenario.focus_tags.join(', ')}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Dominant scene: {data.scenario.dominant_scene}</Paragraph>
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title="Priority Package">
-                <Paragraph style={CARD_TEXT}>Priority clips: {data.scenario.priority_clip_ids.join(', ')}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Candidate clips: {data.scenario.candidate_clip_ids.join(', ')}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Search preview returns the same priority package for Web and SDK verification.</Paragraph>
-              </Card>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} lg={12}>
-              <Card title="Loop Outputs">
-                <Paragraph style={CARD_TEXT}>Summary artifact: {data.scenario.summary_output_uri}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Export artifact: {data.scenario.export_output_path}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Orchestrator asset: {data.scenario.orchestrator_asset_key}</Paragraph>
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title="What This Validates">
-                <Paragraph style={CARD_TEXT}>Web triggers the bootstrap action, BFF aggregates scenario state, API serves stable resource semantics, and SDK reads the same scenario package.</Paragraph>
-                <Paragraph style={CARD_TEXT}>DuckDB powers distribution, the platform currently materializes structured files in Parquet, retrieval already uses Lance, and the file-format evolution path is toward Lance as a more unified format family.</Paragraph>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      ) : null}
-      {data.streaming ? (
-        <div style={{ display: 'grid', gap: 16, marginBottom: 16 }}>
-          <Card>
-            <Title level={4}>Local-First Streaming Snapshot</Title>
-            <Paragraph style={CARD_TEXT}>
-              Streaming workspace {data.streaming.workspace_id} ingested {data.streaming.event_count} events across {data.streaming.batch_count} micro-batches and materialized {data.streaming.latest_sample_count} current samples.
-            </Paragraph>
-            <Paragraph style={CARD_TEXT}>
-              Duplicate events skipped: {data.streaming.duplicate_events_skipped}. Export artifact: {data.streaming.export_path}.
-            </Paragraph>
-          </Card>
-          <Row gutter={16}>
-            <Col xs={24} lg={12}>
-              <Card title="Streaming Materialization">
-                <Paragraph style={CARD_TEXT}>Event log: {data.streaming.event_log_path}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Bronze log: {data.streaming.bronze_log_path}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Silver snapshot: {data.streaming.silver_dataset_path}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Search index: {data.streaming.search_index_path}</Paragraph>
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title="Streaming Signals">
-                <Paragraph style={CARD_TEXT}>Top scenes: {data.streaming.distribution.map((row) => `${row.scene} (${row.sample_count})`).join(', ')}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Top tags: {data.streaming.tag_distribution.slice(0, 4).map((row) => `${row.tag} (${row.sample_count})`).join(', ')}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Latest run: {latestStreamingRun}</Paragraph>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      ) : null}
-      <Row gutter={16}>
+
+      <OperationsPulse overview={opsOverview ?? null} />
+
+      <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={12}>
-          <QuickActions
-            onRunScenario={() => runScenario().then((message) => setSuccessMessage(message ?? null))}
-            onRunStreaming={() => runStreaming().then((message) => setSuccessMessage(message ?? null))}
-            runningScenario={runningDemo}
-            runningStreaming={runningStreaming}
-          />
+          <Card title="Clip Health" style={{ height: '100%' }}>
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <div>
+                <Text type="secondary">Total Keyframes </Text>
+                <Text strong>{keyframeCount.toLocaleString()}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Scenarios </Text>
+                <Space wrap size={4}>
+                  {scenarioItems.slice(0, 6).map((s) => (
+                    <Tag key={s.scenario_id}>
+                      {s.scenario_name} · {s.clip_count}
+                    </Tag>
+                  ))}
+                  {scenarioItems.length === 0 && <Text type="secondary">No scenarios indexed yet.</Text>}
+                </Space>
+              </div>
+              <div>
+                <Text type="secondary">Privacy Pending </Text>
+                <Text strong>
+                  {(opsOverview?.modules.find((m) => m.module === 'privacy')?.counts.queued ?? 0) +
+                    (opsOverview?.modules.find((m) => m.module === 'privacy')?.counts.processing ?? 0)}
+                </Text>
+              </div>
+            </Space>
+          </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <RecentActivity
-            tasks={data.tasks}
-            exports={data.exports}
-            runs={data.runs}
-          />
+          <Card title="Release Readiness" style={{ height: '100%' }}>
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <div>
+                <Text type="secondary">Approved / Published </Text>
+                <Text strong>{releasedCount}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Drafted / Gated </Text>
+                <Text strong>{pendingReleaseCount}</Text>
+              </div>
+              <div>
+                <Text type="secondary">Open Checking Gates </Text>
+                <Text strong>
+                  {(opsOverview?.modules.find((m) => m.module === 'checking')?.counts.running ?? 0) +
+                    (opsOverview?.modules.find((m) => m.module === 'checking')?.counts.failed ?? 0)}
+                </Text>
+              </div>
+              <div>
+                <Text type="secondary">Mining Candidates Ready </Text>
+                <Text strong>
+                  {opsOverview?.modules.find((m) => m.module === 'mining')?.counts.candidates_ready ?? 0}
+                </Text>
+              </div>
+            </Space>
+          </Card>
         </Col>
       </Row>
+
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={10}><QuickActionsV2 /></Col>
+        <Col xs={24} lg={14}>
+          <RecentActivityV2 tasks={payload.tasks} exports={payload.exports} runs={payload.runs} />
+        </Col>
+      </Row>
+
+      {(payload.scenario || payload.streaming) && (
+        <Collapse
+          items={[
+            {
+              key: 'demo',
+              label: 'Demo artifacts (legacy Night Intersection / Streaming)',
+              children: (
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  {payload.scenario && (
+                    <Card size="small" title={payload.scenario.scenario_name}>
+                      <Paragraph type="secondary" style={{ marginBottom: 4 }}>
+                        {payload.scenario.scenario_goal}
+                      </Paragraph>
+                      <Text type="secondary">
+                        Run {payload.scenario.run_id} processed {payload.scenario.record_count} clips, selected{' '}
+                        {payload.scenario.scenario_clip_count}. Priority clips:{' '}
+                        {payload.scenario.priority_clip_ids.join(', ')}
+                      </Text>
+                    </Card>
+                  )}
+                  {payload.streaming && (
+                    <Card size="small" title={`Local-First Streaming — ${payload.streaming.workspace_id}`}>
+                      <Text type="secondary">
+                        {payload.streaming.event_count} events across {payload.streaming.batch_count} micro-batches,{' '}
+                        {payload.streaming.latest_sample_count} current samples. Export:{' '}
+                        {payload.streaming.export_path}.
+                      </Text>
+                    </Card>
+                  )}
+                </Space>
+              ),
+            },
+          ]}
+        />
+      )}
+
+      {/* Silence unused-import warnings when Title isn't used in lean branches */}
+      {false && <Title level={4}>hidden</Title>}
     </PageContainer>
   )
 }

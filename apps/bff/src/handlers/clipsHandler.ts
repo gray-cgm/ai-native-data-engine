@@ -1,14 +1,14 @@
 import type { Context } from 'koa'
 import type { Readable } from 'node:stream'
 
-import { queryClips } from '../engines/clipsEngine.js'
 import {
+  buildUpstreamVideoUrl,
   getAlignedCameraFrames,
   getClipDetail,
   getClipFrames,
   getStandaloneTopic,
-  buildUpstreamVideoUrl,
-} from '../services/clips.js'
+  queryClips,
+} from '../engines/clipsEngine.js'
 
 type ClipParams = { clipId: string }
 type CameraParams = ClipParams & { camera: string }

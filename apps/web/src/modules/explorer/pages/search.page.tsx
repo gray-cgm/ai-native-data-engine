@@ -19,6 +19,7 @@ import {
 import {
   BarChartOutlined,
   BulbOutlined,
+  ExperimentOutlined,
   FilterOutlined,
   SearchOutlined,
   ThunderboltOutlined,
@@ -182,6 +183,15 @@ export default function SearchPage() {
 
   const fromDataset = searchParams.get('dataset')
   const fromRequirement = searchParams.get('requirement')
+  const miningHref = useMemo(() => {
+    const params = new URLSearchParams()
+    if (fromRequirement) params.set('requirement', fromRequirement)
+    if (fromDataset) params.set('dataset', fromDataset)
+    if (filters.scenario) params.set('scenario', filters.scenario)
+    const q = [filters.naturalLanguage, filters.keyword, ...filters.tags].filter(Boolean).join(' ')
+    if (q) params.set('q', q)
+    return `/ops/mining?${params.toString()}`
+  }, [fromRequirement, fromDataset, filters.scenario, filters.naturalLanguage, filters.keyword, filters.tags])
 
   if (state === 'loading') return <PageLoading message="Loading clips…" />
   if (state === 'error') return <PageError message={error?.message} onRetry={refetch} />
@@ -197,6 +207,9 @@ export default function SearchPage() {
           </Link>
           <Link to="/explorer/clips">
             <Button icon={<VideoCameraOutlined />}>All clips</Button>
+          </Link>
+          <Link to={miningHref}>
+            <Button icon={<ExperimentOutlined />}>Open mining</Button>
           </Link>
         </Space>
       }

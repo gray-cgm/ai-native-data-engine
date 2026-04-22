@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Card, Pagination, Space, Tag, Tooltip } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { ExperimentOutlined, SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -127,12 +127,23 @@ export default function RequirementListPage() {
                     const sceneTags = (row.scene_tags ?? []).filter(Boolean)
                     if (sceneTags.length > 0) params.set('tags', sceneTags.join(','))
                     if (row.title) params.set('q', row.title)
+                    const miningParams = new URLSearchParams()
+                    miningParams.set('requirement', row.id)
+                    if (row.title) miningParams.set('q', row.title)
+                    if (sceneTags.length > 0) miningParams.set('q', `${row.title} ${sceneTags.join(' ')}`.trim())
                     return (
                       <Space>
                         <Tooltip title="Search matching clips">
                           <Link to={`/explorer/search?${params.toString()}`}>
                             <Button size="small" icon={<SearchOutlined />}>
                               Find clips
+                            </Button>
+                          </Link>
+                        </Tooltip>
+                        <Tooltip title="Create/track mining candidate sets for this requirement">
+                          <Link to={`/ops/mining?${miningParams.toString()}`}>
+                            <Button size="small" icon={<ExperimentOutlined />}>
+                              Open mining
                             </Button>
                           </Link>
                         </Tooltip>

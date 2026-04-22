@@ -18,6 +18,12 @@ import {
   BarChartOutlined,
   CodeOutlined,
   VideoCameraOutlined,
+  TagsOutlined,
+  HighlightOutlined,
+  SafetyCertificateOutlined,
+  ExperimentOutlined,
+  EyeInvisibleOutlined,
+  SendOutlined,
 } from '@ant-design/icons'
 
 export interface NavItem {
@@ -62,6 +68,12 @@ export const navGroups: NavGroup[] = [
     icon: ControlOutlined,
     items: [
       { label: 'Tasks', path: '/ops', icon: UnorderedListOutlined },
+      { label: 'Labeling', path: '/ops/labeling', icon: HighlightOutlined },
+      { label: 'Tagging', path: '/ops/tagging', icon: TagsOutlined },
+      { label: 'Checking', path: '/ops/checking', icon: SafetyCertificateOutlined },
+      { label: 'Mining', path: '/ops/mining', icon: ExperimentOutlined },
+      { label: 'Privacy', path: '/ops/privacy', icon: EyeInvisibleOutlined },
+      { label: 'Release', path: '/ops/release', icon: SendOutlined },
       { label: 'Exports', path: '/ops/exports', icon: ExportOutlined },
     ],
   },

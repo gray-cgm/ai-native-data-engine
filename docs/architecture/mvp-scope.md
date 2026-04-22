@@ -28,10 +28,11 @@
 - React workbench
 - Node.js + TypeScript BFF
 - Catalog dataset 分组浏览（按 scenario 聚合 clips）
-- Explorer/Search（标量过滤 + 自然语言语义占位）
+- Explorer/Search（交互式发现与验证；标量过滤 + 自然语言语义占位）
 - Explorer/Clips（列表 + 图片墙）
 - Clip 详情（metadata/topic/video 对齐可视化）
 - Requirement -> Search -> Clip 下钻与上卷导航
+- Operations/Mining（把探索结果沉淀为可跟踪 candidate set 任务，承接 Tagging/Checking/Release）
 - tasks 视图
 - workspaces 视图
 - exports 视图

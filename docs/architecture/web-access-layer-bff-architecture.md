@@ -21,8 +21,8 @@
 
 - `routes/` 负责 HTTP 路由声明、入参/出参 schema、接口文档元数据
 - `handlers/` 负责 Koa `ctx` 适配与 HTTP 层出入参整理
-- `engines/` 负责面向页面或资源管理场景的业务编排
-- `services/` 负责外部依赖调用与底层能力访问
+- `engines/` 负责面向页面或资源管理场景的业务编排，**所有 Platform API 调用、ViewModel 组装、缓存与聚合都在这里**
+- `services/` **只封装外部系统客户端**（Platform API HTTP 客户端 / Kafka / Flink / OAuth / 对象存储等），保持薄、通用、无业务语义
 - `middlewares/` 负责横切关注点
 - `utils/` 只放无业务语义的通用工具
 
@@ -222,46 +222,56 @@ handler 的定位是 HTTP adapter。它是 BFF 里最接近 Koa 的业务层，�
 
 ### `engines/`
 
-负责：
+engine 是 BFF 内部真正承载业务逻辑的一层，**它应当是“胖”的**：
 
-- BFF 内部的业务编排层
-- 管理端资源列表的过滤、搜索、排序、分页前处理
-- 页面聚合型接口的 ViewModel 组装
-- 多个 service 结果拼接成管理界面需要的结构
+- 直接调用 `platformFetch` 访问 Platform API（路径拼接、query 归一化、错误翻译都在这里）
+- 定义自己领域的 DTO / 类型别名 / 元数据（如 `MODULE_META`、枚举默认值）
+- 做 filter push-down 与 BFF 侧 search/sort/paginate
+- 管理端列表、详情、聚合 ViewModel 的组装
+- 短 TTL 的查询缓存（例如 vocab、tag histogram）
+- 跨模块聚合（例如 overview：合并多个子域统计 + 附加展示用的 label / accent / description）
+- 业务级前置校验（例如 `assertOpsModule`、`title is required`）
 
 不负责：
-- 它不直接拥有底层 domain fact
-- 它更多是“app-facing orchestration”
-- 它聚焦页面体验和管理端交互，而不是平台核心事务
+
+- 不拥有底层 domain fact（那是 `apps/api` + `python/*` 的职责）
+- 不处理 HTTP 协议细节（那是 handler + middleware 的职责）
+- 不承担长期编排与后台任务生命周期（那是 scheduler / orchestrator 的职责）
 
 示例：
 
-- `dashboardEngine.ts`：组装 dashboard 聚合数据
-- `catalogEngine.ts`：为 clip 聚合 dataset 视图提供 filter + search + paginate
-- `clipsEngine.ts`：为 clips 列表、详情、对齐帧与视频流提供页面编排
-- `operationsEngine.ts`：为 tasks / runs / exports 列表提供管理端查询体验
+- `opsModulesEngine.ts`：**当前推荐的样板模式**。一个文件囊括 6 个运营模块的全部能力：模块注册表 + 类型定义 + 模块元数据 + vocab 缓存 + `queryOpsItems` / `createOpsItemForModule` / `patchOpsItemForModule` / `deleteOpsItemForModule` / `getOpsOverview`，全部直接调用 `platformFetch`，不经过任何 `services/ops-modules.ts` 中转层。
+- `dashboardEngine.ts`：dashboard 聚合
+- `catalogEngine.ts`：clip 聚合 dataset 视图的 filter + search + paginate
+- `clipsEngine.ts`：clips 列表 / 详情 / 对齐帧 / 视频流的页面编排
+- `operationsEngine.ts`：tasks / runs / exports 列表的管理端查询体验
 
 ### `services/`
 
-负责：
+`services/` 只放 **外部系统客户端**。它不承载任何业务语义，也不是 domain-specific 的 Platform API 包装层。判断一个文件是否属于 `services/`，问一个问题：
 
-- 访问外部依赖或下层能力
-- 封装对 Platform API 的调用
-- 封装具体资源域的原子查询
+> “如果明天把它复制到另一个完全不同的 Node 服务里，它是否仍然有意义？”
 
-当前这一层的典型职责是：
+是 → 属于 `services/`。否 → 属于对应领域的 `engines/`。
 
-- `platform.ts`：统一处理 BFF -> Platform API 请求
-- `catalog.ts`：datasets / workspaces 的原子访问
-- `clips.ts`：clips / clip detail / aligned/video 的原子访问
-- `operations.ts`：tasks / runs / exports 的原子访问
-- `export-job.ts`：导出触发
+当前推荐放在这里的内容：
+
+- `platform.ts`：**唯一的 Platform API 通信原语**。负责 `platformFetch(path, init)`、重试、错误映射为 `UpstreamHttpError`。不包含任何 resource URL / query 构造。
+- `kafka.ts`（规划中）：Kafka 生产者/消费者封装
+- `flink.ts`（规划中）：Flink REST Client
+- `auth.ts`（规划中）：OAuth / IAM 客户端
+- `object-storage.ts`（规划中）：S3 / OSS 客户端
+
+**不应再出现**的文件：`catalog.ts` / `clips.ts` / `operations.ts` / `ops-modules.ts` 这类“按资源域包装 Platform API”的 service。这些只是给 `platformFetch` 套一层 URL 拼接，本质上是业务编排语义，应该直接写在对应 engine 里。
 
 规则：
 
-- service 应尽量是“薄而稳定”的依赖访问层
-- 不把页面级聚合堆进 service
+- service 必须是“薄而稳定”的客户端层，不暴露领域 DTO
+- 不把页面级聚合或筛选/排序规则堆进 service
 - 不把 Koa `ctx` 传进 service
+- 不把 Platform API 的具体路径常量泄露出 service 之外 —— 路径字符串由 engine 构造，service 只负责 HTTP 传输本身
+
+**迁移背书**：现有 `catalog.ts` / `clips.ts` / `operations.ts` 是旧形态遗留，新模块一律按 `opsModulesEngine.ts` 的方式写 —— 即由 engine 直接调用 `platformFetch`。存量 service 会在各自模块演进时逐步合并进对应 engine。
 
 ### `utils/`
 
@@ -300,9 +310,11 @@ handler 的定位是 HTTP adapter。它是 BFF 里最接近 Koa 的业务层，�
 route
 -> handler
 -> engine
--> service
+-> services/platform.ts (platformFetch)
 -> Platform API
 ```
+
+关键点：**engine 和 service 之间是“业务 ↔ 传输”的边界，不是“业务 A ↔ 业务 A 的 HTTP 版”**。engine 需要什么 URL 就自己拼什么 URL，`platformFetch` 只负责把 request 发出去和把 response 读回来。
 
 如果是聚合型接口：
 
@@ -310,25 +322,29 @@ route
 route
 -> handler
 -> engine
--> service A / service B / service C
--> 聚合成前端友好的 data
+   ├─ platformFetch(/api/v1/...)
+   ├─ platformFetch(/api/v1/...)
+   └─ 本地缓存 / MODULE_META / applyCollectionQuery
+-> 聚合成前端友好的 ViewModel
 ```
 
-如果是简单资源透传接口：
+如果有外部系统（Kafka / Flink / OAuth / 对象存储）要接入：
 
 ```text
 route
 -> handler
 -> engine
--> service
--> 直接返回资源结果
+   ├─ services/kafka.ts
+   ├─ services/flink.ts
+   └─ services/platform.ts
+-> 返回聚合结果
 ```
 
 这里依然建议保留 engine 层，即使有些接口暂时只是薄转发。原因是：
 
-- 它给后续规则增加预留稳定位置
+- 它给后续规则（缓存、ViewModel、权限）增加预留稳定位置
 - 避免 handler 越写越胖
-- 保持与 gta 风格的一致性
+- 保持 route / handler / engine / service 四层语义清晰
 
 ---
 
@@ -475,9 +491,9 @@ apps/bff/src/
 
 说明逻辑应该下沉到 engine。
 
-### 3) service 保持依赖访问语义
+### 3) service 只做外部系统客户端
 
-service 如果开始返回大段页面专用 ViewModel，说明它已经越界到了 engine。
+service 如果出现 dataset / clip / ops 这类领域语言，或者返回大段页面专用 ViewModel，说明已经越界到了 engine，需要搬迁。service 里应当只有 Platform / Kafka / Flink / OAuth / 对象存储 这类外部系统的薄客户端。
 
 ### 4) middleware 只做横切，不做业务
 
@@ -508,8 +524,24 @@ pagination / response / exception 适合 middleware。dataset 特殊规则不适
 
 - route 只声明接口
 - handler 只适配 Koa
-- engine 组织管理端与页面逻辑
-- service 访问 Platform API
+- engine 组织管理端与页面逻辑，**并直接调用 `platformFetch`**
+- service 只封装外部系统的薄客户端（Platform / Kafka / Flink / OAuth / OSS …）
 - middleware 统一响应、错误、日志与协议细节
 
 这样既能吸收 gta-api-demo-ts 的成熟后台管理服务组织方式，又不会破坏当前仓库 Web -> BFF -> Platform API 的主边界。
+
+---
+
+## 10. 样板模式：Ops Modules
+
+`apps/bff/src/engines/opsModulesEngine.ts` 是当前仓库推荐的 BFF 模块写法，后续新模块应当参考它而不是旧的 `services/clips.ts` / `services/operations.ts` 等。
+
+关键特征：
+
+1. 单文件包含模块注册表、DTO、`MODULE_META`、vocab 缓存、CRUD + stats + overview 的全部行为。
+2. 直接调用 `services/platform.ts#platformFetch`，不再新建 `services/ops-modules.ts` 转发层。
+3. 自己维护业务级校验（`assertOpsModule`、空 title 报 400、vocab 缓存 30s）。
+4. filter push-down 下沉到 Platform，`q` / sort / skip / limit 由 `applyCollectionQuery` 在 BFF 侧统一处理。
+5. Handler 只写几行 —— `assertOpsModule(ctx.params.module)` 后直接调入 engine 函数，所有异常由全局 `handleException` 中间件统一包装。
+
+当需要新增一类资源（例如 datasets-v2、annotation-projects）时，优先在 engine 里开新文件；只有需要接入新的外部系统（如 Kafka、Flink）时，才在 `services/` 里新增对应的客户端。

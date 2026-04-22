@@ -138,6 +138,19 @@
 - 标量检索：基于 clip metadata 过滤（scenario / vehicle / city / tags）
 - 语义检索：`Search using natural language` 交互入口先行，向量后端待接入
 
+补充语义边界：Explorer 属于“发现平面”（find / inspect / verify），不承担任务运营状态。
+
+### Operations / Mining
+
+- `GET /api/v1/ops/mining`
+- `POST /api/v1/ops/mining`
+- `PATCH /api/v1/ops/mining/{id}`
+- `GET /api/v1/ops/mining/stats`
+
+Mining 属于“运营平面”（track / assign / handoff），用于把 Explorer 的临时筛选结果沉淀为可追踪 candidate set。
+
+推荐链路：`Requirement -> Explorer Search -> MiningTask -> Tagging/Checking -> Release`。
+
 补充说明：tools 能力里，`registry` 与 `workspace-context` 已上移到 BFF 访问层实现；Platform API 仅保留 tools health 探测能力。
 
 ## 运行时行为

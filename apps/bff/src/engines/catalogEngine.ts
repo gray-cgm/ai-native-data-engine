@@ -1,8 +1,35 @@
 import type { DatasetItem, DatasetVersion, WorkspaceItem } from '../types.js'
 import { applyCollectionQuery } from '../utils/collection.js'
-import { getDataset, listDatasets, listDatasetVersions, listWorkspaces } from '../services/catalog.js'
+import { platformFetch } from '../services/platform.js'
 
 type Query = Record<string, unknown>
+
+async function listWorkspaces() {
+  const response = (await platformFetch('/workspaces')) as { items?: WorkspaceItem[] }
+  return response.items ?? []
+}
+
+async function listDatasets() {
+  const response = (await platformFetch('/datasets')) as { items?: DatasetItem[] }
+  return response.items ?? []
+}
+
+async function getDataset(datasetId: string) {
+  return (await platformFetch(`/datasets/${datasetId}`)) as {
+    dataset_id: string
+    name: string
+    workspace_id: string
+    profile: string
+    versions: DatasetVersion[]
+  }
+}
+
+async function listDatasetVersions(datasetId: string) {
+  const response = (await platformFetch(`/datasets/${datasetId}/versions`)) as {
+    items?: DatasetVersion[]
+  }
+  return response.items ?? []
+}
 
 export async function queryWorkspaces(query: Query) {
   const items = await listWorkspaces()

@@ -1,8 +1,23 @@
 import type { ExportItem, RunItem, TaskItem } from '../types.js'
-import { listExports, listRuns, listTasks } from '../services/operations.js'
 import { applyCollectionQuery } from '../utils/collection.js'
+import { platformFetch } from '../services/platform.js'
 
 type Query = Record<string, unknown>
+
+async function listTasks() {
+  const response = (await platformFetch('/tasks')) as { items?: TaskItem[] }
+  return response.items ?? []
+}
+
+async function listRuns() {
+  const response = (await platformFetch('/runs')) as { items?: RunItem[] }
+  return response.items ?? []
+}
+
+async function listExports() {
+  const response = (await platformFetch('/exports')) as { items?: ExportItem[] }
+  return response.items ?? []
+}
 
 export async function queryTasks(query: Query) {
   const status = getString(query.status)

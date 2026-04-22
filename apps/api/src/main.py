@@ -9,6 +9,7 @@ from src.api.routes.data_tasks import router as data_tasks_router
 from src.api.routes.export import router as export_router
 from src.api.routes.health import router as health_router
 from src.api.routes.operations import router as operations_router
+from src.api.routes.ops_modules import router as ops_modules_router
 from src.api.routes.pipelines import router as pipelines_router
 from src.api.routes.requirements import router as requirements_router
 from src.api.routes.samples import router as samples_router
@@ -32,6 +33,7 @@ app.include_router(streaming_router)
 app.include_router(catalog_router)
 app.include_router(clips_router)
 app.include_router(operations_router)
+app.include_router(ops_modules_router)
 app.include_router(export_router)
 app.include_router(tools_router)
 

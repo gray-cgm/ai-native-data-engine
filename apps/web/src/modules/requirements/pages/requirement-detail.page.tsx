@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Button, Card, Descriptions, Row, Col, Space, Tag, Typography } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { ExperimentOutlined, SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -69,6 +69,17 @@ export default function RequirementDetailPage() {
     return `/explorer/search?${params.toString()}`
   })()
 
+  const miningHref = (() => {
+    const params = new URLSearchParams()
+    params.set('requirement', data.id)
+    if (data.target_scene) params.set('scenario', data.target_scene)
+    const tags = (data.scene_tags ?? []).filter(Boolean)
+    if (data.title || tags.length > 0) {
+      params.set('q', `${data.target_scene ?? data.title ?? ''} ${tags.join(' ')}`.trim())
+    }
+    return `/ops/mining?${params.toString()}`
+  })()
+
   return (
     <PageContainer
       title={data.title}
@@ -76,6 +87,11 @@ export default function RequirementDetailPage() {
       actions={
         <Space>
           <Link to="/requirements"><Button>Back to list</Button></Link>
+          <Link to={miningHref}>
+            <Button icon={<ExperimentOutlined />}>
+              Open mining
+            </Button>
+          </Link>
           <Link to={explorerSearchHref}>
             <Button type="primary" icon={<SearchOutlined />}>
               Search matching clips

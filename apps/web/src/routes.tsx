@@ -13,6 +13,12 @@ const ClipListPage = lazy(() => import('./modules/explorer/pages/clip-list.page'
 const ClipDetailPage = lazy(() => import('./modules/explorer/pages/clip-detail.page'))
 const TaskBoardPage = lazy(() => import('./modules/operations/pages/task-board.page'))
 const ExportListPage = lazy(() => import('./modules/operations/pages/export-list.page'))
+const LabelingPage = lazy(() => import('./modules/operations/pages/labeling.page'))
+const TaggingPage = lazy(() => import('./modules/operations/pages/tagging.page'))
+const CheckingPage = lazy(() => import('./modules/operations/pages/checking.page'))
+const MiningPage = lazy(() => import('./modules/operations/pages/mining.page'))
+const PrivacyPage = lazy(() => import('./modules/operations/pages/privacy.page'))
+const ReleasePage = lazy(() => import('./modules/operations/pages/release.page'))
 const RunHistoryPage = lazy(() => import('./modules/pipelines/pages/run-history.page'))
 const ToolsHomePage = lazy(() => import('./modules/tools/pages/tools-home.page'))
 const ToolWorkspacePage = lazy(() => import('./modules/tools/pages/tool-workspace.page'))
@@ -32,6 +38,12 @@ export const routes: RouteObject[] = [
       { path: '/explorer/clips', element: <ClipListPage /> },
       { path: '/explorer/clips/:clipId', element: <ClipDetailPage /> },
       { path: '/ops', element: <TaskBoardPage /> },
+      { path: '/ops/labeling', element: <LabelingPage /> },
+      { path: '/ops/tagging', element: <TaggingPage /> },
+      { path: '/ops/checking', element: <CheckingPage /> },
+      { path: '/ops/mining', element: <MiningPage /> },
+      { path: '/ops/privacy', element: <PrivacyPage /> },
+      { path: '/ops/release', element: <ReleasePage /> },
       { path: '/ops/exports', element: <ExportListPage /> },
       { path: '/pipelines', element: <RunHistoryPage /> },
       { path: '/tools', element: <ToolsHomePage /> },
