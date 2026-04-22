@@ -1,0 +1,62 @@
+Arguments: 
+  /opt/homebrew/Cellar/node/24.3.0/bin/node /usr/local/bin/yarn install
+
+PATH: 
+  /Users/xpeng/.duckdb/cli/latest:/opt/homebrew/opt/sqlite/bin:/opt/homebrew/opt/postgresql@14/bin:/opt/miniconda3/bin:/opt/miniconda3/condabin:/Users/greatming/Library/Application Support/Code/User/globalStorage/github.copilot-chat/debugCommand:/Users/greatming/Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pkg/env/active/bin:/opt/pmk/env/global/bin:/Applications/Wireshark.app/Contents/MacOS:/Users/greatming/Library/Application Support/Code/User/globalStorage/github.copilot-chat/debugCommand:/Users/greatming/Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli:/usr/local/bin
+
+Yarn version: 
+  1.22.19
+
+Node version: 
+  24.3.0
+
+Platform: 
+  darwin arm64
+
+Trace: 
+  Error: https://registry.npmjs.org/@ad-engine%2fschemas: Not found
+      at params.callback [as _callback] (/usr/local/lib/node_modules/yarn/lib/cli.js:66145:18)
+      at self.callback (/usr/local/lib/node_modules/yarn/lib/cli.js:140890:22)
+      at Request.emit (node:events:507:28)
+      at Request.<anonymous> (/usr/local/lib/node_modules/yarn/lib/cli.js:141862:10)
+      at Request.emit (node:events:507:28)
+      at IncomingMessage.<anonymous> (/usr/local/lib/node_modules/yarn/lib/cli.js:141784:12)
+      at Object.onceWrapper (node:events:621:28)
+      at IncomingMessage.emit (node:events:519:35)
+      at endReadableNT (node:internal/streams/readable:1701:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+
+npm manifest: 
+  {
+    "name": "web",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+      "dev": "vite --host 0.0.0.0 --port 3000",
+      "build": "tsc -b && vite build",
+      "lint": "tsc --noEmit",
+      "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+      "@ad-engine/schemas": "workspace:*",
+      "@ant-design/icons": "^6.1.1",
+      "antd": "^6.3.6",
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1",
+      "react-router-dom": "^7.14.0"
+    },
+    "devDependencies": {
+      "@types/react": "^18.3.12",
+      "@types/react-dom": "^18.3.1",
+      "@vitejs/plugin-react": "^4.3.4",
+      "typescript": "^5.8.3",
+      "vite": "^5.4.19"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

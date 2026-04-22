@@ -20,9 +20,9 @@
 
 这个项目围绕六层架构组织：
 
-1. **存储层**：local fs / S3 / MinIO / OSS / HDFS
-2. **湖表格式层**：Iceberg / Paimon / Hudi
-3. **文件格式层**：Parquet / Lance，同类文件格式，当前主格式为 Lance
+1. **文件格式层**：Parquet / Lance / Mcap / Lerobot，同类文件格式，当前主格式为 Lance
+2. **存储层**：local fs / S3 / MinIO / OSS / HDFS
+3. **湖表格式层**：Iceberg / Paimon / Hudi
 4. **计算层**：local Python / Dagster / Spark / Flink / Fluss
 5. **查询层**：DuckDB / Trino / StarRocks
 6. **应用层**：BI、挖掘检索、标注、需求管理、工作台等
@@ -129,9 +129,9 @@ Raw Data
 
 如果映射到更完整的系统分层，可以这样理解：
 
+- **文件格式层**：负责数据如何编码，例如 Parquet、Lance、 Mcap、 Lerobot；它们属于同类文件格式组件，当前主格式为 Lance
 - **存储层**：负责文件和对象放在哪里，例如 local fs、S3、MinIO、OSS、HDFS
 - **湖表格式层**：负责表快照、schema 演进、分区和事务语义，例如 Iceberg、Paimon、Hudi
-- **文件格式层**：负责数据如何编码，例如 Parquet、Lance；它们属于同类文件格式组件，当前主格式为 Lance
 - **计算层**：负责 ingestion、物化、编排、批流处理如何执行，例如 local Python、Dagster、Spark、Flink、Fluss
 - **查询层**：负责 SQL 查询、聚合、交互式分析如何读取数据，例如 DuckDB、Trino、StarRocks
 - **应用层**：负责把底层能力组织成面向角色的产品体验，例如 BI、挖掘检索、标注、需求管理、工作台
@@ -458,8 +458,8 @@ SQLite 不属于上面五个 lakehouse 主层，而更接近独立的 **元数�
 
 把它翻译成更严格的分层语言，就是：
 
+- 文件格式层 = Parquet / Lance / Mcap / Lerobot（当前主格式 Lance）
 - 存储层 = local fs
-- 文件格式层 = Parquet / Lance（当前主格式 Lance）
 - 查询层 = DuckDB
 - 计算层 = local Python / Dagster
 - 元数据与事务控制层 = SQLite

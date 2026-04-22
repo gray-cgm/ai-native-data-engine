@@ -4,9 +4,9 @@
 
 对应关系可以简化为：
 
+- 文件格式层：Parquet / Lance / Mcap / Lerobot，同类文件格式，当前主格式为 Lance
 - 存储层：local fs / S3 / MinIO / OSS / HDFS
 - 湖表格式层：Iceberg / Paimon / Hudi
-- 文件格式层：Parquet / Lance，同类文件格式，当前主格式为 Lance
 - 计算层：local Python / Dagster / Spark / Flink / Fluss
 - 查询层：DuckDB / Trino / StarRocks
 - 应用层：BFF API、Platform API、BI、挖掘检索、标注、需求管理、工作台等

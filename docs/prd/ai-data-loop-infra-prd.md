@@ -18,9 +18,9 @@
 
 为避免概念混淆，本文默认使用统一六层模型来讨论系统底座：
 
-1. 存储层：local fs / S3 / MinIO / OSS / HDFS
-2. 湖表格式层：Iceberg / Paimon / Hudi
-3. 文件格式层：Parquet / Lance
+1. 文件格式层：Parquet / Lance / Mcap / Lerobot
+2. 存储层：local fs / S3 / MinIO / OSS / HDFS
+3. 湖表格式层：Iceberg / Paimon / Hudi
 4. 计算层：local Python / Dagster / Spark / Flink / Fluss
 5. 查询层：DuckDB / Trino / StarRocks
 6. 应用层：BI、挖掘检索、标注、需求管理、工作台等
