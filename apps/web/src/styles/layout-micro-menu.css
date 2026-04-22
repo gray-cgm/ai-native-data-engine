@@ -1,142 +1,209 @@
-/* Layout Micro Menu */
+/* Layout Micro Menu - aligned with xproduct Sider + MicroAppMenu */
 .layout-micro-menu {
-  width: var(--micro-menu-width, 100px);
-  height: calc(100vh - var(--header-height, 60px));
-  background: var(--color-bg-primary, #ffffff);
-  border-right: 1px solid var(--color-border, #e8eaed);
+  width: var(--micro-menu-width, 125px);
+  height: 100%;
+  background-color: var(--color-bg-secondary, #f5f7fa);
+  border-right: 1px solid var(--color-border);
   flex-shrink: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  transition: width var(--transition-duration) ease;
+  overflow: hidden;
+  transition: width 0.15s linear;
   display: flex;
   flex-direction: column;
+  z-index: 999;
+  box-sizing: border-box;
 }
 
 .layout-micro-menu.collapsed {
   width: 0;
-  visibility: hidden;
   border-right: none;
 }
 
-/* Micro Menu Header */
-.micro-menu-header {
-  width: 100%;
-  height: 60px;
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid var(--color-border, #e8eaed);
-  flex-shrink: 0;
-}
-
-.micro-menu-toggle {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: var(--color-text-secondary, #6c757d);
-  transition: all var(--transition-duration) ease;
-}
-
-.micro-menu-toggle:hover {
-  background: var(--color-bg-hover, #f0f2f5);
-  color: var(--color-text-primary, #000000);
-}
-
-/* Micro Menu Content */
-.micro-menu-content {
-  flex: 1;
-  padding: 12px 8px;
+/* Menu Wrapper - flex column justify between like xproduct menuWrap */
+.micro-menu-wrap {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+/* Micro App Menu - card list - aligned with xproduct MicroAppMenu */
+.micro-app-list {
+  max-height: calc(100% - 100px);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-secondary, #f5f7fa);
+  gap: 12px;
+  padding: 12px;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
-/* Micro App Item */
+/* Micro App Item - card style aligned with xproduct microAppMenuItem */
 .micro-app-item {
-  width: 100%;
-  min-height: 64px;
-  padding: 8px;
+  width: 100px;
   display: flex;
   flex-direction: column;
+  border: 1px solid #e8e9ea;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  background: var(--color-bg-secondary, #f5f7fa);
-  border: 1px solid var(--color-border, #e8eaed);
-  border-radius: 8px;
+  padding: 8px;
   cursor: pointer;
-  transition: all var(--transition-duration) ease;
+  border-radius: 12px;
+  background-color: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
   text-align: center;
   overflow: hidden;
 }
 
 .micro-app-item:hover {
-  background: var(--color-bg-hover, #f0f2f5);
-  border-color: var(--color-primary, #1b44ff);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  border-color: var(--color-accent, #1677ff);
 }
 
-.micro-app-item.active {
-  background: rgba(27, 68, 255, 0.15);
-  border-color: var(--color-primary, #1b44ff);
-  box-shadow: 0 2px 8px rgba(27, 68, 255, 0.2);
-}
-
-.micro-app-item .icon {
-  font-size: 24px;
+/* Icon Container */
+.micro-app-item .icon-container {
+  width: 70px;
+  height: 40px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 10px;
+  overflow: hidden;
+  background-color: rgba(22, 119, 255, 0.06);
+  transition: all 0.2s ease;
+}
+
+.micro-app-item .icon-container .item-icon {
+  font-size: 22px;
+  color: var(--color-accent, #1677ff);
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.micro-app-item .icon-container .item-icon-img {
   width: 40px;
   height: 40px;
-  border-radius: 6px;
-  background: white;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
-.micro-app-item.active .icon {
-  background: var(--color-primary, #1b44ff);
-  color: white;
-}
-
-.micro-app-item .label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-secondary, #6c757d);
-  white-space: nowrap;
+/* App Name */
+.micro-app-item .item-label {
+  font-size: 13px;
+  color: #333;
+  text-align: center;
+  line-height: 1.4;
+  font-weight: 500;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  white-space: nowrap;
 }
 
-.micro-app-item.active .label {
-  color: var(--color-primary, #1b44ff);
+/* Hover effects on children */
+.micro-app-item:hover .icon-container {
+  background-color: rgba(22, 119, 255, 0.12);
+  transform: scale(1.05);
+}
+
+.micro-app-item:hover .item-label {
+  color: var(--color-accent, #1677ff);
+}
+
+/* Active state - gradient like xproduct */
+.micro-app-item.active {
+  background: linear-gradient(135deg, #1677ff 0%, #8ebef9 100%);
+  box-shadow: 0 6px 24px rgba(22, 119, 255, 0.3);
+  transform: translateY(-3px);
+  border-color: transparent;
+}
+
+.micro-app-item.active .icon-container {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.micro-app-item.active .icon-container .item-icon {
+  color: #fff;
+}
+
+.micro-app-item.active .item-label {
+  color: #fff;
+  font-weight: 600;
+}
+
+.micro-app-item.active:hover {
+  box-shadow: 0 8px 32px rgba(22, 119, 255, 0.4);
+  transform: translateY(-4px);
+}
+
+.micro-app-item.active:hover .icon-container {
+  background-color: rgba(255, 255, 255, 0.25);
+  transform: scale(1.15);
+}
+
+/* System Menu - bottom section like xproduct SystemAppList */
+.system-menu-list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 2px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* System Menu Item - antd Button type="text" with custom overrides */
+.system-menu-item {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+  height: 40px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  color: var(--color-text-muted) !important;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  width: 100%;
+  text-align: left;
+}
+
+.system-menu-item:hover {
+  background-color: var(--color-bg-hover, #e6f4ff) !important;
+  border: 1px solid var(--color-accent, #1677ff);
+  color: var(--color-accent, #1677ff) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.system-menu-item.active {
+  background: linear-gradient(135deg, #1677ff 0%, #8ebef9 100%) !important;
+  color: #fff !important;
+}
+
+.system-menu-item.active:hover {
+  background: linear-gradient(135deg, #1677ff 0%, #8ebef9 100%) !important;
+  color: #fff !important;
 }
 
 /* Scrollbar styling */
-.micro-menu-content::-webkit-scrollbar {
+.micro-app-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.micro-menu-content::-webkit-scrollbar-track {
+.micro-app-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.micro-menu-content::-webkit-scrollbar-thumb {
-  background: #bcc0c7;
+.micro-app-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
   border-radius: 3px;
-  transition: background var(--transition-duration) ease;
 }
 
-.micro-menu-content::-webkit-scrollbar-thumb:hover {
-  background: #a0a6ac;
+.micro-app-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
-
-

@@ -1,3 +1,5 @@
+import { Card, Statistic } from 'antd'
+
 interface StatCardProps {
   label: string
   value: number | string
@@ -5,9 +7,8 @@ interface StatCardProps {
 
 export function StatCard({ label, value }: StatCardProps) {
   return (
-    <div className="stat-card">
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </div>
+    <Card size="small" className="stat-card">
+      <Statistic title={label} value={value} />
+    </Card>
   )
 }

@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { Alert, Button, Card, Descriptions, Space } from 'antd'
+import { ExportOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -11,7 +13,7 @@ import { fetchDatasetDetail, exportDataset } from '../api'
 export default function DatasetDetailPage() {
   const { datasetId } = useParams<{ datasetId: string }>()
   const fetcher = useCallback(() => fetchDatasetDetail(datasetId!), [datasetId])
-  const { data, state, error, refetch } = useQuery(fetcher)
+  const { data, state, error, refetch } = useQuery(fetcher, { cacheKey: `dataset:${datasetId}` })
   const [exporting, setExporting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -41,10 +43,10 @@ export default function DatasetDetailPage() {
   if (!data) {
     return (
       <PageContainer title="Dataset Not Found">
-        <div className="card">
+        <Card>
           <p className="text-muted">Dataset {datasetId} not found.</p>
-          <Link to="/catalog"><button>Back to Datasets</button></Link>
-        </div>
+          <Link to="/catalog"><Button icon={<ArrowLeftOutlined />}>Back to Datasets</Button></Link>
+        </Card>
       </PageContainer>
     )
   }
@@ -54,12 +56,12 @@ export default function DatasetDetailPage() {
       title={data.dataset.name}
       description={`Dataset ${data.dataset.dataset_id} · ${data.dataset.profile} profile`}
       actions={
-        <>
-          <Link to="/catalog"><button>Back</button></Link>
-          <button onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Exporting...' : 'Export'}
-          </button>
-        </>
+        <Space>
+          <Link to="/catalog"><Button icon={<ArrowLeftOutlined />}>Back</Button></Link>
+          <Button type="primary" icon={<ExportOutlined />} onClick={handleExport} loading={exporting}>
+            Export
+          </Button>
+        </Space>
       }
     >
       {successMessage && (
@@ -70,45 +72,24 @@ export default function DatasetDetailPage() {
         />
       )}
       {errorMessage && (
-        <div
-          style={{
-            backgroundColor: '#f8d7da',
-            border: '1px solid #f5c6cb',
-            color: '#721c24',
-            padding: 'var(--space-md)',
-            borderRadius: '4px',
-            marginBottom: 'var(--space-md)',
-          }}
-        >
-          <p style={{ margin: 0 }}>{errorMessage}</p>
-        </div>
+        <Alert
+          message={errorMessage}
+          type="error"
+          closable
+          onClose={() => setErrorMessage(null)}
+          style={{ marginBottom: 16 }}
+        />
       )}
-      <div className="card" style={{ marginBottom: 'var(--space-2xl)' }}>
-        <h3>Info</h3>
-        <table>
-          <tbody>
-            <tr>
-              <td>ID</td>
-              <td>{data.dataset.dataset_id}</td>
-            </tr>
-            <tr>
-              <td>Name</td>
-              <td>{data.dataset.name}</td>
-            </tr>
-            <tr>
-              <td>Workspace</td>
-              <td>{data.dataset.workspace_id}</td>
-            </tr>
-            <tr>
-              <td>Profile</td>
-              <td>{data.dataset.profile}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <Card title="Info" style={{ marginBottom: 24 }}>
+        <Descriptions column={1} size="small">
+          <Descriptions.Item label="ID">{data.dataset.dataset_id}</Descriptions.Item>
+          <Descriptions.Item label="Name">{data.dataset.name}</Descriptions.Item>
+          <Descriptions.Item label="Workspace">{data.dataset.workspace_id}</Descriptions.Item>
+          <Descriptions.Item label="Profile">{data.dataset.profile}</Descriptions.Item>
+        </Descriptions>
+      </Card>
 
-      <div className="card">
-        <h3>Versions ({data.versions.length})</h3>
+      <Card title={`Versions (${data.versions.length})`}>
         {data.versions.length === 0 ? (
           <p className="text-muted">No versions found.</p>
         ) : (
@@ -123,8 +104,7 @@ export default function DatasetDetailPage() {
             emptyText="No versions found."
           />
         )}
-      </div>
+      </Card>
     </PageContainer>
   )
 }
-

@@ -1,4 +1,7 @@
+import { Typography, Space } from 'antd'
 import type { ReactNode } from 'react'
+
+const { Title, Text } = Typography
 
 interface PageContainerProps {
   title: string
@@ -12,10 +15,10 @@ export function PageContainer({ title, description, actions, children }: PageCon
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h2>{title}</h2>
-          {description && <p className="text-muted">{description}</p>}
+          <Title level={4} style={{ margin: 0 }}>{title}</Title>
+          {description && <Text type="secondary">{description}</Text>}
         </div>
-        {actions && <div className="page-actions">{actions}</div>}
+        {actions && <Space className="page-actions">{actions}</Space>}
       </div>
       {children}
     </div>

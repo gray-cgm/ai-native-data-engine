@@ -1,194 +1,158 @@
-/* Layout Header */
+/* Layout Header - exactly matching xproduct MainLayout header */
 .layout-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--header-height, 60px);
-  background: var(--color-bg-primary, #ffffff);
-  border-bottom: 1px solid var(--color-border, #e8eaed);
+  position: relative;
+  height: var(--header-height, 50px);
+  background-color: #fff;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 0 16px;
-  gap: 16px;
-  z-index: 90;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  z-index: 999;
+  overflow: hidden;
+  transition: height 0.15s linear;
+  flex-shrink: 0;
 }
 
-/* Header Left */
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 200px;
-}
-
-.micro-app-toggle {
-  width: 44px;
-  height: 44px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--transition-duration) ease;
-  color: var(--color-text-primary, #000000);
-}
-
-.micro-app-toggle:hover {
-  background: var(--color-bg-hover, #f0f2f5);
-}
-
-.micro-app-toggle.collapsed {
-  color: var(--color-primary);
-}
-
+/* Logo Container - xproduct .logoContainer */
 .logo-container {
+  position: relative;
+  width: 50px;
+  height: 50px;
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
+  background-color: rgba(245, 247, 250, 1);
+  transition: background-color 0.2s linear;
+  user-select: none;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.logo-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-primary, #000000);
-  white-space: nowrap;
+.logo-container.collapsed {
+  background-color: #fff;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
 }
 
-/* Header Center */
-.header-center {
-  flex: 1;
+.logo-container .logo-icon {
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1677ff;
+  cursor: pointer;
 }
 
-/* Header Right */
+.logo-container.collapsed .logo-icon {
+  animation: breatheScale 1.3s ease-in-out infinite;
+}
+
+@keyframes breatheScale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.8);
+  }
+}
+
+/* Label Prefix - xproduct .labelPrefix */
+.label-prefix {
+  position: relative;
+  width: 75px;
+  height: 50px;
+  line-height: 50px;
+  font-size: 16px;
+  font-weight: bold;
+  overflow: hidden;
+  transition: width 0.15s linear;
+  background-color: rgba(245, 247, 250, 1);
+  color: #1677ff;
+  cursor: pointer;
+  box-sizing: border-box;
+  border-right: 1px solid rgba(5, 5, 5, 0.06);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.label-prefix.collapsed {
+  width: 0;
+  border-right: none;
+}
+
+/* Header Right - xproduct .headerRight */
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
-  justify-content: flex-end;
-  min-width: 200px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-link {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--transition-duration) ease;
-  color: var(--color-text-primary, #000000);
-  text-decoration: none;
-}
-
-.header-link:hover {
-  background: var(--color-bg-hover, #f0f2f5);
-}
-
-/* User Menu Container */
-.user-menu-container {
-  position: relative;
-}
-
-.user-menu-container.open .user-menu-dropdown {
-  opacity: 1;
-  transform: translateY(0) scaleY(1);
-  pointer-events: auto;
-}
-
-.user-menu-trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--color-bg-secondary, #f5f7fa);
-  border: 1px solid var(--color-border, #e8eaed);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all var(--transition-duration) ease;
-  font-size: 14px;
-  color: var(--color-text-primary, #000000);
-}
-
-.user-menu-trigger:hover {
-  background: var(--color-bg-hover, #f0f2f5);
-  border-color: var(--color-primary, #1b44ff);
-}
-
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-primary, #1b44ff);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-.user-name {
-  font-weight: 500;
-}
-
-/* User Menu Dropdown */
-.user-menu-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: white;
-  border: 1px solid var(--color-border, #e8eaed);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 160px;
+  height: 50px;
+  flex: 1;
   overflow: hidden;
-  z-index: 1000;
-  opacity: 0;
-  transform: translateY(-8px) scaleY(0.92);
-  transform-origin: top right;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
 }
 
-.user-menu-item {
-  width: 100%;
-  padding: 12px 16px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
+/* Label Area - xproduct .label */
+.header-label {
+  margin: 0 5px;
+  text-align: center;
+  position: relative;
+  width: 190px;
+  font-size: 16px;
+  font-weight: bold;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.header-label.collapsed {
   text-align: left;
+  width: 140px;
+}
+
+/* Active Menu Label - xproduct .activeMenuLabel */
+.active-menu-label {
+  white-space: nowrap;
+}
+
+/* Header Menu Container - xproduct .headerMenuContainer (section tag)
+   In xproduct, all <section> in header get: height: 50px; display: flex; align-items: center; */
+.header-menu-container {
+  flex: 1;
+  background-color: #fff;
+  height: 50px;
+  display: flex;
+  align-items: center;
+}
+
+/* Header Nav Menu - antd Menu horizontal override */
+.header-nav-menu {
+  height: 50px;
+  line-height: 50px;
+}
+
+/* Header action buttons are now using antd Button type="link" - no custom styles needed */
+
+/* Avatar Section - xproduct .avatarSection
+   section { height: 50px; display: flex; align-items: center; }
+   &.avatarSection { width: 110px; justify-content: flex-end; padding-right: 10px; } */
+.avatar-section {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  width: 110px;
+  justify-content: flex-end;
+  padding-right: 10px;
+  cursor: pointer;
+  position: relative;
+  margin-right: 10px;
+}
+
+/* Avatar Name - xproduct .avatarName */
+.avatar-name {
+  margin-right: 10px;
   font-size: 14px;
-  color: var(--color-text-primary, #000000);
-  transition: background var(--transition-duration) ease;
+  color: rgba(0, 0, 0, 0.88);
+  white-space: nowrap;
 }
 
-.user-menu-item:hover {
-  background: var(--color-bg-hover, #f0f2f5);
-}
-
-.user-menu-item.logout-item {
-  color: #ff4d4f;
-}
-
-.user-menu-item.logout-item:hover {
-  background: rgba(255, 77, 79, 0.1);
-}
-
-
+/* Avatar and Dropdown now use antd components - no custom styles needed */

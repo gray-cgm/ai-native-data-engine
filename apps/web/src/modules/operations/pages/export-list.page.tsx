@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { Card } from 'antd'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -12,6 +13,7 @@ export default function ExportListPage() {
   const fetcher = useCallback(() => fetchExports(), [])
   const { data, state, error, refetch } = useQuery(fetcher, {
     isEmpty: (d) => (d as ExportItem[]).length === 0,
+    cacheKey: 'exports',
   })
 
   if (state === 'loading') {
@@ -24,7 +26,7 @@ export default function ExportListPage() {
 
   return (
     <PageContainer title="Exports" description="Track data export jobs and download artifacts.">
-      <div className="card">
+      <Card>
         {state === 'empty' ? (
           <p className="text-muted">No exports yet. Create an export from a dataset to get started.</p>
         ) : (
@@ -45,7 +47,7 @@ export default function ExportListPage() {
             emptyText="No exports yet."
           />
         )}
-      </div>
+      </Card>
     </PageContainer>
   )
 }

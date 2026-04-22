@@ -1,11 +1,15 @@
+import { Spin } from 'antd'
+
 interface PageLoadingProps {
   message?: string
 }
 
 export function PageLoading({ message = 'Loading...' }: PageLoadingProps) {
   return (
-    <div className="page-loading" style={{ textAlign: 'center', padding: '48px' }}>
-      <p className="text-muted">{message}</p>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 48 }}>
+      <Spin size="large" tip={message}>
+        <div style={{ padding: 48 }} />
+      </Spin>
     </div>
   )
 }

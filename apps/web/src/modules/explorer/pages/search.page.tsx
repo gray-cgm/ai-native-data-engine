@@ -1,11 +1,15 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Button, Card, Input, Typography } from 'antd'
+import { SearchOutlined, BarChartOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
 import { DataTable } from '@/shared/components/data-table'
 import { fetchExplorerDashboard } from '../api'
+
+const { Title } = Typography
 
 export default function SearchPage() {
   const [keyword, setKeyword] = useState('')
@@ -15,6 +19,7 @@ export default function SearchPage() {
       const payload = d as { searchRows?: unknown[]; streaming?: { search_preview?: unknown[] } | null }
       return (payload.searchRows?.length ?? 0) === 0 && (payload.streaming?.search_preview?.length ?? 0) === 0
     },
+    cacheKey: 'search',
   })
 
   const searchRows = data?.searchRows ?? []
@@ -46,21 +51,24 @@ export default function SearchPage() {
     <PageContainer
       title="Sample Search"
       description="Search and filter samples by scene or ID."
-      actions={<Link to="/explorer"><button>Distribution</button></Link>}
+      actions={<Link to="/explorer"><Button icon={<BarChartOutlined />}>Distribution</Button></Link>}
     >
-      <div className="card">
-        <input
+      <Card>
+        <Input
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           placeholder="Search samples by ID or scene..."
-          style={{ width: '100%', padding: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}
+          prefix={<SearchOutlined />}
+          allowClear
+          size="large"
+          style={{ marginBottom: 16 }}
         />
         {state === 'empty' ? (
           <p className="text-muted">No samples available. Ingest data to see search results.</p>
         ) : (
-          <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
+          <div style={{ display: 'grid', gap: 16 }}>
             <div>
-              <h3>Scenario Search Preview</h3>
+              <Title level={5}>Scenario Search Preview</Title>
               {filtered.length === 0 && keyword ? (
                 <p className="text-muted">No scenario samples matched your search.</p>
               ) : (
@@ -76,7 +84,7 @@ export default function SearchPage() {
               )}
             </div>
             <div>
-              <h3>Streaming Search Preview</h3>
+              <Title level={5}>Streaming Search Preview</Title>
               {filteredStreaming.length === 0 && keyword ? (
                 <p className="text-muted">No streaming samples matched your search.</p>
               ) : (
@@ -93,7 +101,7 @@ export default function SearchPage() {
             </div>
           </div>
         )}
-      </div>
+      </Card>
     </PageContainer>
   )
 }

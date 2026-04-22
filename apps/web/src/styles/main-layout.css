@@ -1,43 +1,27 @@
-/* Main Layout Container */
+/* Main Layout Container - aligned with xproduct MainLayout */
 .main-layout {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100vh;
   background: var(--color-bg-primary, #ffffff);
-  color: var(--color-text-primary, #000000);
+  color: var(--color-text-primary, #181818);
+}
+
+/* Fullscreen: hide header, expand content */
+.main-layout.fullscreen .layout-header {
+  height: 0;
   overflow: hidden;
 }
 
-.main-layout.fullscreen {
-  --header-height: 0;
+.main-layout.fullscreen .layout-micro-menu {
+  width: 0;
+  border-right: none;
+  overflow: hidden;
 }
 
-/* Variables */
-:root {
-  --header-height: 60px;
-  --micro-menu-width: 100px;
-  --sidebar-width: 220px;
-  --sidebar-collapsed-width: 60px;
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f5f7fa;
-  --color-bg-hover: #f0f2f5;
-  --color-border: #e8eaed;
-  --color-text-primary: #181818;
-  --color-text-secondary: #6c757d;
-  --color-text-muted: #a0a6ac;
-  --color-primary: #5A7CFF;       
-  --color-primary-light: #B7CCFF;  
-  --color-primary-hover: #4E6DE6;
-  --color-primary-active: #3F59CC;
-  --transition-duration: 0.3s;
-}
-
-/* Header height variable */
-.main-layout:not(.fullscreen) {
-  padding-top: var(--header-height);
-}
-
-/* Main content area */
+/* Main content area (below header) */
 .main-content {
   display: flex;
   flex: 1;
@@ -50,69 +34,88 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  background: var(--color-bg-primary);
+  position: relative;
 }
 
-/* Main outlet */
+/* Main outlet — non-scrolling shell; each keep-alive-page scrolls independently */
 .main-outlet {
   flex: 1;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  width: 100%;
+  height: 100%;
+}
+
+/* Each cached page owns its own scroll position */
+.keep-alive-page {
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 24px;
-  background: var(--color-bg-primary);
-  transition: margin var(--transition-duration) ease;
+  padding: 25px;
 }
 
-.main-outlet.menu-collapsed {
-  margin-left: var(--sidebar-collapsed-width);
-}
-
-/* Fullscreen button */
-.fullscreen-button {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: var(--color-primary-light);
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-size: 20px;
-  box-shadow: 0 4px 12px rgba(27, 68, 255, 0.3);
+/* FloatButton - antd FloatButton with glassmorphism override */
+.fullscreen-float-btn {
+  inset-inline-end: 20px !important;
+  inset-block-end: 50% !important;
+  opacity: 0.5;
   transition: all var(--transition-duration) ease;
   z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.5;
 }
 
-.fullscreen-button:hover {
-  background: var(--color-primary-hover);
-  box-shadow: 0 6px 16px rgba(27, 68, 255, 0.4);
+.fullscreen-float-btn:hover {
   opacity: 1;
 }
 
-.fullscreen-button:active {
-  transform: scale(0.95);
+.fullscreen-float-btn .ant-float-btn-body {
+  background: rgba(24, 144, 255, 0.08) !important;
+  backdrop-filter: blur(10px) saturate(150%);
+  border: 1px solid rgba(24, 144, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(24, 144, 255, 0.06);
 }
 
-/* Scrollbar styling */
-.main-outlet::-webkit-scrollbar {
-  width: 8px;
+.fullscreen-float-btn:hover .ant-float-btn-body {
+  background: rgba(24, 144, 255, 0.15) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  border-color: rgba(24, 144, 255, 0.3);
+  box-shadow: 0 12px 48px rgba(24, 144, 255, 0.12);
 }
 
-.main-outlet::-webkit-scrollbar-track {
+.fullscreen-float-btn .ant-float-btn-body .ant-float-btn-content .ant-float-btn-icon {
+  color: rgba(24, 144, 255, 0.55);
+}
+
+.fullscreen-float-btn:hover .ant-float-btn-body .ant-float-btn-content .ant-float-btn-icon {
+  color: rgba(24, 144, 255, 0.85);
+}
+
+/* Scrollbar styling - aligned with xproduct */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
   background: transparent;
 }
 
-.main-outlet::-webkit-scrollbar-thumb {
-  background: #bcc0c7;
-  border-radius: 4px;
-  transition: background var(--transition-duration) ease;
+::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 3px;
+  margin: 2px;
 }
 
-.main-outlet::-webkit-scrollbar-thumb:hover {
-  background: #a0a6ac;
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #64748b;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

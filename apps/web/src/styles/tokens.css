@@ -1,21 +1,24 @@
 :root {
-  /* Colors - Base */
+  /* Colors - Base (aligned with xproduct) */
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f5f7fa;
   --color-bg-card: #ffffff;
   --color-bg-input: #f9fafb;
-  --color-border: #e8eaed;
+  --color-border: rgba(5, 5, 5, 0.06);
   --color-border-light: #f0f2f5;
   --color-border-input: #d1d5db;
+  --color-bg-hover: #e6f4ff;
 
   /* Colors - Text */
   --color-text-primary: #181818;
+  --color-text-secondary: #333333;
   --color-text-muted: #6c757d;
 
-  /* Colors - Accent */
-  --color-accent: #1b44ff;
-  --color-accent-hover: #1639d9;
-  --color-accent-border: #a3b3ff;
+  /* Colors - Accent (aligned with antd blue) */
+  --color-accent: #1677ff;
+  --color-accent-hover: #0958d9;
+  --color-accent-light: rgba(22, 119, 255, 0.06);
+  --color-accent-border: #1677ff;
 
   /* Colors - Status */
   --color-success: #16a34a;
@@ -40,7 +43,7 @@
   --radius-lg: 16px;
 
   /* Shadows */
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
 
   /* Typography */
   --font-family: Inter, ui-sans-serif, system-ui, sans-serif;
@@ -52,6 +55,10 @@
   --font-size-2xl: 24px;
   --font-size-stat: 28px;
 
-  /* Layout */
-  --sidebar-width: 240px;
+  /* Layout (aligned with xproduct dimensions) */
+  --header-height: 50px;
+  --micro-menu-width: 125px;
+  --sidebar-width: 200px;
+  --sidebar-collapsed-width: 50px;
+  --transition-duration: 0.3s;
 }

@@ -1,130 +1,168 @@
-import { useEffect, useRef, useState } from 'react'
+import { createElement, useMemo, useState } from 'react'
+import { SearchOutlined, QuestionCircleOutlined, BugOutlined, MessageOutlined, UserOutlined, LogoutOutlined, SettingOutlined, ProfileOutlined } from '@ant-design/icons'
+import { Avatar, Button, Dropdown, Menu, Space, TreeSelect, type MenuProps } from 'antd'
+import { navGroups } from '../nav-config'
 import '../../../styles/layout-header.css'
+
+interface HeaderNavItem {
+  key: string
+  label: string
+  icon?: string
+}
 
 interface LayoutHeaderProps {
   currentMenuLabel: string
-  onToggleMicroApp: () => void
-  collapsed: boolean
-  onToggleMenu: () => void
-  collapseMenu: boolean
+  onToggleApp: () => void
+  collapseApp: boolean
   onToggleFullscreen: () => void
+  headerNavItems?: HeaderNavItem[]
+  activeNavKey?: string
+  onNavItemClick?: (key: string) => void
+  onSearchNavigate?: (path: string) => void
 }
 
 export function LayoutHeader({
   currentMenuLabel,
-  onToggleMicroApp,
-  collapsed,
-  onToggleMenu,
-  collapseMenu,
+  onToggleApp,
+  collapseApp,
   onToggleFullscreen,
+  headerNavItems = [],
+  activeNavKey,
+  onNavItemClick,
+  onSearchNavigate,
 }: LayoutHeaderProps) {
-  const [showUserMenu, setShowUserMenu] = useState(false)
-  const userMenuRef = useRef<HTMLDivElement>(null)
-  const closeMenuTimerRef = useRef<number | null>(null)
+  const [searchValue, setSearchValue] = useState<string | undefined>(undefined)
 
-  const openUserMenu = () => {
-    if (closeMenuTimerRef.current) {
-      window.clearTimeout(closeMenuTimerRef.current)
-      closeMenuTimerRef.current = null
-    }
-    setShowUserMenu(true)
-  }
-
-  const closeUserMenuWithDelay = () => {
-    if (closeMenuTimerRef.current) {
-      window.clearTimeout(closeMenuTimerRef.current)
-    }
-    closeMenuTimerRef.current = window.setTimeout(() => {
-      setShowUserMenu(false)
-      closeMenuTimerRef.current = null
-    }, 180)
-  }
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (!userMenuRef.current) return
-      if (!userMenuRef.current.contains(event.target as Node)) {
-        if (closeMenuTimerRef.current) {
-          window.clearTimeout(closeMenuTimerRef.current)
-          closeMenuTimerRef.current = null
-        }
-        setShowUserMenu(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      if (closeMenuTimerRef.current) {
-        window.clearTimeout(closeMenuTimerRef.current)
-        closeMenuTimerRef.current = null
-      }
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
+  const searchTreeData = useMemo(() => {
+    return navGroups.map((group) => ({
+      title: group.label,
+      value: `group-${group.label}`,
+      selectable: false,
+      icon: createElement(group.icon),
+      children: group.items.map((item) => ({
+        title: item.label,
+        value: item.path,
+        icon: item.icon ? createElement(item.icon) : undefined,
+      })),
+    }))
   }, [])
 
   const handleLogout = () => {
-    // 实现登出逻辑
     window.location.href = '/login'
+  }
+
+  const userMenuItems: MenuProps['items'] = [
+    { key: 'profile', label: 'Profile', icon: <ProfileOutlined /> },
+    { key: 'settings', label: 'Settings', icon: <SettingOutlined /> },
+    { type: 'divider' },
+    { key: 'logout', label: 'Logout', icon: <LogoutOutlined />, danger: true },
+  ]
+
+  const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'logout') {
+      handleLogout()
+    }
   }
 
   return (
     <header className="layout-header">
-      {/* Logo and app toggle */}
-      <div className="header-left">
-        <button
-          className={`micro-app-toggle ${collapsed ? 'collapsed' : ''}`}
-          onClick={onToggleMicroApp}
-          title="Toggle application list"
-        >
-          ☰
-        </button>
-        <div className="logo-container">
-          <span className="logo-text">AD Data Workbench</span>
-        </div>
+      {/* Logo Container - xproduct logoContainer */}
+      <div
+        className={`logo-container ${collapseApp ? 'collapsed' : ''}`}
+        onClick={onToggleApp}
+      >
+        <img className="logo-icon" src="/logo.png" alt="logo" />
       </div>
 
-      {/* Center: Menu search and navigation */}
-      <div className="header-center">
-
+      {/* Label Prefix - xproduct labelPrefix "数据生产" */}
+      <div
+        className={`label-prefix ${collapseApp ? 'collapsed' : ''}`}
+        onClick={onToggleApp}
+      >
+        AI Data
       </div>
 
-      {/* Right: Actions and user menu */}
+      {/* Header Right - xproduct headerRight */}
       <div className="header-right">
-        <div className="header-actions">
-          <a href="/help" className="header-link" title="Help">
-            ❓
-          </a>
-          <a href="/feedback" className="header-link" title="Feedback">
-            💬
-          </a>
+        {/* Label - xproduct .label */}
+        <div className={`header-label ${collapseApp ? 'collapsed' : ''}`}>
+          <span className="active-menu-label">
+            {currentMenuLabel}
+          </span>
         </div>
 
-        {/* User menu */}
-        <div
-          className={`user-menu-container ${showUserMenu ? 'open' : ''}`}
-          ref={userMenuRef}
-          onMouseEnter={openUserMenu}
-          onMouseLeave={closeUserMenuWithDelay}
-        >
-          <button
-            className="user-menu-trigger"
-            type="button"
+        {/* Header Menu Container */}
+        <section className="header-menu-container">
+          <TreeSelect
+            showSearch
+            value={searchValue}
+            placeholder="Search menu..."
+            treeData={searchTreeData}
+            treeIcon
+            treeDefaultExpandAll
+            treeNodeFilterProp="title"
+            allowClear
+            style={{ width: 250, flexShrink: 0 }}
+            onChange={(value: string) => {
+              setSearchValue(undefined)
+              if (value && !value.startsWith('group-')) {
+                onSearchNavigate?.(value)
+              }
+            }}
+          />
+
+          {/* Horizontal Nav Menu - antd Menu */}
+          {headerNavItems.length > 0 && (
+            <Menu
+              mode="horizontal"
+              selectedKeys={activeNavKey ? [activeNavKey] : []}
+              items={headerNavItems.map((item) => ({
+                key: item.key,
+                label: item.label,
+              }))}
+              onClick={({ key }) => onNavItemClick?.(key)}
+              className="header-nav-menu"
+              style={{ flex: 1, borderBottom: 'none', background: 'transparent' }}
+            />
+          )}
+        </section>
+
+        {/* Action Buttons - antd Button type="link" */}
+        <Space size={0}>
+          <Button
+            type="link"
+            icon={<QuestionCircleOutlined />}
+            onClick={() => window.open('/help', '_blank')}
           >
-            <span className="user-avatar">👤</span>
-            <span className="user-name">Admin</span>
-          </button>
+            Help
+          </Button>
+          <Button
+            type="link"
+            icon={<BugOutlined />}
+            onClick={() => window.open('/feedback', '_blank')}
+          >
+            Feedback
+          </Button>
+          <Button
+            type="link"
+            icon={<MessageOutlined />}
+            onClick={() => window.open('/contact', '_blank')}
+          >
+            Contact
+          </Button>
+        </Space>
 
-          <div className="user-menu-dropdown">
-            <button className="user-menu-item">Profile</button>
-            <button className="user-menu-item">Settings</button>
-            <button
-              className="user-menu-item logout-item"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+        {/* Avatar Section - xproduct Dropdown > <section className={styles.avatarSection}> */}
+        <Dropdown
+          menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+          trigger={['click']}
+          placement="bottomRight"
+        >
+          <div className="avatar-section">
+            <span className="avatar-name">Admin</span>
+            <Avatar size={32} icon={<UserOutlined />} />
           </div>
-        </div>
+        </Dropdown>
       </div>
     </header>
   )

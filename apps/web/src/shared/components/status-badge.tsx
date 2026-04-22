@@ -1,17 +1,19 @@
+import { Tag } from 'antd'
+
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'var(--color-warning)',
-  pending_review: 'var(--color-warning)',
-  running: 'var(--color-info)',
-  in_progress: 'var(--color-info)',
-  done: 'var(--color-success)',
-  completed: 'var(--color-success)',
-  approved: 'var(--color-success)',
-  failed: 'var(--color-danger)',
-  rejected: 'var(--color-danger)',
-  blocked: 'var(--color-danger)',
-  canceled: 'var(--color-muted)',
-  cancelled: 'var(--color-muted)',
-  draft: 'var(--color-muted)',
+  pending: 'warning',
+  pending_review: 'warning',
+  running: 'processing',
+  in_progress: 'processing',
+  done: 'success',
+  completed: 'success',
+  approved: 'success',
+  failed: 'error',
+  rejected: 'error',
+  blocked: 'error',
+  canceled: 'default',
+  cancelled: 'default',
+  draft: 'default',
 }
 
 interface StatusBadgeProps {
@@ -19,13 +21,6 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const color = STATUS_COLORS[status] ?? 'var(--color-muted)'
-  return (
-    <span
-      className="status-badge"
-      style={{ borderColor: color, color }}
-    >
-      {status}
-    </span>
-  )
+  const color = STATUS_COLORS[status] ?? 'default'
+  return <Tag color={color}>{status.replace(/_/g, ' ')}</Tag>
 }
