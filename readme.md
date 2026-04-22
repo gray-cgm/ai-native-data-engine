@@ -6,9 +6,9 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 
 当前文档采用统一的六层模型来描述系统底座：
 
-1. 存储层：local fs / S3 / MinIO / OSS / HDFS
-2. 湖表格式层：Iceberg / Paimon / Hudi
-3. 文件格式层：Parquet / Lance，同类文件格式，当前主格式为 Lance
+1. 文件格式层：Parquet / Lance / Mcap / Lerobot，同类文件格式，当前主格式为 Lance
+2. 存储层：local fs / S3 / MinIO / OSS / HDFS
+3. 湖表格式层：Iceberg / Paimon / Hudi
 4. 计算层：local Python / Dagster / Spark / Flink / Fluss
 5. 查询层：DuckDB / Trino / StarRocks
 6. 应用层：BI、挖掘检索、标注、需求管理、工作台等
@@ -17,9 +17,9 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 
 | 层级 | 核心职责 | 代表技术 | 当前 local-first MVP |
 |---|---|---|---|
+| 文件格式层 | 定义数据如何编码、落盘与索引表达 | Parquet / Lance / Mcap / Lerobot | 当前主格式 Lance |
 | 存储层 | 保存原始文件、导出文件与对象数据 | local fs / S3 / MinIO / OSS / HDFS | local fs |
 | 湖表格式层 | 管理表快照、schema 演进、分区与事务语义 | Iceberg / Paimon / Hudi | 预留演进方向，当前仍是裸文件集 |
-| 文件格式层 | 定义数据如何编码、落盘与索引表达 | Parquet / Lance | 当前主格式 Lance |
 | 计算层 | 执行 ingestion、物化、编排、批流处理 | local Python / Dagster / Spark / Flink / Fluss | local Python + Dagster |
 | 查询层 | 提供 SQL 查询、聚合、交互式分析读取能力 | DuckDB / Trino / StarRocks | DuckDB |
 | 应用层 | 组织面向角色的产品入口与工作流体验 | BI / 挖掘检索 / 标注 / 需求管理 / 工作台 | Web + BFF + FastAPI + SDK |
