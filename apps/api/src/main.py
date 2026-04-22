@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes.catalog import router as catalog_router
+from src.api.routes.clips import router as clips_router
 from src.api.routes.data_tasks import router as data_tasks_router
 from src.api.routes.export import router as export_router
 from src.api.routes.health import router as health_router
@@ -29,6 +30,7 @@ app.include_router(health_router)
 app.include_router(samples_router)
 app.include_router(streaming_router)
 app.include_router(catalog_router)
+app.include_router(clips_router)
 app.include_router(operations_router)
 app.include_router(export_router)
 app.include_router(tools_router)

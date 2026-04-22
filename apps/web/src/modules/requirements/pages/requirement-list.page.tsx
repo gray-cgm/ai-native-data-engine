@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, Pagination, Tag } from 'antd'
+import { Button, Card, Pagination, Space, Tag, Tooltip } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -116,6 +117,28 @@ export default function RequirementListPage() {
                   header: 'Created',
                   render: (row: RequirementListItem) =>
                     new Date(row.created_at).toLocaleDateString(),
+                },
+                {
+                  key: '_drilldown',
+                  header: 'Actions',
+                  render: (row: RequirementListItem) => {
+                    const params = new URLSearchParams()
+                    params.set('requirement', row.id)
+                    const sceneTags = (row.scene_tags ?? []).filter(Boolean)
+                    if (sceneTags.length > 0) params.set('tags', sceneTags.join(','))
+                    if (row.title) params.set('q', row.title)
+                    return (
+                      <Space>
+                        <Tooltip title="Search matching clips">
+                          <Link to={`/explorer/search?${params.toString()}`}>
+                            <Button size="small" icon={<SearchOutlined />}>
+                              Find clips
+                            </Button>
+                          </Link>
+                        </Tooltip>
+                      </Space>
+                    )
+                  },
                 },
               ]}
               data={items}

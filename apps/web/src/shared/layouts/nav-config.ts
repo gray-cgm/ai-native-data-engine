@@ -17,6 +17,7 @@ import {
   RocketOutlined,
   BarChartOutlined,
   CodeOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons'
 
 export interface NavItem {
@@ -53,6 +54,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: 'Distribution', path: '/explorer', icon: PieChartOutlined },
       { label: 'Search', path: '/explorer/search', icon: SearchOutlined },
+      { label: 'Clips', path: '/explorer/clips', icon: VideoCameraOutlined },
     ],
   },
   {

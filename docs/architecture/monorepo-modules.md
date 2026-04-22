@@ -45,7 +45,7 @@ data/
   - 消费 Platform API contract，并输出前端友好的 app-facing ViewModel
 - `apps/api`
   - FastAPI Platform API
-  - 提供 datasets、tasks、workspaces、exports 与 sample operations 等平台资源路由
+  - 提供 datasets、tasks、workspaces、exports、clips / scenarios 等平台资源路由（`samples/*` 仅保留为 demo triage 入口）
   - 作为 query / export / control plane 的外部入口层，而不是吞下全部执行编排逻辑
 - `apps/orchestrator`
   - Dagster 项目

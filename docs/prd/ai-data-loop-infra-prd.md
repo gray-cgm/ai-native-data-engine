@@ -475,6 +475,71 @@
 
 自动驾驶只是一个 template，机器人、多模态、语音、工业视觉等也都应能通过同样机制落地。
 
+### 10. Explorer 交互探索与可视化
+
+平台需要提供面向数据消费者与数据运营角色的 Explorer 能力，用于把“数据资产可见性”从静态目录升级为可交互探索。
+
+Explorer 的能力边界包括：
+
+- clip 级浏览与检索（按 clip_id / vehicle / city / scenario / tags 过滤）
+- Requirement -> Search -> Clip 的需求驱动下钻与回链
+- Catalog dataset -> Clips -> Clip Detail 的资产驱动下钻与上卷
+- 双视图模式（列表模式 + 图片墙模式）
+- 单 clip 详情（meta、schema、topic/standalone topic 预览）
+- 摄像头视频浏览与对齐帧跳转（video + aligned frame index）
+- 多分辨率视频来源可见性（`mp4_path` 与 `mp4_resize_path`）
+
+其中 Search 采用「标量 + 语义占位」双轨模型：
+
+- 标量轨：基于 clip metadata 的结构化过滤（scenario / vehicle / city / tags）
+- 语义轨：`Search using natural language` 交互入口先行，后续接入向量索引
+- 联合策略：当前以标量结果为准，语义文本用于上下文记录与未来向量召回
+
+Catalog 当前采用 clip-centric 视角下的数据集分组策略：
+
+- 数据集由 clips 按 `scenario` 聚合得到（`scenario:<name>`）
+- 无 scenario 的 clip 归入 `scenario:unassigned`
+- 该策略可在后续切换为真实 dataset registry，不影响上层页面交互
+
+当前本地 MVP 的视频播放策略：
+
+- 本地优先播放 `data/raw/thumbnail_video/<clip_id>/<camera>.mp4`
+- 缩略视频优先来源于 `meta.mp4_resize_path[camera][0]`
+- 若 `mp4_resize_path` 缺失，回退 `meta.mp4_path[camera]`
+
+该能力在产品分层中的定位：
+
+- 上接统一资产目录与元数据管理
+- 横向复用查询层与 BFF read model
+- 下接可回放、可验证、可诊断的数据消费体验
+
+推荐的用户旅程（MVP）：
+
+```text
+Requirement
+-> Explorer Search (自然语言 + 标量)
+-> Clip Detail (核验)
+-> 上卷回 Requirement
+
+Catalog Dataset (scenario 聚合)
+-> Explorer Clips (预过滤)
+-> Clip Detail
+-> 上卷回 Dataset
+```
+
+推荐的 API 契约（Explorer Clips）：
+
+- `GET /api/clips`
+- `GET /api/clips/:clipId`
+- `GET /api/clips/:clipId/frames`
+- `GET /api/clips/:clipId/standalone/:name`
+- `GET /api/clips/:clipId/cameras/:camera/aligned`
+- `GET /api/clips/:clipId/cameras/:camera/video`
+
+推荐补充契约（Explorer Search Read Model）：
+
+- `GET /api/explorer/search`（scalar + vector hybrid）
+
 ## 核心非功能需求与指标体系
 
 这套 AI Data Loop Infra 不仅要定义功能边界，还必须定义可持续演进的非功能目标。非功能需求不是附属项，而是决定平台能否长期承接多领域迁移、持续交付与组织复用的核心约束。

@@ -6,7 +6,7 @@ dependencies = [
   "ad-core",
   "duckdb>=1.0.0",
   "pyarrow>=17.0.0",
-  "pylance>=0.18.0"
+  "pylance>=4.0.0"
 ]
 
 [build-system]

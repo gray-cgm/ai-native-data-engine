@@ -50,8 +50,8 @@ export default function OverviewPage() {
   }
 
   const totalSamples = data.distribution?.reduce((sum, row) => sum + row.sample_count, 0) || 0
-  const scenarioSampleCount = data.scenario?.scenario_sample_count ?? 0
-  const prioritySampleCount = data.scenario?.priority_sample_ids.length ?? 0
+  const scenarioSampleCount = data.scenario?.scenario_clip_count ?? 0
+  const prioritySampleCount = data.scenario?.priority_clip_ids.length ?? 0
   const streamingEventCount = data.streaming?.event_count ?? 0
   const streamingSampleCount = data.streaming?.latest_sample_count ?? 0
   const latestStreamingRun = data.streaming?.batch_summaries[data.streaming.batch_summaries.length - 1]?.run_id ?? 'n/a'
@@ -84,7 +84,7 @@ export default function OverviewPage() {
             <Title level={4}>{data.scenario.scenario_name}</Title>
             <Paragraph style={CARD_TEXT}>{data.scenario.scenario_goal}</Paragraph>
             <Paragraph style={CARD_TEXT}>
-              Run {data.scenario.run_id} processed {data.scenario.record_count} samples and selected {data.scenario.scenario_sample_count} scenario candidates.
+              Run {data.scenario.run_id} processed {data.scenario.record_count} clips and selected {data.scenario.scenario_clip_count} scenario candidates.
             </Paragraph>
           </Card>
           <Row gutter={16}>
@@ -97,8 +97,8 @@ export default function OverviewPage() {
             </Col>
             <Col xs={24} lg={12}>
               <Card title="Priority Package">
-                <Paragraph style={CARD_TEXT}>Priority samples: {data.scenario.priority_sample_ids.join(', ')}</Paragraph>
-                <Paragraph style={CARD_TEXT}>Candidate samples: {data.scenario.candidate_sample_ids.join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Priority clips: {data.scenario.priority_clip_ids.join(', ')}</Paragraph>
+                <Paragraph style={CARD_TEXT}>Candidate clips: {data.scenario.candidate_clip_ids.join(', ')}</Paragraph>
                 <Paragraph style={CARD_TEXT}>Search preview returns the same priority package for Web and SDK verification.</Paragraph>
               </Card>
             </Col>

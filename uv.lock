@@ -36,7 +36,7 @@ requires-dist = [
     { name = "ad-core", editable = "python/core" },
     { name = "duckdb", specifier = ">=1.0.0" },
     { name = "pyarrow", specifier = ">=17.0.0" },
-    { name = "pylance", specifier = ">=0.18.0" },
+    { name = "pylance", specifier = ">=4.0.0" },
 ]
 
 [[package]]

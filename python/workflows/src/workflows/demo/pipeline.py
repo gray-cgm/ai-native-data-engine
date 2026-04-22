@@ -77,13 +77,13 @@ def run_scenario_triage_flow(
         reverse=True,
     )
     scenario_rows = [item for item in scored_records if item['score'] > 0]
-    priority_sample_ids = [item['id'] for item in scenario_rows[:3]]
-    candidate_sample_ids = [item['id'] for item in scenario_rows]
+    priority_clip_ids = [item['id'] for item in scenario_rows[:3]]
+    candidate_clip_ids = [item['id'] for item in scenario_rows]
     dominant_scene = scenario_rows[0]['scene'] if scenario_rows else (distribution[0]['scene'] if distribution else 'unknown')
     search_preview = [
         row
         for row in search_rows
-        if row.get('id') in priority_sample_ids or row.get('scene') in config.focus_scenes
+        if row.get('id') in priority_clip_ids or row.get('scene') in config.focus_scenes
     ][:5]
 
     result = ScenarioTriageSummary(
@@ -98,10 +98,10 @@ def run_scenario_triage_flow(
         focus_scenes=config.focus_scenes,
         focus_tags=config.focus_tags,
         record_count=len(records),
-        scenario_sample_count=len(candidate_sample_ids),
+        scenario_clip_count=len(candidate_clip_ids),
         dominant_scene=dominant_scene,
-        candidate_sample_ids=candidate_sample_ids,
-        priority_sample_ids=priority_sample_ids,
+        candidate_clip_ids=candidate_clip_ids,
+        priority_clip_ids=priority_clip_ids,
         distribution=distribution,
         search_preview=search_preview,
         summary_output_uri=config.summary_output_uri,

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Button, Card, Descriptions, Row, Col, Space, Tag, Typography } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -58,12 +59,29 @@ export default function RequirementDetailPage() {
     )
   }
 
+  const explorerSearchHref = (() => {
+    const params = new URLSearchParams()
+    params.set('requirement', data.id)
+    const sceneTags = (data.scene_tags ?? []).filter(Boolean)
+    if (sceneTags.length > 0) params.set('tags', sceneTags.join(','))
+    if (data.target_scene) params.set('q', data.target_scene)
+    else if (data.title) params.set('q', data.title)
+    return `/explorer/search?${params.toString()}`
+  })()
+
   return (
     <PageContainer
       title={data.title}
       description={`Requirement ${data.id.slice(0, 8)}… · ${data.source} · ${data.priority}`}
       actions={
-        <Link to="/requirements"><Button>Back to list</Button></Link>
+        <Space>
+          <Link to="/requirements"><Button>Back to list</Button></Link>
+          <Link to={explorerSearchHref}>
+            <Button type="primary" icon={<SearchOutlined />}>
+              Search matching clips
+            </Button>
+          </Link>
+        </Space>
       }
     >
       {successMessage && (

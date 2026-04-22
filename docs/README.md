@@ -15,6 +15,7 @@
 - [Web Microfrontend Tools Platform](./architecture/web-microfrontend-tools-platform.md) - 说明 Tools 注册中心、BFF 网关代理与嵌入式工具集成机制
 - [界面 Item 设计、页面流转与平台交互细节](./architecture/ui-page-flows-and-platform-interactions.md) - 说明 workbench 信息架构、页面 item、页面流转与 Web/BFF/Platform API 交互边界
 - [Local-First Streaming 演进设计](./architecture/local-first-streaming-evolution.md) - 说明本地 streaming demo 的定位，以及如何从 micro-batch 演进到大规模批流一体平台
+- [Clip-centric Lance Data Model](./architecture/clip-lance-data-model.md) - clip 级 Lance 数据结构（meta / topic / wm / standalone topic），`make ingest|query|lance|stream-demo` 与 Explorer clip 页面的事实来源
 
 ## API
 - [API 概览](./api/overview.md) - 区分 Web Access API（BFF）与 Platform API（FastAPI）

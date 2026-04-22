@@ -20,19 +20,19 @@
     "occlusion"
   ],
   "record_count": 3,
-  "scenario_sample_count": 2,
+  "scenario_clip_count": 2,
   "dominant_scene": "urban-night",
-  "candidate_sample_ids": [
+  "candidate_clip_ids": [
     "frame_001",
     "frame_003"
   ],
-  "priority_sample_ids": [
+  "priority_clip_ids": [
     "frame_001",
     "frame_003"
   ],
   "distribution": [
     {
-      "scene": "rainy-highway",
+      "scene": "urban-night",
       "sample_count": 1
     },
     {
@@ -40,7 +40,7 @@
       "sample_count": 1
     },
     {
-      "scene": "urban-night",
+      "scene": "rainy-highway",
       "sample_count": 1
     }
   ],
@@ -68,7 +68,7 @@
   "export_id": "export-demo-v1",
   "export_format": "lance",
   "export_output_path": "data/exports/demo-dataset-v1.lance",
-  "run_id": "dagster-night_intersection_vru_triage_job-20260422081007262170",
+  "run_id": "dagster-night_intersection_vru_triage_job-20260422151405809367",
   "run_status": "success",
   "orchestrator_job_name": "night_intersection_vru_triage_job",
   "orchestrator_asset_key": "night_intersection_vru_triage_asset",

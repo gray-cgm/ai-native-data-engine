@@ -118,7 +118,7 @@ def run_scenario_triage(
 					'run_id': scenario.run_id,
 					'summary_output_uri': scenario.summary_output_uri,
 					'export_id': config.export_id,
-					'priority_sample_ids': scenario.priority_sample_ids,
+					'priority_clip_ids': scenario.priority_clip_ids,
 				},
 			)
 		)

@@ -32,7 +32,19 @@
 - `POST /api/bootstrap`
   - 触发夜间路口弱势交通参与者场景筛选 bootstrap
 - `GET /api/dashboard`
-  - 聚合 dashboard 所需的 distribution、scenario summary、datasets、dataset versions、tasks、workspaces、exports、search preview
+  - 聚合 dashboard 所需的 distribution、clips、tasks、workspaces、exports
+- `GET /api/clips`
+  - 返回 clip 列表（供 Catalog 聚合、Explorer/Search 过滤与 Clips 页面使用）
+- `GET /api/clips/{clipId}`
+  - 返回单 clip 详情（meta/schema/camera catalog）
+- `GET /api/clips/{clipId}/frames`
+  - 返回按 topic/camera 过滤后的帧预览
+- `GET /api/clips/{clipId}/standalone/{name}`
+  - 返回 standalone topic 帧预览
+- `GET /api/clips/{clipId}/cameras/{camera}/aligned`
+  - 返回视频对齐帧索引
+- `GET /api/clips/{clipId}/cameras/{camera}/video`
+  - 返回可 Range 读取的视频流
 - `POST /api/datasets/{datasetId}/exports`
   - 转发 dataset export 请求到 Platform API
 - `GET /api/tools/registry`
@@ -50,13 +62,31 @@
 - `GET /health`
   - 返回基础服务健康状态
 
-### Sample Operations
+### Clip / Sample Operations
 - `POST /samples/ingest-demo`
-  - 触发 `Night Intersection VRU Hard-Case Triage` 场景筛选与资产物化
+  - 触发 `Night Intersection VRU Hard-Case Triage` 场景筛选与资产物化（demo 固件链路，基于 clip 聚合；路由名为历史兼容保留）
 - `GET /samples/distribution`
   - 从本地 query 层读取 distribution / 统计结果，并返回当前 scenario package 摘要
-- `GET /samples/search-preview`
-  - 从本地 search 层返回基础检索预览，并聚焦当前 scenario package 的 priority samples
+
+### Clips / Explorer
+- `GET /clips`
+  - 列出 clips。支持 `scenario` / `vehicle_name` / `city` / `district` / `tag`（可重复，AND 语义）/ `da_tag` / `has_wm` / `start_after` / `start_before` / `keyword` / `clip_id`（批量点查，可重复）/ `sort` / `limit` / `offset` 等查询参数。返回 `{items, total, limit, offset}`，所有结果均来自 `data/metadata/clip_catalog.sqlite` 的 clip catalog 索引，不会重扫 Lance 文件。
+- `GET /clips/{clip_id}`
+  - 获取 clip 详情。summary / meta 从索引直接读出，camera catalog 按需从 `meta.lance` 派生。
+- `GET /clips/scenarios`
+  - 返回按 `meta.scenario` 聚合的场景摘要（`scenario_id=scenario:<slug>`，空值落入 `scenario:unassigned`）。
+- `GET /clips/datasets`
+  - 返回按 scenario 聚合的虚拟 dataset 列表，供 Catalog 使用。
+- `POST /clips/refresh`
+  - 强制 catalog 索引增量刷新；`?full=true` 同时裁剪已被删除的 clip。
+- `GET /clips/{clip_id}/frames`
+  - 读取 topic.lance 中的帧数据（可按 topic/camera 过滤）
+- `GET /clips/{clip_id}/standalone/{name}`
+  - 读取 standalone topic.lance 帧数据
+- `GET /clips/{clip_id}/cameras/{camera}/aligned`
+  - 读取对齐帧索引
+- `GET /clips/{clip_id}/cameras/{camera}/video`
+  - 读取本地缩略视频（支持 Range）
 
 ### Streaming
 - `POST /streaming/bootstrap`
@@ -73,6 +103,10 @@
   - 获取 dataset 详情
 - `GET /datasets/{dataset_id}/versions`
   - 列出 dataset versions
+
+补充说明：当前 Web Catalog 的数据集视图是 clip-centric 的页面聚合视图，
+由 `GET /api/clips` 按 `scenario` 聚合得到（例如 `scenario:<name>`），并非
+直接展示 Platform API 的 dataset 注册表原貌。
 
 ### Operations
 - `GET /tasks`
@@ -98,6 +132,11 @@
 这些接口会在 `data/exports/` 下生成真实导出文件。
 
 当前下面列出的 `/samples/*`、`/datasets/*`、`/workspaces`、`/tasks`、`/exports/*` 等路由，指的都是 FastAPI Platform API 路由。BFF 会在其上消费 Platform API contract，进行页面聚合和场景编排，但不会重新定义底层资源语义。
+
+在 Explorer/Search 场景下，当前检索模型为 hybrid-preview：
+
+- 标量检索：基于 clip metadata 过滤（scenario / vehicle / city / tags）
+- 语义检索：`Search using natural language` 交互入口先行，向量后端待接入
 
 补充说明：tools 能力里，`registry` 与 `workspace-context` 已上移到 BFF 访问层实现；Platform API 仅保留 tools health 探测能力。
 

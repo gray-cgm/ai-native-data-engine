@@ -1,101 +1,185 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, Button, Card } from 'antd'
-import { ExportOutlined } from '@ant-design/icons'
+import { Card, Col, Input, Row, Statistic, Tag, Typography } from 'antd'
+import { AppstoreOutlined, SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
-import { PageSuccess } from '@/shared/components/page-success'
 import { DataTable } from '@/shared/components/data-table'
-import { fetchDatasets, exportDataset } from '../api'
-import type { DatasetItem } from '@/shared/types/common'
+import { fetchClipDatasets, type ClipDataset } from '../clip-datasets'
+
+const { Text, Paragraph } = Typography
+
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '—'
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  if (m >= 60) {
+    const h = Math.floor(m / 60)
+    return `${h}h ${m % 60}m`
+  }
+  return `${m}m ${s}s`
+}
 
 export default function DatasetListPage() {
-  const fetcher = useCallback(() => fetchDatasets(), [])
+  const [keyword, setKeyword] = useState('')
+  const fetcher = useCallback(() => fetchClipDatasets(), [])
   const { data, state, error, refetch } = useQuery(fetcher, {
-    isEmpty: (d) => (d as DatasetItem[]).length === 0,
-    cacheKey: 'datasets',
+    isEmpty: (d) => (d as ClipDataset[]).length === 0,
+    cacheKey: 'catalog:clip-datasets',
   })
-  const [exporting, setExporting] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  async function handleExport(datasetId: string) {
-    setExporting(datasetId)
-    setErrorMessage(null)
-    try {
-      await exportDataset(datasetId, { format: 'lance' })
-      setSuccessMessage(`Export started for dataset ${datasetId}`)
-      await refetch()
-    } catch (err) {
-      setErrorMessage(`Failed to export dataset: ${(err as Error).message}`)
-    } finally {
-      setExporting(null)
-    }
-  }
+  const filtered = useMemo<ClipDataset[]>(() => {
+    const rows = data ?? []
+    if (!keyword) return rows
+    const lower = keyword.toLowerCase()
+    return rows.filter((d) =>
+      [
+        d.name,
+        d.scenario ?? '',
+        d.dataset_id,
+        d.vehicle_names.join(' '),
+        d.cities.join(' '),
+        d.tags.join(' '),
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(lower),
+    )
+  }, [data, keyword])
 
-  if (state === 'loading') {
-    return <PageLoading message="Loading datasets..." />
-  }
+  if (state === 'loading') return <PageLoading message="Aggregating datasets from clips…" />
+  if (state === 'error') return <PageError message={error?.message} onRetry={refetch} />
 
-  if (state === 'error') {
-    return <PageError message={error?.message} onRetry={refetch} />
-  }
+  const totalClips = (data ?? []).reduce((s, d) => s + d.clip_count, 0)
+  const totalKeyframes = (data ?? []).reduce((s, d) => s + d.keyframe_total, 0)
+  const totalDuration = (data ?? []).reduce((s, d) => s + d.duration_total_seconds, 0)
 
   return (
-    <PageContainer title="Datasets" description="Browse and manage data assets.">
-      {successMessage && (
-        <PageSuccess
-          message={successMessage}
-          onDismiss={() => setSuccessMessage(null)}
-          autoCloseDuration={3000}
-        />
-      )}
-      {errorMessage && (
-        <Alert
-          message={errorMessage}
-          type="error"
-          closable
-          onClose={() => setErrorMessage(null)}
+    <PageContainer
+      title="Catalog · Datasets"
+      description="Clip-centric datasets aggregated by scenario. Drill down to see member clips, jump into Explorer to search, or roll up from a single clip back to its dataset."
+    >
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic title="Datasets" value={data?.length ?? 0} />
+          </Card>
+        </Col>
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic title="Clips" value={totalClips} />
+          </Card>
+        </Col>
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic title="Keyframes" value={totalKeyframes} />
+          </Card>
+        </Col>
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic title="Recorded" value={formatDuration(totalDuration)} />
+          </Card>
+        </Col>
+      </Row>
+
+      <Card>
+        <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          Grouping key: <Text code>scenario</Text>. Each row aggregates the clips that share the
+          same <Text code>meta.scenario</Text>; clips without a scenario fall into a single
+          <Text code> unassigned</Text> bucket.
+        </Paragraph>
+
+        <Input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="Search datasets by scenario / vehicle / city / tag"
+          prefix={<SearchOutlined />}
+          allowClear
+          size="large"
           style={{ marginBottom: 16 }}
         />
-      )}
-      <Card>
+
         {state === 'empty' ? (
-          <p className="text-muted">No datasets found. Run ingestion to get started.</p>
+          <Text type="secondary">
+            No clips found under data/lance/. Run <Text code>make ingest</Text> after copying clip
+            data into that directory.
+          </Text>
         ) : (
           <DataTable
             columns={[
               {
-                key: 'dataset_id',
-                header: 'ID',
-                render: (row: DatasetItem) => (
-                  <Link to={`/catalog/${row.dataset_id}`}>{row.dataset_id}</Link>
+                key: 'name',
+                header: 'Dataset',
+                render: (row: ClipDataset) => (
+                  <div>
+                    <Link
+                      to={`/catalog/${encodeURIComponent(row.dataset_id)}`}
+                      style={{ fontWeight: 500 }}
+                    >
+                      <AppstoreOutlined style={{ marginRight: 6 }} />
+                      {row.name}
+                    </Link>
+                    <div>
+                      <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                        {row.dataset_id}
+                      </Text>
+                    </div>
+                  </div>
                 ),
               },
-              { key: 'name', header: 'Name' },
-              { key: 'workspace_id', header: 'Workspace' },
-              { key: 'profile', header: 'Profile' },
               {
-                key: '_action',
-                header: 'Action',
-                render: (row: DatasetItem) => (
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<ExportOutlined />}
-                    onClick={() => handleExport(row.dataset_id)}
-                    loading={exporting === row.dataset_id}
-                  >
-                    Export
-                  </Button>
+                key: 'clip_count',
+                header: 'Clips',
+                render: (row: ClipDataset) => (
+                  <span>
+                    {row.clip_count}
+                    <Text type="secondary" style={{ marginLeft: 6, fontSize: 12 }}>
+                      · {row.keyframe_total.toLocaleString()} kf
+                    </Text>
+                  </span>
+                ),
+              },
+              {
+                key: 'duration_total_seconds',
+                header: 'Duration',
+                render: (row: ClipDataset) => formatDuration(row.duration_total_seconds),
+              },
+              {
+                key: 'vehicle_names',
+                header: 'Vehicles',
+                render: (row: ClipDataset) =>
+                  row.vehicle_names.length > 0
+                    ? row.vehicle_names.slice(0, 3).join(', ') +
+                      (row.vehicle_names.length > 3 ? ` +${row.vehicle_names.length - 3}` : '')
+                    : '—',
+              },
+              {
+                key: 'cities',
+                header: 'Cities',
+                render: (row: ClipDataset) =>
+                  row.cities.length > 0
+                    ? row.cities.slice(0, 3).join(', ') +
+                      (row.cities.length > 3 ? ` +${row.cities.length - 3}` : '')
+                    : '—',
+              },
+              {
+                key: 'tags',
+                header: 'Tags',
+                render: (row: ClipDataset) => (
+                  <span>
+                    {row.tags.slice(0, 5).map((t) => (
+                      <Tag key={t}>{t}</Tag>
+                    ))}
+                    {row.tags.length > 5 && <Tag>+{row.tags.length - 5}</Tag>}
+                  </span>
                 ),
               },
             ]}
-            data={data ?? []}
+            data={filtered}
             rowKey={(row) => row.dataset_id}
-            emptyText="No datasets found."
+            emptyText={keyword ? 'No datasets matched your search.' : 'No datasets available.'}
           />
         )}
       </Card>

@@ -2,18 +2,28 @@
 从阿里云 OSS 批量下载 foundation_model_base 数据集脚本
 
 使用方式:
-    python download_oss_data.py
+    python download_oss_data.py                   # 下载 clip 数据 + 缩略视频
+    python download_oss_data.py --thumbnails-only # 仅下载缩略视频（假设 meta.lance 已在本地）
 
 配置说明:
     修改下方 CONFIG 区域中的 OSS 连接信息、本地存储路径和需要下载的 id_list。
+
+缩略视频规则:
+    优先读取 ``meta.lance.mp4_resize_path[sensor]`` 列表的首个条目（列表顺序 =
+    质量阶梯，首个即为最小分辨率缩略）。若该字段为空则回退到
+    ``meta.lance.mp4_path[sensor]``。缩略文件落盘到
+    ``data/raw/thumbnail_video/<clip_id>/<sensor>.mp4``。
 """
 
+import argparse
 import os
+import re
 import sys
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import oss2
 
@@ -33,11 +43,12 @@ MAX_WORKERS = int(os.environ.get("OSS_MAX_WORKERS", "8"))
 
 # 本地数据存放根目录
 LOCAL_BASE_DIR = Path(os.environ.get("OSS_LOCAL_DIR", "data/lance"))
+THUMBNAIL_BASE_DIR = Path(os.environ.get("OSS_THUMBNAIL_DIR", "data/raw/thumbnail_video"))
 
 # OSS Bucket 和路径模板
 OSS_BUCKET = "dl-data-storage"
 OSS_PATH_TEMPLATE = "foundation_model_base/{id}"
-ID_LIST_FILE_PATH = Path("/Users/greatming/Project/ai-data-loop-engine/apps/api/src/scripts/tobe_download_list.json")
+ID_LIST_FILE_PATH = Path(__file__).with_name("tobe_download_list.json")
 # 需要下载的 ID 列表
 Clip_LIST: list[dict] = []
 if ID_LIST_FILE_PATH.exists():
@@ -75,11 +86,11 @@ def validate_config() -> None:
         sys.exit(1)
 
 
-def create_bucket(endpoint: str | None = None) -> oss2.Bucket:
-    """初始化 OSS Bucket 客户端。"""
+def create_bucket(bucket_name: str, endpoint: str | None = None) -> oss2.Bucket:
+    """初始化任意 OSS Bucket 客户端。"""
     endpoint_to_use = endpoint or OSS_CONFIG["endpoint"]
     auth = oss2.Auth(OSS_CONFIG["access_key_id"], OSS_CONFIG["access_key_secret"])
-    return oss2.Bucket(auth, endpoint_to_use, OSS_BUCKET)
+    return oss2.Bucket(auth, endpoint_to_use, bucket_name)
 
 
 def extract_recommended_endpoint(exc: oss2.exceptions.OssError) -> str | None:
@@ -118,17 +129,17 @@ def iter_objects(bucket: oss2.Bucket, prefix: str):
         yield key, obj.size
 
 
-def download_one_file(key: str, target: Path, endpoint: str | None = None) -> None:
+def download_one_file(bucket_name: str, key: str, target: Path, endpoint: str | None = None) -> None:
     """在线程池中下载单文件。"""
-    bucket = create_bucket(endpoint)
+    bucket = create_bucket(bucket_name, endpoint)
     bucket.get_object_to_file(key, str(target))
 
 
-def run_download_job(job: tuple[str, str, Path, int, str | None]) -> tuple[bool, str, int, str]:
+def run_download_job(job: tuple[str, str, str, Path, int, str | None]) -> tuple[bool, str, int, str]:
     """执行单个下载任务并返回结果。"""
-    key, relative, target, size, endpoint = job
+    bucket_name, key, relative, target, size, endpoint = job
     try:
-        download_one_file(key, target, endpoint)
+        download_one_file(bucket_name, key, target, endpoint)
         return True, relative, size, ""
     except Exception as exc:
         return False, relative, size, str(exc)
@@ -151,20 +162,20 @@ async def download_one(id_: str, endpoint_override: str | None = None, retried: 
     print("-" * 60)
 
     try:
-        list_bucket = create_bucket(active_endpoint)
+        list_bucket = create_bucket(OSS_BUCKET, active_endpoint)
         objects = list(iter_objects(list_bucket, prefix))
         if not objects:
             print(f"[WARN] 前缀下无文件: oss://{OSS_BUCKET}/{prefix}")
             return False
 
-        jobs: list[tuple[str, str, Path, int, str | None]] = []
+        jobs: list[tuple[str, str, str, Path, int, str | None]] = []
         for key, size in objects:
             relative = key[len(prefix):]
             if not relative:
                 continue
             target = local_dir / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            jobs.append((key, relative, target, size, active_endpoint))
+            jobs.append((OSS_BUCKET, key, relative, target, size, active_endpoint))
 
         total_files = len(jobs)
         if total_files == 0:
@@ -224,24 +235,201 @@ async def download_one(id_: str, endpoint_override: str | None = None, retried: 
             )
         return False
 
-async def main_async() -> None:
+
+# ============================================================
+# 缩略视频下载：解析 meta.lance.mp4_resize_path / mp4_path 并下载
+# ============================================================
+
+
+_OSS_URI_RE = re.compile(r"^oss://(?P<bucket>[^/]+)/(?P<key>.+)$")
+
+
+def _parse_oss_uri(uri: str) -> tuple[str, str] | None:
+    if not isinstance(uri, str):
+        return None
+    m = _OSS_URI_RE.match(uri.strip())
+    if m:
+        return m.group("bucket"), m.group("key")
+    # Accept https URLs as well (oss-cn-xxx.aliyuncs.com/key or bucket.oss-cn.../key)
+    parsed = urlparse(uri)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        host = parsed.netloc
+        path = parsed.path.lstrip("/")
+        if "." in host and host.split(".", 1)[1].startswith("oss-"):
+            bucket = host.split(".", 1)[0]
+            return bucket, path
+        # endpoint-style: host is the endpoint, first path segment is bucket
+        parts = path.split("/", 1)
+        if len(parts) == 2:
+            return parts[0], parts[1]
+    return None
+
+
+def _read_meta_mp4_maps(clip_dir: Path) -> tuple[dict[str, list[str]], dict[str, str]] | None:
+    """Return ``(resize_map, mp4_path_map)`` parsed from the clip's meta.lance."""
+
+    import lance
+
+    meta_path = clip_dir / "meta.lance"
+    if not meta_path.exists():
+        return None
+    table = lance.dataset(str(meta_path)).to_table()
+    if table.num_rows == 0:
+        return None
+
+    def _to_dict(value: Any) -> dict:
+        if value is None:
+            return {}
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, list):
+            return {k: v for k, v in value if isinstance(k, str)}
+        return {}
+
+    resize_raw = _to_dict(
+        table.column("mp4_resize_path")[0].as_py() if "mp4_resize_path" in table.column_names else None
+    )
+    mp4_raw = _to_dict(
+        table.column("mp4_path")[0].as_py() if "mp4_path" in table.column_names else None
+    )
+    resize: dict[str, list[str]] = {}
+    for sensor, variants in resize_raw.items():
+        if not variants:
+            continue
+        if isinstance(variants, str):
+            resize[sensor] = [variants]
+        elif isinstance(variants, list):
+            resize[sensor] = [v for v in variants if isinstance(v, str)]
+    mp4_path = {k: v for k, v in mp4_raw.items() if isinstance(v, str)}
+    return resize, mp4_path
+
+
+def _pick_sensor_uri(sensor: str, resize: dict[str, list[str]], mp4_path: dict[str, str]) -> str | None:
+    """按需求挑选每个 sensor 的下载 URI：优先 resize 列表首个，回退 mp4_path。"""
+
+    if sensor in resize and resize[sensor]:
+        return resize[sensor][0]
+    return mp4_path.get(sensor)
+
+
+async def download_thumbnails_for_clip(
+    clip_id: str, endpoint_override: str | None = None
+) -> bool:
+    """Download a representative MP4 per sensor into ``data/raw/thumbnail_video/<clip>/``."""
+
+    clip_dir = LOCAL_BASE_DIR / clip_id
+    maps = _read_meta_mp4_maps(clip_dir)
+    if maps is None:
+        print(f"[WARN] 缩略视频跳过：{clip_id} 下未找到 meta.lance")
+        return False
+    resize, mp4_path = maps
+    sensors = sorted({*resize.keys(), *mp4_path.keys()})
+    if not sensors:
+        print(f"[WARN] 缩略视频跳过：{clip_id} meta 中未记录任何 mp4")
+        return False
+
+    target_dir = THUMBNAIL_BASE_DIR / clip_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    active_endpoint = endpoint_override or OSS_CONFIG["endpoint"]
+
+    jobs: list[tuple[str, str, str, Path, int, str | None]] = []
+    skipped: list[str] = []
+    for sensor in sensors:
+        uri = _pick_sensor_uri(sensor, resize, mp4_path)
+        parsed = _parse_oss_uri(uri) if uri else None
+        if not parsed:
+            skipped.append(f"{sensor} (no oss uri: {uri!r})")
+            continue
+        bucket_name, key = parsed
+        target = target_dir / f"{sensor}.mp4"
+        if target.exists() and target.stat().st_size > 0:
+            skipped.append(f"{sensor} (已存在 {format_size(target.stat().st_size)})")
+            continue
+        jobs.append((bucket_name, key, f"{sensor}.mp4", target, 0, active_endpoint))
+
+    print(
+        f"\n[INFO] 缩略视频 {clip_id}: 待下载 {len(jobs)} 个, 跳过 {len(skipped)} 个"
+    )
+    for note in skipped:
+        print(f"  - skip {note}")
+    if not jobs:
+        return True
+
+    loop = asyncio.get_running_loop()
+    ok_count = 0
+    fail_count = 0
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [
+            loop.run_in_executor(executor, run_download_job, job)
+            for job in jobs
+        ]
+        for completed in asyncio.as_completed(futures):
+            ok, relative, _size, err = await completed
+            if ok:
+                ok_count += 1
+                print(f"  [OK] {relative}")
+            else:
+                fail_count += 1
+                print(f"  [FAIL] {relative} | {err}")
+
+    if fail_count > 0:
+        print(f"[WARN] 缩略视频 {clip_id}: 成功 {ok_count}/{len(jobs)}, 失败 {fail_count}")
+        return False
+    print(f"[OK]   缩略视频 {clip_id}: 全部 {ok_count} 个成功")
+    return True
+
+
+def _discover_existing_clip_ids() -> list[str]:
+    if not LOCAL_BASE_DIR.exists():
+        return []
+    return sorted(
+        p.name
+        for p in LOCAL_BASE_DIR.iterdir()
+        if p.is_dir() and p.name.startswith("c-") and (p / "meta.lance").exists()
+    )
+
+
+# ============================================================
+
+
+async def main_async(args: argparse.Namespace) -> None:
+    validate_config()
+
+    if args.thumbnails_only:
+        clip_ids = ID_LIST or _discover_existing_clip_ids()
+        if not clip_ids:
+            print("[WARN] 没有可用的 clip，请先下载 clip 数据或填充 tobe_download_list.json")
+            sys.exit(0)
+        print(f"[INFO] 仅下载缩略视频: 共 {len(clip_ids)} 个 clip")
+        ok = 0
+        for idx, cid in enumerate(clip_ids, start=1):
+            print(f"\n{'=' * 60}")
+            print(f"[{idx}/{len(clip_ids)}] Thumbnail for {cid}")
+            if await download_thumbnails_for_clip(cid):
+                ok += 1
+        print(f"\n[DONE] 缩略视频: {ok}/{len(clip_ids)} 成功")
+        return
+
     if not ID_LIST:
         print("[WARN] ID_LIST 为空，请在脚本顶部配置需要下载的 ID 列表后重新运行。")
         sys.exit(0)
 
-    validate_config()
-
     print(f"\n[INFO] 共 {len(ID_LIST)} 个 ID 待下载")
-    print(f"[INFO] 本地根目录: {LOCAL_BASE_DIR.resolve()}\n")
+    print(f"[INFO] 本地根目录: {LOCAL_BASE_DIR.resolve()}")
+    print(f"[INFO] 缩略视频根目录: {THUMBNAIL_BASE_DIR.resolve()}\n")
 
     success: list[str] = []
     failed: list[str] = []
+    thumb_failed: list[str] = []
 
     for idx, id_ in enumerate(ID_LIST, start=1):
         print(f"{'=' * 60}")
         print(f"[{idx}/{len(ID_LIST)}] ID: {id_}")
         ok = await download_one(id_)
         (success if ok else failed).append(id_)
+        if ok and not args.skip_thumbnails:
+            if not await download_thumbnails_for_clip(id_):
+                thumb_failed.append(id_)
 
     # 汇总报告
     print(f"\n{'=' * 60}")
@@ -250,12 +438,33 @@ async def main_async() -> None:
         print(f"[WARN] 以下 ID 下载失败:")
         for fid in failed:
             print(f"       - {fid}")
+    if thumb_failed:
+        print(f"[WARN] 以下 ID 缩略视频下载不完整:")
+        for fid in thumb_failed:
+            print(f"       - {fid}")
+    if failed:
         sys.exit(1)
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Download OSS clip data + thumbnail videos.")
+    parser.add_argument(
+        "--thumbnails-only",
+        action="store_true",
+        help="仅下载缩略视频（需要 meta.lance 已存在于 data/lance/<clip>/）",
+    )
+    parser.add_argument(
+        "--skip-thumbnails",
+        action="store_true",
+        help="只下载 clip 数据，不下载缩略视频",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    asyncio.run(main_async())
+    asyncio.run(main_async(_parse_args()))
 
 
 if __name__ == "__main__":
     main()
+

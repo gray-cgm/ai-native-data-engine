@@ -50,12 +50,13 @@ SQLite 不属于上述六层中的 lakehouse 主层，更接近独立的元数�
 ### 1. 数据模型优先
 系统围绕数据资产组织，而不是围绕文件路径，更不是围绕某个基础设施产品组织。
 
-核心资产主线：
+核心资产主线（主数据单元是 Clip（Sample））：
 
 ```text
 Raw Data
 -> RawRecord
--> Sample
+-> Clip
+-> Scenario
 -> Dataset
 -> DatasetVersion
 -> JobRun
@@ -112,6 +113,22 @@ Web
 - 未来如查询协调或批任务调度演进为独立常驻服务，应作为独立 app/service 部署，而不是继续挤进 BFF 或 route handler
 
 BFF 不拥有底层数据资产事实，也不直接持有 runtime provider；平台 domain 事实、workflow 触发、query/search/export 等能力仍由 Platform API 与其背后的 Python runtime 负责。
+
+当前工作台的关键产品链路是 clip-centric：
+
+```text
+Requirement
+-> Explorer/Search（自然语言占位 + 标量过滤）
+-> Clip Detail（metadata/topic/video 对齐）
+-> 上卷回 Requirement 或 Catalog
+
+Catalog（按 scenario 聚合 dataset）
+-> Explorer/Clips
+-> Clip Detail
+-> 上卷回 Dataset
+```
+
+其中 Search 的语义检索入口已在交互层就位，向量索引后端属于后续可插拔能力，当前由标量过滤保证结果可用性。
 
 这里的关键边界是：
 

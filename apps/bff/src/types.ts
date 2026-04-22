@@ -22,10 +22,10 @@ export type ScenarioTriageSummary = {
   focus_scenes: string[]
   focus_tags: string[]
   record_count: number
-  scenario_sample_count: number
+  scenario_clip_count: number
   dominant_scene: string
-  candidate_sample_ids: string[]
-  priority_sample_ids: string[]
+  candidate_clip_ids: string[]
+  priority_clip_ids: string[]
   distribution: DistributionRow[]
   search_preview: SearchRow[]
   summary_output_uri: string
@@ -130,4 +130,85 @@ export type ToolHealthPayload = {
   checked_at: string
   status_code: number | null
   detail: string | null
+}
+
+// ── Clip-centric Lance types ───────────────────────────────────────────────
+
+export type ClipTopicRef = { name: string; non_null_count: number }
+export type ClipCameraRef = { name: string; frame_count: number }
+export type ClipStandaloneRef = { name: string; row_count: number }
+
+export type ClipSummary = {
+  clip_id: string
+  keyframe_count: number
+  start_time: number | null
+  end_time: number | null
+  duration_seconds: number | null
+  vehicle_name: string | null
+  city: string | null
+  district: string | null
+  scenario: string | null
+  tags: string | null
+  da_tags: string | null
+  topics: ClipTopicRef[]
+  cameras: ClipCameraRef[]
+  standalone_topics: ClipStandaloneRef[]
+  has_wm: boolean
+}
+
+export type ClipListResponse = { items: ClipSummary[]; total: number }
+
+export type ClipCameraCatalogItem = {
+  name: string
+  position: string | null
+  ros_topic: string | null
+  model: string | null
+  vendor: string | null
+  width: number | null
+  height: number | null
+  hfov: number | null
+  vfov: number | null
+  is_avm: boolean
+  extrinsic_xyz: [number | null, number | null, number | null] | null
+  mp4_path: string | null
+  mp4_resize_paths: string[]
+  has_local_video: boolean
+}
+
+export type ClipDetail = {
+  item: ClipSummary
+  meta: {
+    vehicle_name: string | null
+    vehicle_model: number | null
+    vehicle_info: Record<string, number> | null
+    city: string | null
+    district: string | null
+    scenario: string | null
+    tags: string | null
+    da_tags: string | null
+    jira_id: string | null
+    start_time: number | null
+    end_time: number | null
+    calibration_version: number | null
+  }
+  camera_catalog: ClipCameraCatalogItem[]
+}
+
+export type ClipFrameRow = Record<string, unknown>
+
+export type ClipFramesResponse = {
+  items: ClipFrameRow[]
+  limit: number
+  offset: number
+}
+
+export type ClipAlignedFrame = {
+  timestamp: number
+  video_frame_timestamp: number
+  video_frame_index: number | null
+}
+
+export type ClipAlignedResponse = {
+  camera: string
+  items: ClipAlignedFrame[]
 }

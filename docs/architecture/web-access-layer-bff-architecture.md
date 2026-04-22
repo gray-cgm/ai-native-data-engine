@@ -193,6 +193,7 @@ apps/bff/src/
 - `catalog.ts`
 - `operations.ts`
 - `dashboard.ts`
+- `clips.ts`
 - `exports.ts`
 - `bootstrap.ts`
 
@@ -236,7 +237,8 @@ handler 的定位是 HTTP adapter。它是 BFF 里最接近 Koa 的业务层，�
 示例：
 
 - `dashboardEngine.ts`：组装 dashboard 聚合数据
-- `catalogEngine.ts`：为 datasets / versions 列表提供 filter + search + paginate
+- `catalogEngine.ts`：为 clip 聚合 dataset 视图提供 filter + search + paginate
+- `clipsEngine.ts`：为 clips 列表、详情、对齐帧与视频流提供页面编排
 - `operationsEngine.ts`：为 tasks / runs / exports 列表提供管理端查询体验
 
 ### `services/`
@@ -250,7 +252,8 @@ handler 的定位是 HTTP adapter。它是 BFF 里最接近 Koa 的业务层，�
 当前这一层的典型职责是：
 
 - `platform.ts`：统一处理 BFF -> Platform API 请求
-- `catalog.ts`：datasets / workspaces / versions 的原子访问
+- `catalog.ts`：datasets / workspaces 的原子访问
+- `clips.ts`：clips / clip detail / aligned/video 的原子访问
 - `operations.ts`：tasks / runs / exports 的原子访问
 - `export-job.ts`：导出触发
 

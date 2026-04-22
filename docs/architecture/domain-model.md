@@ -2,6 +2,105 @@
 
 ## 核心对象
 
+平台围绕“数据资产”组织，而不是围绕目录结构或零散脚本组织。主数据单元是 **Clip**（`data/lance/c-<uuid>/` 目录），它天然承载多相机视频 + 多 Topic 信号 + 标定，取代了早期按图像粒度建模的 `Sample` 概念。
+
+```text
+Raw Data
+-> RawRecord
+-> Clip        (meta.lance + topic.lance + <topic>.lance*)
+-> Scenario    (clip.meta.scenario 归并出的业务场景)
+-> Dataset     (按 Scenario 聚合产生的虚拟数据集)
+-> DatasetVersion
+-> JobRun
+-> ExportJob
+-> LineageEvent
+```
+
+## 实体说明
+
+### Raw Data
+来自本地目录、传感器、日志，或未来对象存储的数据原始输入资产。
+它们始终是事实来源。
+
+### RawRecord
+对原始输入 metadata 的统一归一化表达，使不同数据源布局都能用一致方式处理。
+
+### Clip
+平台内部最小的统一业务单元。一个 `c-<uuid>` 目录对应一次采集片段，内部包含：
+
+- `meta.lance`：单行元数据（vehicle、city、district、scenario、tags、da_tags、jira_id、start_time/end_time、calibration_info、mp4_path / mp4_resize_path 等）。
+- `topic.lance`：以 keyframe 为行，相机列与 topic 列以 struct 形式并列。
+- `<TopicName>.lance`：粒度更细或频率更高的信号以兄弟目录形式独立存储。
+- （可选）`wm.lance`：水位线表。
+
+Clip 在领域上关心：
+
+- clip ID（`c-<uuid>`）
+- 车辆 / 城市 / 区域 / scenario
+- tags / da_tags（CSV，后端在索引层拆分出标签条目）
+- 关键帧数量、时长、起止时间
+- 相机目录、topic 目录、siblings 数量
+- 对应的原始 MP4 / 降采样 MP4 路径
+
+历史的 `Sample`（图像 + JSON metadata）仅保留在 `examples/datasets/custom-local` 的演示固件中，由 `workflows.demo` 消费，不再是平台一等公民。
+
+### Scenario
+由 `clip.meta.scenario` 规整归并出的业务场景（例如 `xminer-pipeline-video`、`urban-night`、`intersection`）。空值归并为 `scenario:unassigned`。Scenario 提供：
+
+- 稳定的 `scenario_id`（`scenario:<slug>`）
+- clip_count / keyframe_count / duration_seconds 聚合
+- tag / vehicle / city 分布直方图
+
+### Dataset
+被平台统一管理的一组逻辑 clip 集合。当前 MVP 将 Scenario 直接映射为虚拟 Dataset（`dataset_id = scenario:<slug>`），并在 Catalog 上呈现为稳定的入口对象。未来接入真正的 Dataset 注册中心后，grouping key 可以从 `scenario` 切换到注册 id，API 与 UI 的 Catalog→Clips→Clip 流程保持不变。
+
+### DatasetVersion
+某个 Dataset 的版本化快照。它存在的意义是让系统可以回答：
+
+- 当前暴露给用户的是哪个数据版本？
+- 训练使用的是哪一个版本？
+- 这个版本背后对应的是哪张表 / 哪次物化结果？
+- 哪些导出产物属于这个版本？
+
+### JobRun
+一次执行实例的记录，例如：
+
+- ingestion run（clip 注册 + 索引构建）
+- materialization run
+- indexing run
+- export run
+
+### ExportJob
+用户可见的导出请求及其结果。
+当前支持的格式包括：
+
+- Lance
+- Parquet
+- CSV
+- JSONL
+
+### LineageEvent
+连接运行、版本和数据产物的最小血缘记录。
+即使在本地 MVP 中，这也是非常重要的对象，因为它能从一开始就建立正确的数据系统习惯。
+
+## 访问模型映射
+
+领域模型与访问模式刻意分离：
+
+- **metadata plane**：datasets、versions、workspaces、tasks、runs、exports、lineage。
+- **catalog plane**（新增）：clip catalog 索引（`adapters.catalog.ClipCatalogIndex`，SQLite 落盘于 `data/metadata/clip_catalog.sqlite`）。承担 clip 列表 / 点查 / 批查 / scenario 聚合，底层以 per-clip mtime 触发懒增量刷新，避免每次请求重扫所有 Lance 文件。
+- **query plane**：distribution、过滤、分析、聚合。
+- **table plane**：基于 Lance / Parquet 的 clip 物化表。
+- **search plane**：clip 索引上的 preview 与 retrieval（标量+向量混合检索，向量后端可插拔）。
+- **storage plane**：原始文件 / 对象访问。
+
+## 为什么这个模型重要
+
+这个模型让平台即使建立在文件之上，依然呈现出“类数据库”的使用体验。用户应该通过 clip / scenario / dataset 这类数据资产、API、SDK 来工作，而不是直接依赖底层 Lance 目录或存储凭证。
+# 领域模型草图
+
+## 核心对象
+
 平台围绕“数据资产”组织，而不是围绕目录结构或零散脚本组织。
 
 ```text

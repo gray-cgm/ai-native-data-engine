@@ -79,7 +79,7 @@
 
 这些模型表达的不是某个框架或数据库的细节，而是平台层面的业务事实。例如：
 
-- 一个 sample 至少有哪些字段
+- 一个 clip 至少有哪些字段（以及其 meta / topic / standalone_topic 组织方式）
 - 一次 compute run 的状态如何表达
 - 一个用户对象至少应该有哪些身份信息
 - 一个 runtime profile 由哪些 provider 配置组成

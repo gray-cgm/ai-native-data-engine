@@ -72,10 +72,10 @@ export type ScenarioTriageSummary = {
   focus_scenes: string[]
   focus_tags: string[]
   record_count: number
-  scenario_sample_count: number
+  scenario_clip_count: number
   dominant_scene: string
-  candidate_sample_ids: string[]
-  priority_sample_ids: string[]
+  candidate_clip_ids: string[]
+  priority_clip_ids: string[]
   distribution: DistributionRow[]
   search_preview: SearchRow[]
   summary_output_uri: string

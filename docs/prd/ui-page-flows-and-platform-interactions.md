@@ -106,9 +106,11 @@ workbench 采用三层导航组织：
 | --- | --- | --- | --- |
 | `/` | Overview | OverviewPage | 平台总览首页 |
 | `/catalog` | Catalog | DatasetListPage | 数据集列表 |
-| `/catalog/:datasetId` | Catalog | DatasetDetailPage | 数据集详情与版本 |
+| `/catalog/:datasetId` | Catalog | DatasetDetailPage | 数据集详情（按场景聚合的 clip 集） |
 | `/explorer` | Explorer | DistributionPage | 数据分布总览 |
-| `/explorer/search` | Explorer | SearchPage | 样本搜索预览 |
+| `/explorer/search` | Explorer | SearchPage | 标量 + 语义占位联合检索 |
+| `/explorer/clips` | Explorer | ClipListPage | Clip 列表与图片墙浏览 |
+| `/explorer/clips/:clipId` | Explorer | ClipDetailPage | Clip 详情、Topic 预览与视频对齐播放 |
 | `/ops` | Operations | TaskBoardPage | 任务看板 |
 | `/ops/exports` | Operations | ExportListPage | 导出记录 |
 | `/pipelines` | Pipelines | RunHistoryPage | 流水线运行历史 |
@@ -153,7 +155,7 @@ workbench 采用三层导航组织：
 
 例如：
 
-- Explorer 下有 `Distribution` 和 `Search`
+- Explorer 下有 `Distribution`、`Search`、`Clips`
 - Operations 下有 `Tasks` 和 `Exports`
 
 ### 2. 页面容器 Item
@@ -195,10 +197,10 @@ workbench 采用三层导航组织：
 适用于：
 
 - dataset 列表
-- dataset version 列表
+- dataset member clips 列表
 - task 列表
 - export 列表
-- search rows 列表
+- search clip 结果列表
 - run history 列表
 
 典型列包括：
@@ -278,14 +280,14 @@ workbench 采用三层导航组织：
 
 职责：
 
-- 从 dataset list 或 dataset detail 发起导出
+- 从数据资产视图发起导出
 - 通过 BFF 转发到 Platform API
 - 将结果沉淀到 exports 视图
 
 当前特征：
 
-- 支持 `parquet / csv / jsonl`
-- 当前是最明确的用户主动命令之一
+- 支持 `lance / csv / jsonl` 等格式
+- 在当前 Catalog（clip 聚合视图）中，主动作已从“导出”转为“下钻浏览”
 
 ### 5. 状态反馈 Item
 
@@ -391,40 +393,46 @@ workbench 采用三层导航组织：
 
 | 列字段 | 类型 | 来源 | 交互 | 说明 |
 | --- | --- | --- | --- | --- |
-| `dataset_id` | string | `datasets[].dataset_id` | 可点击 | 数据集唯一标识，进入详情 |
-| `name` | string | `datasets[].name` | 只读 | 数据集名称 |
-| `workspace_id` | string | `datasets[].workspace_id` | 只读 | 所属 workspace |
-| `profile` | string | `datasets[].profile` | 只读 | profile 名称 |
-| `exportAction` | action | 页面命令 | 点击触发 | 发起 export |
+| `dataset_id` | string | 前端派生：`scenario:<name>` | 可点击 | 数据集分组 id，进入详情 |
+| `name` | string | 前端派生 | 只读 | 分组显示名（scenario 或 unassigned） |
+| `clip_count` | number | 聚合 `clips[]` | 只读 | 该分组 clip 数 |
+| `keyframe_total` | number | 聚合 `clips[].keyframe_count` | 只读 | 总 keyframe 数 |
+| `duration_total_seconds` | number | 聚合 `clips[].duration_seconds` | 只读 | 总时长 |
+| `vehicle_names` | string[] | 聚合 `clips[].vehicle_name` | 只读 | 车辆集合 |
+| `cities` | string[] | 聚合 `clips[].city` | 只读 | 城市集合 |
+| `tags` | string[] | 聚合 `clips[].tags` | 只读 | 标签集合 |
 
 #### 3.2 Dataset Detail Summary 字段表
 
 | 字段 | 类型 | 来源 | 说明 |
 | --- | --- | --- | --- |
-| `dataset_id` | string | 路由参数 + `datasets` | 当前 dataset 主键 |
-| `name` | string | `datasets[].name` | 数据集名称 |
-| `workspace_id` | string | `datasets[].workspace_id` | workspace 归属 |
-| `profile` | string | `datasets[].profile` | 运行 profile |
-| `versionCount` | number | `datasetVersions[datasetId].length` | 版本数量 |
+| `dataset_id` | string | 路由参数 | 当前 dataset 分组主键 |
+| `name` | string | 聚合结果 | 分组名称 |
+| `scenario` | string \| null | 聚合结果 | 对应 scenario |
+| `clip_count` | number | 聚合结果 | 分组 clip 数 |
+| `keyframe_total` | number | 聚合结果 | 分组 keyframe 总数 |
+| `duration_total_seconds` | number | 聚合结果 | 分组总时长 |
+| `member_clips[]` | array | 过滤 `clips[]` | 分组内 clip 列表 |
 
-#### 3.3 Dataset Versions Table 字段表
+#### 3.3 Dataset Member Clips 字段表
 
 | 列字段 | 类型 | 来源 | 说明 |
 | --- | --- | --- | --- |
-| `version_id` | string | `datasetVersions[datasetId][].version_id` | 版本标识 |
-| `dataset_id` | string | `datasetVersions[datasetId][].dataset_id` | 所属 dataset |
-| `sample_count` | number | `datasetVersions[datasetId][].sample_count` | 样本数 |
-| `table_name` | string | `datasetVersions[datasetId][].table_name` | 查询表名 |
+| `clip_id` | string | `clips[].clip_id` | clip 主键 |
+| `vehicle_name` | string \| null | `clips[].vehicle_name` | 车辆信息 |
+| `city` / `district` | string \| null | `clips[]` | 位置信息 |
+| `start_time` | number \| null | `clips[].start_time` | 起始时间 |
+| `duration_seconds` | number \| null | `clips[].duration_seconds` | 时长 |
+| `keyframe_count` | number | `clips[].keyframe_count` | keyframe 数 |
 
-#### 3.4 Export Command 字段表
+#### 3.4 Dataset Drilldown Command 字段表
 
 | 字段 | 类型 | 来源 | 必填 | 说明 |
 | --- | --- | --- | --- | --- |
-| `datasetId` | string | 当前 dataset / 当前行 | 是 | 导出目标 |
-| `format` | `'lance' | 'csv' | 'jsonl'` | 用户选择 / 默认值 | 否 | 导出格式，默认 `lance` |
-| `submitting` | boolean | Web local state | 是 | 是否提交中 |
-| `success` | boolean | BFF 响应 | 否 | 提交是否成功 |
-| `errorMessage` | string | BFF 错误响应 | 否 | 错误信息 |
+| `datasetId` | string | 当前 dataset / 当前行 | 是 | 场景分组 id |
+| `scenario` | string \| null | 当前 dataset | 否 | 用于预过滤 |
+| `targetPath` | string | 页面规则 | 是 | `/explorer/search` 或 `/explorer/clips` |
+| `query` | object | 页面规则 | 否 | URL 参数（`dataset` / `scenario`） |
 
 ### 4. Explorer 页面字段级 Item
 
@@ -440,18 +448,54 @@ workbench 采用三层导航组织：
 
 | 字段 | 类型 | 来源 | 说明 |
 | --- | --- | --- | --- |
-| `query` | string | Web local state | 用户输入关键词 |
-| `placeholder` | string | 页面定义 | 输入提示 |
-| `isFiltering` | boolean | Web local state | 是否正在本地过滤 |
+| `naturalLanguage` | string | Web local state | 用户自然语言输入（语义占位） |
+| `keyword` | string | Web local state | 标量关键词过滤 |
+| `scenario` | string \| null | Web local state / URL | 场景过滤 |
+| `vehicle` | string \| null | Web local state / URL | 车辆过滤 |
+| `city` | string \| null | Web local state / URL | 城市过滤 |
+| `tags` | string[] | Web local state / URL | 标签过滤（AND） |
+| `vectorBackendReady` | boolean | 平台能力状态 | 当前是否接入向量后端 |
 
 #### 4.3 Search Result Table 字段表
 
 | 列字段 | 类型 | 来源 | 说明 |
 | --- | --- | --- | --- |
-| `id` | string | `searchRows[].id` | 样本标识 |
-| `scene` | string | `searchRows[].scene` | 场景标签 |
-| `dataset_version_id` | string | `searchRows[].dataset_version_id` | 版本归属，可选 |
-| `matched` | boolean | Web local rule | 当前关键词是否命中 |
+| `clip_id` | string | `clips[].clip_id` | clip 标识 |
+| `scenario` | string \| null | `clips[].scenario` | 场景标签 |
+| `vehicle_name` | string \| null | `clips[].vehicle_name` | 车辆 |
+| `city` / `district` | string \| null | `clips[]` | 位置信息 |
+| `duration_seconds` | number \| null | `clips[].duration_seconds` | 时长 |
+| `matched` | boolean | Web local rule | 是否命中当前标量过滤 |
+| `semantic_query` | string | Web local state | 当前语义占位查询文本 |
+
+#### 4.4 Clips List / Wall 字段表
+
+| 字段 | 类型 | 来源 | 说明 |
+| --- | --- | --- | --- |
+| `clip_id` | string | `clips[].clip_id` | clip 唯一标识 |
+| `start_time` | number \| null | `clips[].start_time` | 起始时间戳（ns） |
+| `duration_seconds` | number \| null | `clips[].duration_seconds` | 时长（秒） |
+| `vehicle_name` | string \| null | `clips[].vehicle_name` | 车辆名 |
+| `city` / `district` | string \| null | `clips[].city/district` | 城市与区域 |
+| `scenario` | string \| null | `clips[].scenario` | 场景标签 |
+| `topics_count` | number | 前端派生 | `clips[].topics.length` |
+| `cameras_count` | number | 前端派生 | `clips[].cameras.length` |
+| `tags` | string \| null | `clips[].tags` | 业务标签 |
+| `view_mode` | `'table' \| 'wall'` | Web local state | 当前展示模式 |
+
+#### 4.5 Clip Detail 字段表
+
+| 字段 | 类型 | 来源 | 说明 |
+| --- | --- | --- | --- |
+| `item` | object | `GET /api/clips/{clipId}` | clip 摘要信息 |
+| `meta` | object | `GET /api/clips/{clipId}` | meta.lance 字段聚合 |
+| `schema` | object | `GET /api/clips/{clipId}` | topic/standalone schema 信息 |
+| `camera_catalog[]` | array | `GET /api/clips/{clipId}` | 摄像头列表与标定摘要 |
+| `camera_catalog[].has_local_video` | boolean | 后端派生 | 本地缓存是否存在 |
+| `camera_catalog[].mp4_path` | string \| null | `meta.mp4_path[camera]` | 原始 OSS 视频 URI |
+| `camera_catalog[].mp4_resize_paths` | string[] | `meta.mp4_resize_path[camera]` | 缩略/分级视频 URI 列表 |
+| `aligned_frames[]` | array | `/cameras/{camera}/aligned` | 对齐帧索引表 |
+| `topic_rows[]` | array | `/frames` 或 `/standalone/{name}` | topic 样本预览行 |
 
 ### 5. Operations 页面字段级 Item
 
@@ -563,71 +607,64 @@ workbench 采用三层导航组织：
 
 ##### 页面目标
 
-让用户查看当前平台中有哪些数据集，并能从列表进入详情或发起导出。
+让用户查看当前平台中有哪些数据集分组，并从分组下钻到 clips 与 clip 详情。
 
 ##### 核心 item
 
-- Dataset table
-- Export action button
+- Dataset aggregate table
+- 场景分组说明
 - Dataset id/detail link
 
 ##### 数据来源
 
-- 当前通过 `GET /api/dashboard` 聚合 payload 获得 datasets
+- 当前通过 `GET /api/clips` 在前端按 `scenario` 聚合得到 dataset 视图
 
 ##### 页面动作
 
 - 查看数据集详情
-- 发起导出
+- 跳转 Explorer Search（带 dataset/scenario 上下文）
+- 跳转 Explorer Clips（带 scenario 预过滤）
 
 ##### 页面流转
 
 ```text
 Overview / Catalog 入口
--> Dataset List
+-> Dataset List（scenario 聚合）
 -> 点击 dataset id
 -> Dataset Detail
-```
-
-或：
-
-```text
-Dataset List
--> 点击 Export
--> POST /api/datasets/{datasetId}/exports
--> 导出任务进入 Exports 视图
 ```
 
 #### 2.2 Dataset Detail Page
 
 ##### 页面目标
 
-让用户查看单个 dataset 的基本信息及版本列表。
+让用户查看单个 dataset 分组（scenario bucket）的画像与成员 clips，并继续下钻。
 
 ##### 核心 item
 
-- Dataset metadata summary
-- Dataset versions table
-- Export action
-- Back action
+- Dataset profile summary
+- Member clips table/wall
+- Search in Explorer action
+- Browse clips action / Back action
 
 ##### 数据来源
 
-- 当前仍然通过 dashboard payload 衍生
-- `datasetVersions[datasetId]` 作为当前版本信息来源
+- `GET /api/clips`（按 dataset id 对应的 scenario 分组过滤）
 
 ##### 页面动作
 
 - 返回列表
-- 发起导出
+- 下钻到 Explorer Search（预置 dataset/scenario）
+- 下钻到 Explorer Clips（预置 scenario）
+- 下钻到 Clip Detail（携带 dataset 回链参数）
 
 ##### 页面流转
 
 ```text
 Dataset List
 -> Dataset Detail
--> 查看版本
--> 发起导出 or 返回列表
+-> 查看成员 clips
+-> 进入 Search / Clips / Clip Detail
 ```
 
 ### 3. Explorer
@@ -665,36 +702,108 @@ Overview / Explorer 入口
 
 ##### 页面目标
 
-让用户浏览样本级预览结果，并进行最小检索过滤。
+让用户执行标量 + 语义（自然语言占位）联合查询，并定位到具体 clip。
 
 ##### 核心 item
 
-- Search input
-- Search result table
+- Natural language search input（向量语义检索占位）
+- Scalar filters（scenario/vehicle/city/tags/keyword）
+- Search result table（clip 粒度）
 
 ##### 数据来源
 
-- `GET /api/dashboard` 中的 `searchRows`
+- `GET /api/clips`（当前实现）
+- 未来 `GET /api/explorer/search`（联合检索 read model）
 
 ##### 当前实现约束
 
-当前 search 是：
-
-- 基于 preview payload 的前端本地过滤
-
-而不是：
-
-- 完整的服务端检索系统
-- 通用 query language
-- 大规模分页搜索系统
+- 标量过滤已可用（前端过滤 clip metadata）
+- 语义检索以 `Search using natural language` 交互先行占位
+- 向量后端暂未接入，结果仍由标量过滤生成
 
 ##### 页面流转
 
 ```text
 Distribution
 -> Search
--> 输入关键词
--> 在 preview rows 中本地过滤
+-> 输入自然语言 + 标量条件
+-> 得到 clip 结果
+-> 进入 Clip Detail
+```
+
+#### 3.3 Clips Page
+
+##### 页面目标
+
+让用户按 clip 维度浏览数据，支持从概览到单 clip 深入分析（metadata、topic、视频）。
+
+##### 核心 item
+
+- Clips list/table 视图
+- Clips wall（图片墙）视图
+- 关键词过滤（clip id / vehicle / city / scenario / tags）
+- 跳转 clip 详情页
+
+##### 数据来源
+
+- `GET /api/clips`
+
+并可从 URL 上下文参数预置筛选：
+
+- `dataset`：上卷回 Catalog dataset detail
+- `scenario`：预过滤 clips
+
+##### 页面动作
+
+- 视图模式切换（`table` / `wall`）
+- 进入 clip 详情
+
+##### 页面流转
+
+```text
+Explorer
+-> Clips
+-> table/wall 切换 + 关键词过滤
+-> 进入 Clip Detail
+```
+
+#### 3.4 Clip Detail Page
+
+##### 页面目标
+
+让用户在单个 clip 下查看结构化元信息、topic 帧样本，以及摄像头视频与对齐索引。
+
+##### 核心 item
+
+- Meta summary（时间范围、车辆、城市、场景、标签）
+- Camera catalog（分辨率、FOV、内外参摘要）
+- 视频播放与 seek（基于对齐帧）
+- Topic/Standalone topic 帧预览
+- `mp4_path` 与 `mp4_resize_path` 展示
+
+##### 数据来源
+
+- `GET /api/clips/{clipId}`
+- `GET /api/clips/{clipId}/frames`
+- `GET /api/clips/{clipId}/standalone/{name}`
+- `GET /api/clips/{clipId}/cameras/{camera}/aligned`
+- `GET /api/clips/{clipId}/cameras/{camera}/video`
+
+##### 当前实现约束
+
+- 视频播放依赖本地缓存路径 `data/raw/thumbnail_video/<clip_id>/<camera>.mp4`
+- 缩略视频优先来源于 `meta.mp4_resize_path[camera][0]`，缺失时回退 `meta.mp4_path[camera]`
+- 对齐帧当前以固定 fps 近似 seek，后续可升级为由元数据提供 fps
+- 支持依据 URL 参数进行上卷导航（返回 dataset 或 requirement）
+
+##### 页面流转
+
+```text
+Clips List/Wall
+-> Clip Detail
+-> 选择 Camera
+-> 播放视频 + 点击对齐帧跳转
+-> 切换 Topic / Standalone 预览
 ```
 
 ### 4. Operations
@@ -887,17 +996,13 @@ success_feedback
 ```text
 idle
 -> loading
--> ready            (dataset 命中，版本可渲染)
--> empty            (dataset 不存在或 versions 为空但允许空表)
--> error            (dashboard 请求失败)
+-> ready            (dataset 命中，member clips 可渲染)
+-> empty            (dataset 不存在或 member clips 为空)
+-> error            (clips 请求失败)
 
 ready
--> submitting       (点击 Export)
--> ready            (点击 Back)
-
-submitting
--> success_feedback (导出成功)
--> error            (导出失败)
+-> ready            (切换 table/wall)
+-> ready            (点击 Back / Search in Explorer / Browse clips)
 ```
 
 ### 4. Distribution 页面状态机
@@ -919,13 +1024,13 @@ ready
 ```text
 idle
 -> loading
--> ready            (searchRows 成功加载)
--> empty            (searchRows 为空)
--> error            (dashboard 请求失败)
+-> ready            (clips 成功加载)
+-> empty            (clips 为空)
+-> error            (clips 请求失败)
 
 ready
--> ready            (输入关键词但结果仍存在)
--> empty            (输入关键词后无匹配)
+-> ready            (输入自然语言 + 标量过滤且结果仍存在)
+-> empty            (过滤后无匹配)
 ```
 
 ### 6. Task Board 页面状态机
@@ -990,12 +1095,10 @@ delayed
 ```ts
 type DashboardPayload = {
   distribution: DistributionRow[]
-  datasets: DatasetItem[]
-  datasetVersions: Record<string, DatasetVersion[]>
+  clips: ClipSummary[]
   tasks: TaskItem[]
   workspaces: WorkspaceItem[]
   exports: ExportItem[]
-  searchRows: SearchRow[]
 }
 ```
 
@@ -1174,7 +1277,13 @@ type CommandFeedback = {
    - `GET /api/catalog/datasets`
    - `GET /api/catalog/datasets/:id`
    - `GET /api/explorer/distribution`
-   - `GET /api/explorer/search-preview`
+  - `GET /api/explorer/search` (scalar + vector hybrid read model)
+  - `GET /api/clips`
+  - `GET /api/clips/:clipId`
+  - `GET /api/clips/:clipId/frames`
+  - `GET /api/clips/:clipId/standalone/:name`
+  - `GET /api/clips/:clipId/cameras/:camera/aligned`
+  - `GET /api/clips/:clipId/cameras/:camera/video`
    - `GET /api/ops/tasks`
    - `GET /api/ops/exports`
    - `GET /api/pipelines/runs`
@@ -1225,12 +1334,12 @@ BFF 负责：
 包含：
 
 - `distribution`
-- `datasets`
-- `datasetVersions`
+- `clips`
 - `tasks`
 - `workspaces`
 - `exports`
-- `searchRows`
+
+其中 Catalog dataset 视图与 Search 结果由 Web/BFF 基于 `clips` 进行页面级聚合与过滤。
 
 这意味着在 MVP 阶段，多个页面共享同一个 app-facing 聚合 payload，再由前端按页面切片消费。
 
@@ -1238,7 +1347,7 @@ BFF 负责：
 
 Platform API 负责：
 
-- dataset / task / workspace / export / samples 等资源语义
+- dataset / clip / task / workspace / export / samples 等资源语义
 - ingestion、export 等平台控制动作入口
 - 与 runtime container / workflows 的连接
 
@@ -1257,14 +1366,13 @@ Web page
 -> GET /api/dashboard
 -> BFF fan-out:
    - /samples/distribution
-   - /datasets
+  - /clips
    - /tasks
    - /workspaces
    - /exports
-   - /samples/search-preview
-   - /datasets/{datasetId} (per dataset for versions)
 -> BFF build DashboardPayload
--> Web slices payload for Overview / Catalog / Explorer / Operations / Pipelines
+-> Web slices payload for Overview / Ops / Pipelines
+-> Catalog/Search/Clips 在页面层基于 clips 构建 ViewModel
 ```
 
 这是当前 MVP 最核心的页面交互模式。
@@ -1331,18 +1439,13 @@ sequenceDiagram
     U->>W: 进入 Overview / Catalog / Explorer / Ops / Pipelines
     W->>B: GET /api/dashboard
     B->>P: GET /samples/distribution
-    B->>P: GET /datasets
+    B->>P: GET /clips
     B->>P: GET /tasks
     B->>P: GET /workspaces
     B->>P: GET /exports
-    B->>P: GET /samples/search-preview
-    P-->>B: distribution/datasets/tasks/workspaces/exports/searchRows
-    loop per dataset
-        B->>P: GET /datasets/{datasetId}
-        P-->>B: versions
-    end
+    P-->>B: distribution/clips/tasks/workspaces/exports
     B-->>W: DashboardPayload
-    W-->>U: 渲染页面切片视图
+    W-->>U: 渲染 Overview/Operations/Pipelines，并供 Catalog/Explorer 进一步聚合
 ```
 
 ### 2. Bootstrap 初始化
@@ -1370,12 +1473,12 @@ sequenceDiagram
 sequenceDiagram
     participant U as User
     participant W as DatasetListPage
-    participant B as BFF /api/dashboard
+  participant B as BFF /api/clips
 
     U->>W: 打开 Catalog
-    W->>B: GET /api/dashboard
-    B-->>W: DashboardPayload.datasets + datasetVersions
-    W-->>U: 渲染 dataset table
+    W->>B: GET /api/clips
+    B-->>W: clips
+    W-->>U: 按 scenario 聚合渲染 dataset table
     U->>W: 点击 dataset_id
     W->>W: navigate(/catalog/:datasetId)
     W-->>U: 渲染 DatasetDetailPage
@@ -1410,12 +1513,14 @@ sequenceDiagram
 
     U->>W: 打开 Distribution
     W->>B: GET /api/dashboard
-    B-->>W: DashboardPayload.distribution + searchRows
+    B-->>W: DashboardPayload.distribution
     W-->>U: 展示 distribution chart/table
     U->>W: 点击 Search 入口
     W->>W: navigate(/explorer/search)
-    U->>W: 输入 query
-    W->>W: filter searchRows locally
+    W->>B: GET /api/clips
+    B-->>W: clips
+    U->>W: 输入自然语言 query + 标量过滤
+    W->>W: 基于 clips 过滤并展示结果
     W-->>U: 更新过滤结果
 ```
 
@@ -1440,11 +1545,13 @@ sequenceDiagram
 
 | 页面 / 路径 | 用户意图 | BFF Endpoint | Platform API Upstream | 关键对象 | 关键动作 |
 | --- | --- | --- | --- | --- | --- |
-| Overview `/` | 查看平台整体状态 | `GET /api/dashboard` | `/samples/distribution`, `/datasets`, `/tasks`, `/workspaces`, `/exports`, `/samples/search-preview` | stats, tasks, exports, datasets | 跳转各模块 |
-| Catalog `/catalog` | 浏览数据集 | `GET /api/dashboard` | 同上 | datasets | 查看详情、导出 |
-| Catalog Detail `/catalog/:datasetId` | 查看数据集与版本 | `GET /api/dashboard` | `/datasets`, `/datasets/{datasetId}` | dataset, datasetVersions | 返回、导出 |
+| Overview `/` | 查看平台整体状态 | `GET /api/dashboard` | `/samples/distribution`, `/clips`, `/tasks`, `/workspaces`, `/exports` | stats, tasks, exports, clips | 跳转各模块 |
+| Catalog `/catalog` | 浏览数据集分组 | `GET /api/clips` | `/clips` | clips -> dataset aggregates | 查看详情、下钻 Search/Clips |
+| Catalog Detail `/catalog/:datasetId` | 查看数据集分组与成员 clips | `GET /api/clips` | `/clips` | dataset aggregate, member clips | 返回、下钻 |
 | Explorer `/explorer` | 查看分布 | `GET /api/dashboard` | `/samples/distribution` | distribution | 跳转 Search |
-| Search `/explorer/search` | 样本预览过滤 | `GET /api/dashboard` | `/samples/search-preview` | searchRows | 本地过滤 |
+| Search `/explorer/search` | 标量+语义占位检索 clips | `GET /api/clips` | `/clips` | clips, filter context | 本地过滤 + 下钻 Clip |
+| Clips `/explorer/clips` | 浏览 clips（列表/图片墙） | `GET /api/clips` | `/clips` | clips | 视图切换、下钻 Clip |
+| Clip Detail `/explorer/clips/:clipId` | 查看 clip 详情并回链 | `GET /api/clips/:clipId` | `/clips/:clipId` | clip detail, aligned/topic rows | 上卷 requirement/dataset |
 | Operations `/ops` | 查看任务 | `GET /api/dashboard` | `/tasks` | tasks | 状态观察 |
 | Exports `/ops/exports` | 查看导出记录 | `GET /api/dashboard` | `/exports` | exports | 状态观察 |
 | Pipelines `/pipelines` | 查看运行历史 | `GET /api/dashboard` | 当前主要复用 tasks / runs 语义 | runs / tasks | 状态观察 |
@@ -1471,14 +1578,14 @@ sequenceDiagram
 - 当前页面边界还没有完全 page-specific API 化
 - 某些 detail 数据仍通过聚合结果二次切片得到
 
-### 2. Search 仍是 preview-based MVP
+### 2. Search 仍是 hybrid-preview MVP
 
 当前 Search 页面主要基于：
 
-- `searchRows` preview payload
-- 前端本地过滤
+- `clips` 数据集
+- 前端标量过滤 + 自然语言入口占位
 
-因此它不应被描述成完整的检索控制台或大规模 query service。
+因此它仍不应被描述成完整的向量检索控制台或大规模 query service。
 
 ### 3. Pipelines 页面仍是最小运行视图
 

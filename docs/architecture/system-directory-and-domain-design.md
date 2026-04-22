@@ -347,11 +347,13 @@ python/core/src/core/
 - `ProjectRef`
 
 ### `domain/assets.py`
-存放原始数据与样本资产对象，例如：
+存放原始数据与 clip 资产对象，例如：
 - `RawRecord`
-- `Sample`
-- `SampleEmbedding`
+- `Clip` / `ClipMeta` / `ClipSummary`
+- `ClipEmbedding`
 - `ArtifactRecord`
+
+> `Sample` 类型仅作为 demo 固件兼容保留，不再是平台一等实体。
 
 ### `domain/catalog.py`
 存放 catalog 层对象，例如：
@@ -589,8 +591,8 @@ python/workflows/src/workflows/
 ```text
 Raw Data
 -> RawRecord
--> Sample
--> SampleEmbedding
+-> Clip
+-> ClipEmbedding
 -> ArtifactRecord
 ```
 
@@ -607,18 +609,22 @@ Raw Data
 - `captured_at`
 - `metadata`
 
-#### `Sample`
-平台内部最小统一样本单元。
+#### `Clip`
+平台内部最小统一业务单元（超越早期的 `Sample`），以 `data/lance/c-<uuid>/` 目录为文物。
 
 核心字段建议：
-- `sample_id`
+- `clip_id`
 - `raw_record_ids`
-- `primary_uri`
-- `modalities`
-- `scene_tags`
-- `annotation_state`
-- `quality_state`
+- `start_time` / `end_time` / `duration_seconds`
+- `vehicle_name` / `city` / `district`
+- `scenario`
+- `tags` / `da_tags`
+- `keyframe_count` / `topic_count` / `camera_count`
+- `calibration_info`
+- `mp4_path` / `mp4_resize_path`
 - `workspace_id`
+
+查询加速由 `adapters.catalog.ClipCatalogIndex`（SQLite）完成：点查 / 批查 / 标记筛选 / scenario 聚合都在索引上进行，直接避开逐 clip 打开 Lance 的开销。
 
 #### `ArtifactRecord`
 表示模型、导出、任务、质量扫描等派生产物。
@@ -897,12 +903,12 @@ JobSpec
 
 ```text
 RawRecord
--> Sample
+-> Clip
 -> Dataset
 -> DatasetVersion
 -> DatasetSnapshotManifest
 
-Sample
+Clip
 -> Scenario
 -> MiningTask
 -> LabelTask

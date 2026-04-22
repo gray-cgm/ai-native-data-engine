@@ -27,9 +27,11 @@
 ### Platform 工作台
 - React workbench
 - Node.js + TypeScript BFF
-- dataset 浏览
-- dataset version 浏览
-- search preview
+- Catalog dataset 分组浏览（按 scenario 聚合 clips）
+- Explorer/Search（标量过滤 + 自然语言语义占位）
+- Explorer/Clips（列表 + 图片墙）
+- Clip 详情（metadata/topic/video 对齐可视化）
+- Requirement -> Search -> Clip 下钻与上卷导航
 - tasks 视图
 - workspaces 视图
 - exports 视图
@@ -64,8 +66,9 @@
 ```text
 local raw files
 -> ingestion
--> sample materialization
--> lance files
+-> clip materialization
+-> lance files (per-clip c-<uuid>/)
+-> clip catalog index (sqlite)
 -> duckdb query
 -> lance index
 -> metadata registration
@@ -80,11 +83,12 @@ local raw files
 - 统一样本物化
 - Dagster asset-oriented pipeline
 - DuckDB 查询
-- Lance search preview
+- Lance index 与 clip 搜索基础能力
+- clip-centric 搜索与可视化（hybrid-preview）
 - SQLite metadata 存储
 - FastAPI Platform API
 - Node.js TypeScript BFF
 - Web workbench
-- dataset / version / task / workspace / export API
+- clips / dataset / task / workspace / export API
 - 多格式真实导出文件
 - 最小 Python SDK
