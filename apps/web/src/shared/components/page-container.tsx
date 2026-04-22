@@ -8,11 +8,12 @@ interface PageContainerProps {
   description?: string
   actions?: ReactNode
   children: ReactNode
+  fluid?: boolean
 }
 
-export function PageContainer({ title, description, actions, children }: PageContainerProps) {
+export function PageContainer({ title, description, actions, children, fluid = false }: PageContainerProps) {
   return (
-    <div className="page-container">
+    <div className={`page-container ${fluid ? 'page-container-fluid' : ''}`}>
       <div className="page-header">
         <div>
           <Title level={4} style={{ margin: 0 }}>{title}</Title>

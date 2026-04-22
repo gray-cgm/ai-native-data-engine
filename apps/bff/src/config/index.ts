@@ -18,4 +18,9 @@ export const config = {
   apiPrefix: process.env.BFF_API_PREFIX ?? '/api',
   bodyLimit: process.env.BFF_BODY_LIMIT ?? '50mb',
   platformApiBaseUrl: (process.env.PLATFORM_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, ''),
+  toolBaseUrls: {
+    dagster: (process.env.TOOL_DAGSTER_BASE_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, ''),
+    superset: (process.env.TOOL_SUPERSET_BASE_URL ?? 'http://127.0.0.1:8088').replace(/\/$/, ''),
+    jupyter: (process.env.TOOL_JUPYTER_BASE_URL ?? 'http://127.0.0.1:8888').replace(/\/$/, ''),
+  },
 }

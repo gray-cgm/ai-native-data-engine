@@ -35,3 +35,21 @@ export interface ToolDescriptor {
   /** When true, the workspace sidebar fetches live run data from the platform */
   showLiveRuns?: boolean
 }
+
+export interface ToolHealth {
+  tool_id: string
+  status: 'healthy' | 'degraded' | 'down'
+  endpoint: string
+  checked_at: string
+  status_code: number | null
+  detail: string | null
+}
+
+export interface ToolWorkspaceContext {
+  tool_id: string
+  workspace_id: string | null
+  dataset_id: string | null
+  dataset_version_id: string | null
+  request_id: string | null
+  actor: string
+}

@@ -12,6 +12,7 @@
 - [系统目录与领域模型设计](./architecture/system-directory-and-domain-design.md) - 基于 P0 / P1 roadmap 的目标目录与 domain model 设计
 - [首版 MVP 范围](./architecture/mvp-scope.md) - 包含 BFF 的首版范围边界
 - [Mermaid 架构图](./architecture/mermaid-diagrams.md) - 包含 BFF / Platform API 调用拓扑
+- [Web Microfrontend Tools Platform](./architecture/web-microfrontend-tools-platform.md) - 说明 Tools 注册中心、BFF 网关代理与嵌入式工具集成机制
 - [界面 Item 设计、页面流转与平台交互细节](./architecture/ui-page-flows-and-platform-interactions.md) - 说明 workbench 信息架构、页面 item、页面流转与 Web/BFF/Platform API 交互边界
 - [Local-First Streaming 演进设计](./architecture/local-first-streaming-evolution.md) - 说明本地 streaming demo 的定位，以及如何从 micro-batch 演进到大规模批流一体平台
 

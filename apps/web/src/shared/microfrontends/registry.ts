@@ -17,7 +17,7 @@ export const toolRegistry: ToolDescriptor[] = [
       'Dagster is hosted as a micro-app inside the platform shell so operators can jump from task context into asset health, runs, and sensors without leaving the workbench.',
     integrationMode: 'direct-iframe',
     baseUrl: dagsterBaseUrl,
-    gatewayPath: resolveGatewayPath('/tools-gateway/dagster/'),
+    gatewayPath: resolveGatewayPath('/api/tools-gateway/dagster/'),
     healthPath: '/server_info',
     docsPath: '/docs',
     workspacePath: '/tools/dagster',
@@ -47,7 +47,7 @@ export const toolRegistry: ToolDescriptor[] = [
       'Superset is modeled as an analytics micro-app that receives platform navigation context and opens inside a dedicated work area for embedded BI workflows.',
     integrationMode: 'proxy-iframe',
     baseUrl: supersetBaseUrl,
-    gatewayPath: resolveGatewayPath('/tools-gateway/superset/'),
+    gatewayPath: resolveGatewayPath('/api/tools-gateway/superset/'),
     healthPath: '/health',
     docsPath: '/swagger/v1',
     workspacePath: '/tools/superset',
@@ -76,7 +76,7 @@ export const toolRegistry: ToolDescriptor[] = [
       'Jupyter runs as a notebook micro-app for researchers and engineers who need rapid data inspection while staying inside the platform entry point.',
     integrationMode: 'direct-iframe',
     baseUrl: jupyterBaseUrl,
-    gatewayPath: resolveGatewayPath('/tools-gateway/jupyter/'),
+    gatewayPath: resolveGatewayPath('/api/tools-gateway/jupyter/'),
     healthPath: '/api/status',
     workspacePath: '/tools/jupyter',
     capabilities: ['Notebook editing', 'Kernel execution', 'Exploratory analysis', 'Ad hoc profiling'],
@@ -95,4 +95,8 @@ export const toolRegistry: ToolDescriptor[] = [
 
 export function getToolById(toolId?: string) {
   return toolRegistry.find((tool) => tool.id === toolId)
+}
+
+export function getToolEmbedUrl(tool: ToolDescriptor) {
+  return tool.integrationMode === 'proxy-iframe' ? tool.gatewayPath : tool.baseUrl
 }

@@ -89,3 +89,45 @@ export type DashboardPayload = {
   runs: RunItem[]
   searchRows: SearchRow[]
 }
+
+export type ToolRegistryItem = {
+  id: string
+  name: string
+  short_name: string
+  category: string
+  summary: string
+  description: string
+  integration_mode: 'direct-iframe' | 'proxy-iframe'
+  base_url: string
+  gateway_path: string
+  health_path: string
+  workspace_path: string
+  contract_version: string
+  policy_profile: string
+  owner: string
+  capabilities: string[]
+  use_cases: string[]
+  notes: string[]
+}
+
+export type ToolRegistryPayload = {
+  items: ToolRegistryItem[]
+}
+
+export type ToolWorkspaceContextPayload = {
+  tool_id: string
+  workspace_id: string | null
+  dataset_id: string | null
+  dataset_version_id: string | null
+  request_id: string | null
+  actor: string
+}
+
+export type ToolHealthPayload = {
+  tool_id: string
+  status: 'healthy' | 'degraded' | 'down'
+  endpoint: string
+  checked_at: string
+  status_code: number | null
+  detail: string | null
+}

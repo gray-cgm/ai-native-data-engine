@@ -6,6 +6,7 @@ import type { Middleware } from 'koa'
 
 import { config } from './config/index.js'
 import { cleanTimestamp, handleException, pagination, wrapResponse } from './middlewares/index.js'
+import { toolsGatewayProxy } from './middlewares/tools-gateway-proxy.js'
 import { getApiRouter, getApiRoutes, getDocsRouter, healthRoute } from './routes/index.js'
 import { logger } from './utils/logger.js'
 
@@ -36,6 +37,7 @@ export async function getApp() {
   app.use(wrapResponse)
   app.use(async (ctx, next) => bodyMiddleware(ctx, next))
   app.use(pagination)
+  app.use(toolsGatewayProxy)
   app.use(async (ctx, next) => rootRouterMiddleware(ctx, next))
   app.use(async (ctx, next) => apiRouterMiddleware(ctx, next))
   app.use(async (ctx, next) => docsRouterMiddleware(ctx, next))

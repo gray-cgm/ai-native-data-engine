@@ -35,6 +35,12 @@
   - 聚合 dashboard 所需的 distribution、scenario summary、datasets、dataset versions、tasks、workspaces、exports、search preview
 - `POST /api/datasets/{datasetId}/exports`
   - 转发 dataset export 请求到 Platform API
+- `GET /api/tools/registry`
+  - 返回工具注册元数据（由 BFF 直接提供）
+- `GET /api/tools/{toolId}/workspace-context`
+  - 返回 tools 工作空间上下文（由 BFF 直接聚合）
+- `GET /api/tools/{toolId}/health`
+  - 返回工具健康状态（BFF 转发 Platform API health 探测结果）
 
 这些 BFF 接口建立在现有 FastAPI Platform API 之上，负责消费 Platform API contract、完成页面聚合与场景编排，而不是重写平台资源语义。
 
@@ -76,6 +82,14 @@
 - `GET /exports`
   - 列出 export jobs
 
+### Tools (BFF access layer)
+- `GET /tools/registry`
+  - 由 BFF 直接返回 tool registry（不再经过 Platform API 的 tools registry）
+- `GET /tools/{tool_id}/workspace-context`
+  - 由 BFF 直接聚合 workspace / dataset / dataset version 上下文
+- `GET /tools/{tool_id}/health`
+  - BFF 转发 Platform API `/tools/{tool_id}/health`
+
 ### Export
 - `POST /exports/dataset/{dataset_id}?format=lance`
 - `POST /exports/dataset/{dataset_id}?format=csv`
@@ -84,6 +98,8 @@
 这些接口会在 `data/exports/` 下生成真实导出文件。
 
 当前下面列出的 `/samples/*`、`/datasets/*`、`/workspaces`、`/tasks`、`/exports/*` 等路由，指的都是 FastAPI Platform API 路由。BFF 会在其上消费 Platform API contract，进行页面聚合和场景编排，但不会重新定义底层资源语义。
+
+补充说明：tools 能力里，`registry` 与 `workspace-context` 已上移到 BFF 访问层实现；Platform API 仅保留 tools health 探测能力。
 
 ## 运行时行为
 

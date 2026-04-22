@@ -1,20 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Button, Tag, Space } from 'antd'
-import { ReloadOutlined, LinkOutlined } from '@ant-design/icons'
+import { ReloadOutlined, LinkOutlined, ExpandOutlined, CompressOutlined } from '@ant-design/icons'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageError } from '@/shared/components/page-error'
 import { StatusBadge } from '@/shared/components/status-badge'
 import { useQuery } from '@/shared/hooks/use-query'
-import { getToolById } from '@/shared/microfrontends/registry'
+import { getToolEmbedUrl, toolRegistry } from '@/shared/microfrontends/registry'
+import type { ToolDescriptor } from '@/shared/microfrontends/types'
 import { fetchRuns } from '@/modules/pipelines/api'
+import { fetchToolHealth, fetchToolsRegistry, fetchToolWorkspaceContext } from '../api/tools'
 import '../tools.css'
 
 type FrameState = 'loading' | 'ready' | 'delayed'
 
 const FRAME_TIMEOUT_MS = 5000
 
-function DelayedPanel({ tool, onReload }: { tool: ReturnType<typeof getToolById> & object; onReload: () => void }) {
+function DelayedPanel({ tool, onReload }: { tool: ToolDescriptor; onReload: () => void }) {
+  const openUrl = tool.gatewayPath || tool.baseUrl
+  const quickLinkBase = openUrl.replace(/\/$/, '')
   return (
     <div className="tool-delayed-panel">
       <div className="tool-delayed-hero">
@@ -27,7 +31,7 @@ function DelayedPanel({ tool, onReload }: { tool: ReturnType<typeof getToolById>
       </div>
 
       <div className="tool-delayed-actions">
-        <a className="tool-link-button" href={tool.baseUrl} target="_blank" rel="noreferrer">
+        <a className="tool-link-button" href={openUrl} target="_blank" rel="noreferrer">
           Open {tool.shortName} in new tab ↗
         </a>
         <button type="button" className="tool-link-secondary" onClick={onReload}>
@@ -52,7 +56,7 @@ function DelayedPanel({ tool, onReload }: { tool: ReturnType<typeof getToolById>
               <a
                 key={link.path}
                 className="tool-quick-link"
-                href={`${tool.baseUrl}${link.path}`}
+                href={`${quickLinkBase}${link.path}`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -107,9 +111,43 @@ function LiveRunsCard() {
 
 export default function ToolWorkspacePage() {
   const { toolId } = useParams()
-  const tool = getToolById(toolId)
+  const [focusMode, setFocusMode] = useState(false)
+
+  const { data: toolsData } = useQuery(
+    async () => {
+      try {
+        return await fetchToolsRegistry()
+      } catch {
+        return toolRegistry
+      }
+    },
+    {
+      isEmpty: (items) => items.length === 0,
+      cacheKey: 'tools-registry',
+    },
+  )
+
+  const tools = toolsData ?? toolRegistry
+  const tool = tools.find((item) => item.id === toolId)
+
   const [frameKey, setFrameKey] = useState(0)
   const [frameState, setFrameState] = useState<FrameState>('loading')
+
+  const { data: health } = useQuery(
+    () => fetchToolHealth(toolId ?? ''),
+    {
+      isEmpty: () => false,
+      cacheKey: `tool-health-${toolId ?? 'unknown'}`,
+    },
+  )
+
+  const { data: context } = useQuery(
+    () => fetchToolWorkspaceContext(toolId ?? ''),
+    {
+      isEmpty: () => false,
+      cacheKey: `tool-context-${toolId ?? 'unknown'}`,
+    },
+  )
 
   useEffect(() => {
     if (!tool) {
@@ -127,33 +165,45 @@ export default function ToolWorkspacePage() {
   }, [tool, frameKey])
 
   const statusLabel = useMemo(() => {
+    if (frameState === 'ready' && health?.status === 'healthy') return 'Embedded · healthy'
+    if (frameState === 'ready' && health?.status === 'degraded') return 'Embedded · degraded'
     if (frameState === 'ready') return 'Embedded'
     if (frameState === 'delayed') return 'Needs attention'
     return 'Connecting'
-  }, [frameState])
+  }, [frameState, health?.status])
 
   if (!tool) {
     return <PageError message="Unknown tool workspace." />
   }
 
   const handleReload = () => setFrameKey((k) => k + 1)
+  const embedUrl = getToolEmbedUrl(tool)
+  const openUrl = tool.gatewayPath || tool.baseUrl
+  const quickLinkBase = openUrl.replace(/\/$/, '')
 
   return (
     <PageContainer
+      fluid
       title={tool.name}
       description={tool.summary}
       actions={
         <Space>
+          <Button
+            icon={focusMode ? <CompressOutlined /> : <ExpandOutlined />}
+            onClick={() => setFocusMode((prev) => !prev)}
+          >
+            {focusMode ? 'Exit focus mode' : 'Focus console'}
+          </Button>
           <Button icon={<ReloadOutlined />} onClick={() => setFrameKey((current) => current + 1)}>
             Reload frame
           </Button>
-          <Button type="link" icon={<LinkOutlined />} href={tool.baseUrl} target="_blank" rel="noreferrer">
+          <Button type="link" icon={<LinkOutlined />} href={openUrl} target="_blank" rel="noreferrer">
             Open in new tab
           </Button>
         </Space>
       }
     >
-      <section className="tool-workspace-grid">
+      <section className={`tool-workspace-grid ${focusMode ? 'tool-workspace-grid-focus' : ''}`}>
         <aside className="tool-workspace-sidebar">
           <article className="card tool-overview-card">
             <div className="tool-overview-top">
@@ -167,6 +217,10 @@ export default function ToolWorkspacePage() {
               <div>
                 <span className="tool-meta-label">Status</span>
                 <strong>{statusLabel}</strong>
+              </div>
+              <div>
+                <span className="tool-meta-label">Runtime health</span>
+                <strong>{health?.status ?? 'unknown'}</strong>
               </div>
               <div>
                 <span className="tool-meta-label">Integration</span>
@@ -190,7 +244,7 @@ export default function ToolWorkspacePage() {
                   <a
                     key={link.path}
                     className="tool-quick-link"
-                    href={`${tool.baseUrl}${link.path}`}
+                    href={`${quickLinkBase}${link.path}`}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -202,6 +256,30 @@ export default function ToolWorkspacePage() {
           ) : null}
 
           {tool.showLiveRuns ? <LiveRunsCard /> : null}
+
+          {context ? (
+            <article className="card">
+              <h3>Unified workspace context</h3>
+              <div className="tool-meta-stack">
+                <div>
+                  <span className="tool-meta-label">Workspace</span>
+                  <strong>{context.workspace_id ?? 'N/A'}</strong>
+                </div>
+                <div>
+                  <span className="tool-meta-label">Dataset</span>
+                  <strong>{context.dataset_id ?? 'N/A'}</strong>
+                </div>
+                <div>
+                  <span className="tool-meta-label">Dataset version</span>
+                  <strong>{context.dataset_version_id ?? 'N/A'}</strong>
+                </div>
+                <div>
+                  <span className="tool-meta-label">Actor</span>
+                  <strong>{context.actor || 'N/A'}</strong>
+                </div>
+              </div>
+            </article>
+          ) : null}
 
           <article className="card">
             <h3>Why this tool belongs in the shell</h3>
@@ -248,7 +326,7 @@ export default function ToolWorkspacePage() {
           <div className="tool-frame-header">
             <div>
               <p className="tools-eyebrow">{tool.category} console</p>
-              <h3>{tool.baseUrl}</h3>
+              <h3>{embedUrl}</h3>
             </div>
             <Tag color={frameState === 'ready' ? 'success' : frameState === 'delayed' ? 'warning' : 'processing'}>
               {statusLabel}
@@ -273,7 +351,7 @@ export default function ToolWorkspacePage() {
               key={`${tool.id}-${frameKey}`}
               className={`tool-frame ${frameState !== 'ready' ? 'tool-frame-hidden' : ''}`}
               title={`${tool.name} workspace`}
-              src={tool.baseUrl}
+              src={embedUrl}
               onLoad={() => setFrameState('ready')}
             />
           </div>

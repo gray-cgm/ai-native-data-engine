@@ -12,6 +12,7 @@ from src.api.routes.pipelines import router as pipelines_router
 from src.api.routes.requirements import router as requirements_router
 from src.api.routes.samples import router as samples_router
 from src.api.routes.streaming import router as streaming_router
+from src.api.routes.tools import router as tools_router
 from src.core.database import init_db
 from src.core.runtime import get_runtime_container
 
@@ -30,6 +31,7 @@ app.include_router(streaming_router)
 app.include_router(catalog_router)
 app.include_router(operations_router)
 app.include_router(export_router)
+app.include_router(tools_router)
 
 # ── 数据闭环需求管理系统路由 ──
 app.include_router(requirements_router)

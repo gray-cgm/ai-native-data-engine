@@ -102,6 +102,36 @@ A descriptor should include:
 
 This lets the shell render a consistent launch catalog and workspace routes while keeping adapter logic explicit.
 
+#### Current registration mechanism (implemented)
+
+In this repository, tool registration is now owned by the BFF (not by Platform API).
+
+Source of truth:
+
+- `apps/bff/src/services/tools.ts`
+- `TOOL_DEFINITIONS` in the BFF service layer
+
+Runtime assembly:
+
+- Base URLs come from BFF config (`TOOL_DAGSTER_BASE_URL`, `TOOL_SUPERSET_BASE_URL`, `TOOL_JUPYTER_BASE_URL`)
+- Gateway path is derived as `/api/tools-gateway/{toolId}/`
+
+Registry API (BFF):
+
+- `GET /api/tools/registry`
+- returns `items[]` with metadata used by `apps/web`:
+  - `id`, `name`, `short_name`, `category`
+  - `integration_mode`
+  - `base_url`, `gateway_path`
+  - `health_path`, `workspace_path`
+  - `capabilities`, `use_cases`, `notes`
+
+Why BFF-owned registry:
+
+- avoids an extra `Web -> BFF -> Platform API` hop for shell-level integration metadata
+- keeps app-facing integration concerns (routing, embedding, gateway path policy) close to the access layer
+- reduces coupling between tool UX integration and platform resource semantics
+
 ### 3. Access gateway layer
 
 Direct browser-to-tool embedding is acceptable for local dev, but not strong enough for production.
@@ -118,9 +148,99 @@ The BFF gateway should become the stable ingress for embedded tools because it c
 
 Recommended routes:
 
-- `/tools-gateway/dagster/*`
-- `/tools-gateway/superset/*`
-- `/tools-gateway/jupyter/*`
+- `/api/tools-gateway/dagster/*`
+- `/api/tools-gateway/superset/*`
+- `/api/tools-gateway/jupyter/*`
+
+#### Current proxy mechanism (implemented)
+
+The active ingress exposed to browser clients is:
+
+- `/api/tools-gateway/{toolId}/*`
+
+Implemented in:
+
+- `apps/bff/src/middlewares/tools-gateway-proxy.ts`
+
+Pipeline behavior:
+
+1. Route match and target resolution
+- parse `toolId` from gateway path
+- validate against known tool set (`dagster`, `superset`, `jupyter`)
+- map to configured upstream base URL
+
+2. Upstream request shaping
+- preserve request method/path/query
+- drop hop-by-hop headers
+- force `accept-encoding: identity` so text payload rewriting is deterministic
+
+3. Upstream response header normalization
+- remove embedding-blocking headers:
+  - `x-frame-options`
+  - `content-security-policy`
+- remove transfer-specific headers handled by BFF/body rewrite:
+  - `content-length`
+  - `content-encoding`
+- rewrite `location` header for same-origin redirect continuity
+
+4. Response body rewrite (text-like content only)
+- rewrite absolute origin references to gateway base
+- rewrite known tool path prefixes to gateway-prefixed paths
+- prevent double-prefix rewrite via guarded regex strategy
+- apply Superset-specific bootstrap rewrite so `application_root` stays under gateway path
+
+Result:
+
+- iframe subresource requests (e.g. `/_next/*`, `/static/*`, `/api/*`) stay within gateway namespace
+- post-login redirects remain on gateway paths instead of leaking to shell root paths
+- local embedding works despite default tool CSP/frame restrictions
+
+Operational note:
+
+- this gateway is an access-layer embedding adapter; it should not become a generic API passthrough for platform business resources
+
+#### Web -> BFF -> Tool Service sequence (Mermaid)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as User Browser
+  participant W as Web Shell (apps/web)
+  participant B as BFF (apps/bff)
+  participant T as Tool Service (Dagster/Superset/Jupyter)
+
+  U->>W: Open /tools
+  W->>B: GET /api/tools/registry
+  B-->>W: Tool registry (id, integration_mode, gateway_path, health_path)
+  W-->>U: Render Tools Hub
+
+  U->>W: Open /tools/{toolId}
+  par Workspace context preload
+    W->>B: GET /api/tools/{toolId}/workspace-context
+    B-->>W: workspace_id, dataset_id, dataset_version_id, actor
+  and Health preload
+    W->>B: GET /api/tools/{toolId}/health
+    B->>T: GET {base_url}{health_path}
+    T-->>B: Health response
+    B-->>W: normalized health payload
+  end
+
+  W->>U: Mount iframe src=/api/tools-gateway/{toolId}/...
+  U->>B: GET /api/tools-gateway/{toolId}/...
+  B->>T: Forward request to tool upstream
+  T-->>B: HTML / JS / CSS / redirect headers
+  B-->>U: Normalized response
+
+  Note over B: Normalize headers:
+  Note over B: strip X-Frame-Options/CSP/content-encoding
+  Note over B: rewrite Location to gateway path
+  Note over B: rewrite body URLs to /api/tools-gateway/{toolId}/...
+
+  U->>B: Follow redirected URL or load static assets
+  B->>T: Proxy subresource requests
+  T-->>B: Resource payload
+  B-->>U: Same-origin iframe resources
+```
 
 ### 4. Tool bridge layer
 
@@ -238,8 +358,8 @@ This is intentionally an engine skeleton, not the final platform integration.
 
 ## Next steps
 
-1. Add BFF gateway routes for `/tools-gateway/:toolId/*`.
+1. Add role- and tenant-aware launch policy to registry responses.
 2. Define a small shell-to-tool context bridge.
-3. Add favorites, recent tools, and tool health checks.
-4. Introduce role-based launch policy so analysts, operators, and researchers see different tool surfaces.
+3. Extend health checks with per-tool diagnostics and SLO metadata.
+4. Introduce favorites/recent tools persistence.
 5. Add deep-link launchers from datasets, runs, tasks, and exports into the relevant tool workspace.

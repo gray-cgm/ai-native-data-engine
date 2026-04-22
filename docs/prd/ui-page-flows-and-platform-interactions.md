@@ -67,13 +67,14 @@ User
 
 ## Workbench 信息架构
 
-当前 Web workbench 按 5 个模块组织：
+当前 Web workbench 按 6 个模块组织：
 
 1. **Overview**
 2. **Catalog**
 3. **Explorer**
 4. **Operations**
 5. **Pipelines**
+6. **Tools**
 
 这些模块由 [apps/web/src/shared/layouts/nav-config.ts](../../apps/web/src/shared/layouts/nav-config.ts) 统一定义，并由 [apps/web/src/routes.tsx](../../apps/web/src/routes.tsx) 注册到路由系统中。
 
@@ -111,6 +112,8 @@ workbench 采用三层导航组织：
 | `/ops` | Operations | TaskBoardPage | 任务看板 |
 | `/ops/exports` | Operations | ExportListPage | 导出记录 |
 | `/pipelines` | Pipelines | RunHistoryPage | 流水线运行历史 |
+| `/tools` | Tools | ToolsHomePage | 工具总览与集成入口 |
+| `/tools/:toolId` | Tools | ToolWorkspacePage | 工具工作空间 |
 
 ## 界面 Item 设计
 
@@ -136,6 +139,7 @@ workbench 采用三层导航组织：
 - Explorer
 - Operations
 - Pipelines
+- Tools
 
 #### 1.2 Sidebar Nav Item
 
@@ -483,6 +487,36 @@ workbench 采用三层导航组织：
 | `status` | string | `tasks[].status` | 运行状态 |
 | `run_type` | string | `tasks[].task_type` | 运行类型 |
 
+### 7. Tools 页面字段级 Item
+
+#### 7.1 Tool Registry Item 字段表
+
+| 字段 | 类型 | 来源 | 说明 |
+| --- | --- | --- | --- |
+| `id` | string | `toolRegistry[].id` | 工具唯一标识 |
+| `name` | string | `toolRegistry[].name` | 工具名称 |
+| `category` | string | `toolRegistry[].category` | 工具类别 |
+| `integrationMode` | string | `toolRegistry[].integrationMode` | 集成模式 |
+| `workspacePath` | string | `toolRegistry[].workspacePath` | 工作空间路径 |
+| `gatewayPath` | string | `toolRegistry[].gatewayPath` | 代理网关路径 |
+
+#### 7.2 Tool Workspace Context 字段表
+
+| 字段 | 类型 | 推荐来源 | 说明 |
+| --- | --- | --- | --- |
+| `workspaceId` | string | BFF 聚合上下文 | 当前工作空间 |
+| `datasetVersionId` | string | BFF 聚合上下文 | 当前激活数据版本 |
+| `requestId` | string | BFF 注入 | 跨工具调用追踪 |
+| `actor` | string | session / BFF | 当前操作者 |
+
+#### 7.3 Tool Runtime Health 字段表
+
+| 字段 | 类型 | 推荐来源 | 说明 |
+| --- | --- | --- | --- |
+| `status` | `'healthy' | 'degraded' | 'down'` | BFF 探活聚合 | 工具运行健康状态 |
+| `lastHeartbeatAt` | string | BFF 探活聚合 | 最近心跳时间 |
+| `errorSummary` | string | BFF 探活聚合 | 最近错误摘要 |
+
 ## 页面设计与页面流转
 
 下面按当前模块说明页面设计和核心流转。
@@ -745,6 +779,60 @@ Overview / Pipelines 入口
 -> 查看运行记录与状态
 ```
 
+### 6. Tools
+
+#### 6.1 Tools Hub Page
+
+##### 页面目标
+
+将工具目录升级为统一控制面入口，提供工具状态、集成模式、关键健康摘要与统一工作空间导航。
+
+##### 核心 item
+
+- Tool catalog cards
+- Integration mode / gateway metadata
+- Health summary
+- Workspace entry actions
+
+##### 页面流转
+
+```text
+Overview / Tools 入口
+-> Tools Hub
+-> 选择某个工具
+-> Tool Workspace
+```
+
+#### 6.2 Tool Workspace Page
+
+##### 页面目标
+
+在统一平台壳内承载工具运行视图，并提供跨工具一致的上下文、重试与降级策略。
+
+##### 核心 item
+
+- Embedded tool frame
+- Runtime status badge
+- Quick links
+- Fallback panel (new tab / retry)
+
+##### 页面流转
+
+```text
+Tools Hub
+-> Tool Workspace
+-> (frame delayed) fallback panel
+-> 重试嵌入 or 新标签打开
+```
+
+##### 对 Modern Data Stack 愿景的支撑
+
+Tools 模块不是单纯工具列表，而是统一运行和治理入口的前端承载位。后续应逐步承接：
+
+1. 统一上下文桥接（workspaceId、datasetVersionId、requestId）
+2. 统一运行状态聚合（run/quality/lineage/alert）
+3. 统一集成治理（contractVersion、policyProfile、health）
+
 ## 页面状态机
 
 本节将页面从“静态页面”进一步抽象为“状态驱动视图”，帮助后续实现 loading / empty / error / command feedback 的一致交互。
@@ -871,6 +959,26 @@ idle
 -> ready            (runs/tasks 可展示)
 -> empty            (无运行记录)
 -> error            (dashboard 请求失败)
+```
+
+### 9. Tools 页面状态机
+
+```text
+idle
+-> loading
+-> ready            (tools registry 可展示)
+-> empty            (无已接入工具)
+-> error            (tools 聚合请求失败)
+
+ready
+-> loading          (进入 Tool Workspace 并建立嵌入连接)
+-> ready            (iframe onLoad)
+-> delayed          (超时未完成嵌入)
+
+delayed
+-> loading          (用户点击 retry)
+-> ready            (重试成功)
+-> ready            (切换为 new tab 访问，页面保留可用态)
 ```
 
 ## BFF ViewModel 设计稿
@@ -1071,6 +1179,10 @@ type CommandFeedback = {
    - `GET /api/ops/exports`
    - `GET /api/pipelines/runs`
 4. 保持 command endpoint 单独存在，不混入 read model payload
+5. 增加 tools 聚合 read model：
+  - `GET /api/tools/registry`
+  - `GET /api/tools/:toolId/workspace-context`
+  - `GET /api/tools/:toolId/health`
 
 ## 平台交互细节
 
@@ -1191,6 +1303,19 @@ User clicks Export
 - 做最小参数校验
 - 转发到 Platform API
 - 将结果返回页面
+
+#### 4.4 Tools 工作空间交互
+
+```text
+Web Tools Hub / Workspace
+-> GET /api/tools/registry
+-> BFF 返回工具注册信息与集成模式
+-> 用户进入 /tools/:toolId
+-> GET /api/tools/:toolId/workspace-context
+-> GET /api/tools/:toolId/health
+-> Web 装载 iframe 并展示状态
+-> 若嵌入失败，显示 fallback（new tab / retry）
+```
 
 ## 页面时序图（Mermaid）
 

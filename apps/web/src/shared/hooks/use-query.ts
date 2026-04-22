@@ -20,6 +20,13 @@ export function useQuery<T>(
   const optionsRef = useRef(options)
   useEffect(() => { optionsRef.current = options }, [options])
 
+  // Keep the latest fetcher in a ref so `refetch` is stable and inline
+  // arrow functions don't cause infinite re-fetch loops.
+  const fetcherRef = useRef(fetcher)
+  fetcherRef.current = fetcher
+
+  const cacheKey = options?.cacheKey
+
   // Resolve cached value once on mount
   const cached = useMemo(() => {
     const key = options?.cacheKey
@@ -49,7 +56,7 @@ export function useQuery<T>(
     }
     setError(null)
     try {
-      const result = await fetcher()
+      const result = await fetcherRef.current()
       setData(result)
       const key = optionsRef.current?.cacheKey
       if (key) queryCache.set(key, result)
@@ -61,11 +68,14 @@ export function useQuery<T>(
       // If we already have displayable data (from cache) keep showing it
       setState((prev) => (prev === 'ready' || prev === 'empty') ? prev : 'error')
     }
-  }, [fetcher])
+  }, [])
 
+  // Re-fetch on mount and whenever cacheKey changes (e.g. navigating to a
+  // different resource).  Using refetch in deps is safe since it's stable.
   useEffect(() => {
     refetch()
-  }, [refetch])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey])
 
   return {
     data,

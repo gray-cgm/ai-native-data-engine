@@ -3,8 +3,10 @@ import { Button } from 'antd'
 import { RocketOutlined } from '@ant-design/icons'
 import { PageContainer } from '@/shared/components/page-container'
 import { StatCard } from '@/shared/components/stat-card'
+import { useQuery } from '@/shared/hooks/use-query'
 import { toolRegistry } from '@/shared/microfrontends/registry'
 import { ToolCard } from '../components/tool-card'
+import { fetchToolsRegistry } from '../api/tools'
 import '../tools.css'
 
 const engineLayers = [
@@ -27,8 +29,23 @@ const engineLayers = [
 ]
 
 export default function ToolsHomePage() {
-  const iframeTools = toolRegistry.filter((tool) => tool.integrationMode === 'direct-iframe').length
-  const proxyTools = toolRegistry.filter((tool) => tool.integrationMode === 'proxy-iframe').length
+  const { data } = useQuery(
+    async () => {
+      try {
+        return await fetchToolsRegistry()
+      } catch {
+        return toolRegistry
+      }
+    },
+    {
+      isEmpty: (items) => items.length === 0,
+      cacheKey: 'tools-registry',
+    },
+  )
+
+  const tools = data ?? toolRegistry
+  const iframeTools = tools.filter((tool) => tool.integrationMode === 'direct-iframe').length
+  const proxyTools = tools.filter((tool) => tool.integrationMode === 'proxy-iframe').length
 
   return (
     <PageContainer
@@ -52,10 +69,10 @@ export default function ToolsHomePage() {
           </p>
         </div>
         <div className="grid-four tools-stat-grid">
-          <StatCard label="Integrated tools" value={toolRegistry.length} />
+          <StatCard label="Integrated tools" value={tools.length} />
           <StatCard label="Direct iframe adapters" value={iframeTools} />
           <StatCard label="Gateway-first adapters" value={proxyTools} />
-          <StatCard label="Shell-owned routes" value={toolRegistry.length + 1} />
+          <StatCard label="Shell-owned routes" value={tools.length + 1} />
         </div>
       </section>
 
@@ -77,7 +94,7 @@ export default function ToolsHomePage() {
       </section>
 
       <section className="tools-card-grid">
-        {toolRegistry.map((tool) => (
+        {tools.map((tool) => (
           <ToolCard key={tool.id} tool={tool} />
         ))}
       </section>
