@@ -8,6 +8,7 @@ import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { StatusBadge } from '@/shared/components/status-badge'
 import { StatCard } from '@/shared/components/stat-card'
+import { TableCellText } from '@/shared/components/table-cell-text'
 import type { RunItem, StreamingBatchSummary, StreamingSummary } from '@/shared/types/common'
 import { fetchRuns, fetchStreamingSummary } from '../api'
 
@@ -58,47 +59,50 @@ const batchRunColumns: ColumnsType<RunItem> = [
     key: 'job_name',
     title: 'Job name',
     dataIndex: 'job_name',
-    render: (text: string) => <Text strong>{text}</Text>,
+    width: 220,
+    render: (text: string) => <TableCellText value={text} maxWidth={220} />,
   },
   {
     key: 'status',
     title: 'Status',
     dataIndex: 'status',
+    width: 110,
     render: (_: unknown, record) => <StatusBadge status={record.status} />,
   },
   {
     key: 'requirement_id',
     title: 'Requirement',
     dataIndex: 'requirement_id',
-    render: (text?: string | null) => text ?? '—',
+    width: 180,
+    render: (text?: string | null) => <TableCellText value={text} maxWidth={180} />,
   },
   {
     key: 'operation_task_id',
     title: 'Ops Task',
     dataIndex: 'operation_task_id',
-    render: (text?: string | null) => text ?? '—',
+    width: 210,
+    render: (text?: string | null) => <TableCellText value={text} maxWidth={210} />,
   },
   {
     key: 'estimated_cost',
     title: 'Est. Cost',
     dataIndex: 'estimated_cost',
+    width: 110,
     render: (value?: number | null) => (typeof value === 'number' ? `$${value.toFixed(4)}` : '—'),
   },
   {
     key: 'duration_seconds',
     title: 'Duration(s)',
     dataIndex: 'duration_seconds',
+    width: 110,
     render: (value?: number | null) => (typeof value === 'number' ? Math.round(value) : '—'),
   },
   {
     key: 'run_id',
     title: 'Run ID',
     dataIndex: 'run_id',
-    render: (text: string) => (
-      <Text code type="secondary" style={{ fontSize: 12 }}>
-        {text.slice(0, 12)}…
-      </Text>
-    ),
+    width: 180,
+    render: (text: string) => <TableCellText value={text} maxWidth={180} code />,
   },
 ]
 
@@ -107,15 +111,17 @@ const streamingBatchColumns: ColumnsType<StreamingBatchSummary> = [
     key: 'batch_number',
     title: 'Batch',
     dataIndex: 'batch_number',
+    width: 90,
     render: (val: number) => <Text strong>#{val}</Text>,
   },
-  { key: 'input_events', title: 'Events in', dataIndex: 'input_events' },
-  { key: 'accepted_events', title: 'Accepted', dataIndex: 'accepted_events' },
-  { key: 'unique_samples', title: 'New samples', dataIndex: 'unique_samples' },
+  { key: 'input_events', title: 'Events in', dataIndex: 'input_events', width: 110 },
+  { key: 'accepted_events', title: 'Accepted', dataIndex: 'accepted_events', width: 110 },
+  { key: 'unique_samples', title: 'New samples', dataIndex: 'unique_samples', width: 120 },
   {
     key: 'run_status',
     title: 'Run status',
     dataIndex: 'run_status',
+    width: 120,
     render: (_: unknown, record) => <StatusBadge status={record.run_status} />,
   },
 ]
@@ -161,10 +167,13 @@ function BatchRunsSection({ runs, loading }: { runs: RunItem[]; loading: boolean
             style={{ marginBottom: 16 }}
           />
           <Table<RunItem>
+            className="app-data-table"
             columns={batchRunColumns}
             dataSource={filtered}
             rowKey={(row) => row.run_id}
             size="small"
+            tableLayout="fixed"
+            scroll={{ x: 'max-content' }}
             pagination={{
               pageSize: PAGE_SIZE,
               size: 'small',
@@ -259,10 +268,13 @@ function StreamingSection({ summary, loading }: { summary: StreamingSummary | nu
                 onChange={(e) => onKeyword(e.target.value)}
               />
               <Table<StreamingBatchSummary>
+                className="app-data-table"
                 columns={streamingBatchColumns}
                 dataSource={filtered}
                 rowKey={(row) => String(row.batch_number)}
                 size="small"
+                tableLayout="fixed"
+                scroll={{ x: 'max-content' }}
                 pagination={{
                   pageSize: PAGE_SIZE,
                   size: 'small',

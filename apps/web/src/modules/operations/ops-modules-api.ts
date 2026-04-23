@@ -3,8 +3,8 @@ import { apiDelete, apiGet, apiPatch, apiPost } from '@/shared/api/client'
 export const OPS_MODULES = [
   'labeling',
   'tagging',
-  'checking',
   'mining',
+  'checking',
   'release',
 ] as const
 

@@ -174,4 +174,33 @@
   color: var(--color-text-muted);
 }
 
+/* Table text handling: keep rows compact while preserving full content on hover. */
+.app-data-table .ant-table-cell {
+  vertical-align: top;
+}
+
+.table-cell-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.table-cell-text--2 {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  max-height: 2.8em;
+  word-break: break-word;
+}
+
+.table-cell-text--code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 12px;
+}
+
 

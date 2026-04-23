@@ -8,6 +8,7 @@ import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
 import { StatusBadge } from '@/shared/components/status-badge'
+import { TableCellText } from '@/shared/components/table-cell-text'
 import { fetchRequirementReport, type RequirementReportView } from '../api'
 
 const { Text } = Typography
@@ -27,45 +28,49 @@ function formatBytes(bytes: number) {
 type GenericRow = Record<string, unknown>
 
 const runColumns: ColumnsType<GenericRow> = [
-  { key: 'run_id', title: 'Run ID', dataIndex: 'run_id' },
-  { key: 'job_name', title: 'Job', dataIndex: 'job_name' },
+  { key: 'run_id', title: 'Run ID', dataIndex: 'run_id', width: 220, render: (v) => <TableCellText value={v} code maxWidth={220} /> },
+  { key: 'job_name', title: 'Job', dataIndex: 'job_name', width: 220, render: (v) => <TableCellText value={v} maxWidth={220} /> },
   {
     key: 'status',
     title: 'Status',
     dataIndex: 'status',
+    width: 110,
     render: (status: string) => <StatusBadge status={status} />,
   },
-  { key: 'trigger_source', title: 'Trigger', dataIndex: 'trigger_source', render: (v: string) => v ?? '—' },
-  { key: 'reason_code', title: 'Reason', dataIndex: 'reason_code', render: (v: string) => v ?? '—' },
+  { key: 'trigger_source', title: 'Trigger', dataIndex: 'trigger_source', width: 140, render: (v: string) => <TableCellText value={v} maxWidth={140} /> },
+  { key: 'reason_code', title: 'Reason', dataIndex: 'reason_code', width: 160, render: (v: string) => <TableCellText value={v} maxWidth={160} /> },
   {
     key: 'estimated_cost',
     title: 'Est. Cost',
     dataIndex: 'estimated_cost',
+    width: 110,
     render: (v?: number) => (typeof v === 'number' ? `$${v.toFixed(4)}` : '—'),
   },
 ]
 
 const taskColumns: ColumnsType<GenericRow> = [
-  { key: 'task_id', title: 'Task ID', dataIndex: 'task_id' },
-  { key: 'title', title: 'Title', dataIndex: 'title' },
-  { key: 'task_type', title: 'Type', dataIndex: 'task_type' },
+  { key: 'task_id', title: 'Task ID', dataIndex: 'task_id', width: 220, render: (v) => <TableCellText value={v} code maxWidth={220} /> },
+  { key: 'title', title: 'Title', dataIndex: 'title', width: 260, render: (v) => <TableCellText value={v} lines={2} maxWidth={260} /> },
+  { key: 'task_type', title: 'Type', dataIndex: 'task_type', width: 140, render: (v) => <TableCellText value={v} maxWidth={140} /> },
   {
     key: 'status',
     title: 'Status',
     dataIndex: 'status',
+    width: 110,
     render: (status: string) => <StatusBadge status={status} />,
   },
-  { key: 'pipeline_run_id', title: 'Run', dataIndex: 'pipeline_run_id', render: (v: string) => v ?? '—' },
+  { key: 'pipeline_run_id', title: 'Run', dataIndex: 'pipeline_run_id', width: 220, render: (v: string) => <TableCellText value={v} code maxWidth={220} /> },
 ]
 
 const exportColumns: ColumnsType<GenericRow> = [
-  { key: 'export_id', title: 'Export ID', dataIndex: 'export_id' },
-  { key: 'dataset_id', title: 'Dataset', dataIndex: 'dataset_id' },
-  { key: 'format', title: 'Format', dataIndex: 'format' },
+  { key: 'export_id', title: 'Export ID', dataIndex: 'export_id', width: 220, render: (v) => <TableCellText value={v} code maxWidth={220} /> },
+  { key: 'dataset_id', title: 'Dataset', dataIndex: 'dataset_id', width: 220, render: (v) => <TableCellText value={v} maxWidth={220} /> },
+  { key: 'format', title: 'Format', dataIndex: 'format', width: 100, render: (v) => <TableCellText value={v} maxWidth={100} /> },
   {
     key: 'status',
     title: 'Status',
     dataIndex: 'status',
+    width: 110,
     render: (status: string) => <StatusBadge status={status} />,
   },
 ]
@@ -170,31 +175,40 @@ export default function RequirementReportPage() {
 
       <Card title="Linked Operations Tasks" style={{ marginBottom: 16 }}>
         <Table<GenericRow>
+          className="app-data-table"
           columns={taskColumns}
           dataSource={data.linked_items.operations_tasks}
           rowKey={(row) => String(row.task_id ?? Math.random())}
           pagination={{ pageSize: 6 }}
           size="small"
+          tableLayout="fixed"
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
       <Card title="Linked Pipeline Runs" style={{ marginBottom: 16 }}>
         <Table<GenericRow>
+          className="app-data-table"
           columns={runColumns}
           dataSource={data.linked_items.runs}
           rowKey={(row) => String(row.run_id ?? Math.random())}
           pagination={{ pageSize: 6 }}
           size="small"
+          tableLayout="fixed"
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
       <Card title="Linked Exports">
         <Table<GenericRow>
+          className="app-data-table"
           columns={exportColumns}
           dataSource={data.linked_items.exports}
           rowKey={(row) => String(row.export_id ?? Math.random())}
           pagination={{ pageSize: 6 }}
           size="small"
+          tableLayout="fixed"
+          scroll={{ x: 'max-content' }}
         />
       </Card>
     </PageContainer>

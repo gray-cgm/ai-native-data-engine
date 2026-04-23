@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Card, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { StatusBadge } from '@/shared/components/status-badge'
+import { TableCellText } from '@/shared/components/table-cell-text'
 import type { ExportItem, RunItem, TaskItem } from '@/shared/types/common'
 
 const { Text } = Typography
@@ -22,7 +23,7 @@ interface ActivityRow {
 
 const columns: ColumnsType<ActivityRow> = [
   { key: 'type', title: 'Type', dataIndex: 'type', width: 110 },
-  { key: 'name', title: 'Name', dataIndex: 'name' },
+  { key: 'name', title: 'Name', dataIndex: 'name', render: (name: string) => <TableCellText value={name} lines={2} /> },
   {
     key: 'status',
     title: 'Status',
@@ -91,10 +92,13 @@ export function RecentActivityV2({ tasks, exports: exportItems, runs }: Props) {
   return (
     <Card title="Recent Activity">
       <Table<ActivityRow>
+        className="app-data-table"
         columns={columns}
         dataSource={dataSource}
         pagination={false}
         size="small"
+        tableLayout="fixed"
+        scroll={{ x: 'max-content' }}
         locale={{ emptyText: 'No recent activity yet.' }}
       />
     </Card>
