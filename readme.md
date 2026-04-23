@@ -6,13 +6,6 @@ Build a local-first data closed-loop engine for autonomous driving and robotics,
 
 当前文档采用统一的六层模型来描述系统底座：
 
-1. 文件格式层：Parquet / Lance / Mcap / Lerobot，同类文件格式，当前主格式为 Lance
-2. 存储层：local fs / S3 / MinIO / OSS / HDFS
-3. 湖表格式层：Iceberg / Paimon / Hudi
-4. 计算层：local Python / Dagster / Spark / Flink / Fluss
-5. 查询层：DuckDB / Trino / StarRocks
-6. 应用层：BI、挖掘检索、标注、需求管理、工作台等
-
 ## 统一架构表
 
 | 层级 | 核心职责 | 代表技术 | 当前 local-first MVP |

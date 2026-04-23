@@ -117,7 +117,7 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     description: '架构决策记录与实施计划',
     items: [
       { path: 'adr/ai-data-platform-roadmap.md', title: 'AI 数据平台路线图' },
-      { path: 'adr/implementation-backlog.md', title: '实施 Backlog' },
+      { path: 'adr/implement_blacklog.md', title: '实施 Backlog' },
       { path: 'adr/experience-access-layer-implementation-backlog.md', title: '体验 / 访问层 Backlog' },
     ],
   },
