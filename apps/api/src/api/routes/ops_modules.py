@@ -79,6 +79,7 @@ class OpsItem(BaseModel):
     dataset_id: str | None = None
     scenario: str | None = None
     requirement_id: str | None = None
+    data_task_id: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     created_at: str
     updated_at: str
@@ -93,6 +94,7 @@ class OpsItemCreate(BaseModel):
     dataset_id: str | None = None
     scenario: str | None = None
     requirement_id: str | None = None
+    data_task_id: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -105,6 +107,7 @@ class OpsItemPatch(BaseModel):
     dataset_id: str | None = None
     scenario: str | None = None
     requirement_id: str | None = None
+    data_task_id: str | None = None
     payload: dict[str, Any] | None = None
 
 
@@ -128,6 +131,7 @@ class _InMemoryStore:
         dataset_id: str | None = None,
         scenario: str | None = None,
         requirement_id: str | None = None,
+        data_task_id: str | None = None,
         keyword: str | None = None,
     ) -> list[OpsItem]:
         rows = list(self._items[module].values())
@@ -141,6 +145,8 @@ class _InMemoryStore:
             rows = [r for r in rows if r.scenario == scenario]
         if requirement_id:
             rows = [r for r in rows if r.requirement_id == requirement_id]
+        if data_task_id:
+            rows = [r for r in rows if r.data_task_id == data_task_id]
         if keyword:
             k = keyword.lower()
             rows = [
@@ -170,6 +176,7 @@ class _InMemoryStore:
             dataset_id=payload.dataset_id,
             scenario=payload.scenario,
             requirement_id=payload.requirement_id,
+            data_task_id=payload.data_task_id,
             payload=dict(payload.payload),
             created_at=now,
             updated_at=now,
@@ -230,6 +237,7 @@ def _build_router(module: ModuleKey) -> APIRouter:
         dataset_id: str | None = Query(default=None),
         scenario: str | None = Query(default=None),
         requirement_id: str | None = Query(default=None),
+        data_task_id: str | None = Query(default=None),
         keyword: str | None = Query(default=None),
         limit: int = Query(default=50, ge=1, le=500),
         offset: int = Query(default=0, ge=0),
@@ -241,6 +249,7 @@ def _build_router(module: ModuleKey) -> APIRouter:
             dataset_id=dataset_id,
             scenario=scenario,
             requirement_id=requirement_id,
+            data_task_id=data_task_id,
             keyword=keyword,
         )
         page = rows[offset : offset + limit]

@@ -363,3 +363,16 @@ This is intentionally an engine skeleton, not the final platform integration.
 3. Extend health checks with per-tool diagnostics and SLO metadata.
 4. Introduce favorites/recent tools persistence.
 5. Add deep-link launchers from datasets, runs, tasks, and exports into the relevant tool workspace.
+
+## 内置文档中心（Docs Center）
+
+在正式的 `/tools/*` 外链式微前端之前，`apps/web/src/modules/docs` 提供了一个**完全内嵌**的文档阅读器模块，可以作为后续微前端形态的参照：
+
+- 入口：nav header 的 Docs 按钮 → `/docs` 与 `/docs/*`
+- 前端依赖：`react-markdown` + `remark-gfm` + `rehype-highlight` + `highlight.js` + `mermaid`
+- 后端：BFF `routes/docs-content.ts` 提供 `/docs/tree` 与 `/docs/file`（见 `web-access-layer-bff-architecture.md` §11.2）
+- 目录组织：由 `modules/docs/manifest.ts` 按**任务**（快速开始 / 产品 / 架构 / 决策 / API / 扩展阅读 / 开发日志 / 其他）而非**文件夹**分组；未在清单中登记的文件自动落入"其他文档"
+- Mermaid：在 ReactMarkdown 的 `components.code` 中拦截 `language-mermaid` 代码块，经 `MermaidBlock` 用 `mermaid.render()` 输出 SVG
+- 安全：文件读取通过 `path.relative` + 扩展名白名单防护路径穿越
+
+它与未来 `/tools/*` 的差异：Docs Center 不消费外部 origin，也不需要 iframe / gateway；它是纯粹的站内静态资源体验模块。把它记入本文档是因为它回答了一个实际问题：在不引入微前端外部依赖的情况下，如何组织跨模块的内置功能。

@@ -20,6 +20,25 @@ const PRIORITY_TAG_COLORS: Record<string, string> = {
   low: 'blue',
 }
 
+function mapDataTaskToOpsModule(taskType: string): 'labeling' | 'tagging' | 'checking' | 'mining' | 'release' {
+  const value = taskType.toLowerCase()
+  if (value.includes('label')) return 'labeling'
+  if (value.includes('tag')) return 'tagging'
+  if (value.includes('check') || value.includes('qc') || value.includes('gate')) return 'checking'
+  if (value.includes('release') || value.includes('publish')) return 'release'
+  return 'mining'
+}
+
+function buildOpsHandoffHref(requirementId: string, requirementTitle: string, task: DataTaskView, targetScene: string | null) {
+  const module = mapDataTaskToOpsModule(task.task_type)
+  const params = new URLSearchParams()
+  params.set('requirement', requirementId)
+  params.set('dataTask', task.id)
+  if (targetScene) params.set('scenario', targetScene)
+  params.set('q', `${requirementTitle} ${task.title}`.trim())
+  return `/ops/${module}?${params.toString()}`
+}
+
 export default function RequirementDetailPage() {
   const { id } = useParams<{ id: string }>()
   const fetcher = useCallback(() => fetchRequirementDetail(id!), [id])
@@ -173,7 +192,10 @@ export default function RequirementDetailPage() {
       </Row>
 
       {/* Data Tasks */}
-      <Card title={`Data Tasks (${data.data_tasks.length})`}>
+      <Card
+        title={`Data Tasks (${data.data_tasks.length})`}
+        extra={<Text type="secondary">Data Task defines intent; Operation Task tracks execution and handoff.</Text>}
+      >
         {data.data_tasks.length === 0 ? (
           <Text type="secondary">No data tasks created for this requirement.</Text>
         ) : (
@@ -201,25 +223,43 @@ export default function RequirementDetailPage() {
                 key: '_actions',
                 header: 'Actions',
                 render: (row: DataTaskView) => {
-                  if (row.sign_off_status !== 'pending') return null
+                  const handoffHref = buildOpsHandoffHref(data.id, data.title, row, data.target_scene)
                   const isProcessing = signingOff === row.id
                   return (
                     <Space>
+                      <Link to={handoffHref}>
+                        <Button
+                          type="primary"
+                          size="small"
+                        >
+                          Create/Open Ops Task
+                        </Button>
+                      </Link>
+                      {row.sign_off_status === 'pending' && (
+                        <Button
+                          type="default"
+                          size="small"
+                          onClick={() => handleSignOff(row.id, true)}
+                          loading={isProcessing}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                      {row.sign_off_status === 'pending' && (
+                        <Button
+                          danger
+                          size="small"
+                          onClick={() => handleSignOff(row.id, false)}
+                          loading={isProcessing}
+                        >
+                          Reject
+                        </Button>
+                      )}
                       <Button
-                        type="primary"
                         size="small"
-                        onClick={() => handleSignOff(row.id, true)}
-                        loading={isProcessing}
+                        href={`/requirements/${data.id}/report`}
                       >
-                        Approve
-                      </Button>
-                      <Button
-                        danger
-                        size="small"
-                        onClick={() => handleSignOff(row.id, false)}
-                        loading={isProcessing}
-                      >
-                        Reject
+                        View Report
                       </Button>
                     </Space>
                   )

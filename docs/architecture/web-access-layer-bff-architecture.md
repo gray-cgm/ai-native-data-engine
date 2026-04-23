@@ -544,4 +544,28 @@ pagination / response / exception 适合 middleware。dataset 特殊规则不适
 4. filter push-down 下沉到 Platform，`q` / sort / skip / limit 由 `applyCollectionQuery` 在 BFF 侧统一处理。
 5. Handler 只写几行 —— `assertOpsModule(ctx.params.module)` 后直接调入 engine 函数，所有异常由全局 `handleException` 中间件统一包装。
 
+---
+
+## 11. Requirement Report Engine 与 Docs Content Route
+
+两个新增的 BFF 能力按同一套原则落地：
+
+### 11.1 `requirementEngine.buildRequirementReport()`
+
+- 位置：`apps/bff/src/engines/requirementEngine.ts`
+- 路由：`GET /requirements/:id/report`
+- 职责：聚合当前需求关联的 OperationsTask / PipelineRun，生成 `result_summary` / `cost_summary` / `linked_tasks` / `linked_runs` / `superset_dashboard`（placeholder）/ `llm_analysis`（placeholder）
+- 为什么放在 engine 而不是 service：这是一次**面向需求方交付物**的页面聚合，属于 app-facing 编排，完全符合 "engine 负责 ViewModel 组装" 的原则
+
+### 11.2 `routes/docs-content.ts` · 站内文档 API
+
+- `GET /docs/tree`：递归扫描 `/docs` 下的 `*.md` / `*.markdown`，过滤 `.ipynb_checkpoints` / `assets` / `node_modules` / `.git`，从每篇首个 H1 提取标题
+- `GET /docs/file?path=...`：路径穿越防护（`path.relative` + 仅允许 `.md` / `.markdown` 扩展名），读取内容 + 元信息
+- `resolveDocsRoot()` 向上找 `docs/` 配合 `pnpm-workspace.yaml` 标记，允许用 `DOCS_ROOT_DIR` 环境变量覆盖
+- **这不是 engine** —— 它对外暴露的是静态资源语义，无业务编排需求，因此**直接 defineRoute 在 route 文件内**完成 handler，符合 "轻量静态资源" 例外情况
+
+### 11.3 运维坑点
+
+`tsx watch` 的 import 图中不包含运行时 `readdirSync` 扫描出来的路由文件。**新增 `routes/*.ts` 后必须 touch `apps/bff/src/index.ts`（或重启 `dev:bff` 任务）**，否则 hot reload 看不到新路由，访问时会返回 `10001001 Unknown route`。
+
 当需要新增一类资源（例如 datasets-v2、annotation-projects）时，优先在 engine 里开新文件；只有需要接入新的外部系统（如 Kafka、Flink）时，才在 `services/` 里新增对应的客户端。

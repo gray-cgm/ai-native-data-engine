@@ -13,9 +13,14 @@
     "@ad-engine/schemas": "workspace:*",
     "@ant-design/icons": "^6.1.1",
     "antd": "^6.3.6",
+    "highlight.js": "^11.11.1",
+    "mermaid": "^11.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.14.0"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.14.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

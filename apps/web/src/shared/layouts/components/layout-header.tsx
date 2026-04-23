@@ -1,6 +1,7 @@
 import { createElement, useMemo, useState } from 'react'
-import { SearchOutlined, QuestionCircleOutlined, BugOutlined, MessageOutlined, UserOutlined, LogoutOutlined, SettingOutlined, ProfileOutlined } from '@ant-design/icons'
+import { SearchOutlined, QuestionCircleOutlined, BugOutlined, MessageOutlined, UserOutlined, LogoutOutlined, SettingOutlined, ProfileOutlined, ReadOutlined } from '@ant-design/icons'
 import { Avatar, Button, Dropdown, Menu, Space, TreeSelect, type MenuProps } from 'antd'
+import { useNavigate } from 'react-router-dom'
 import { navGroups } from '../nav-config'
 import '../../../styles/layout-header.css'
 
@@ -32,6 +33,7 @@ export function LayoutHeader({
   onSearchNavigate,
 }: LayoutHeaderProps) {
   const [searchValue, setSearchValue] = useState<string | undefined>(undefined)
+  const navigate = useNavigate()
 
   const searchTreeData = useMemo(() => {
     return navGroups.map((group) => ({
@@ -125,6 +127,13 @@ export function LayoutHeader({
 
         {/* Action Buttons - antd Button type="link" */}
         <Space size={0}>
+          <Button
+            type="link"
+            icon={<ReadOutlined />}
+            onClick={() => navigate('/docs')}
+          >
+            Docs
+          </Button>
           <Button
             type="link"
             icon={<QuestionCircleOutlined />}

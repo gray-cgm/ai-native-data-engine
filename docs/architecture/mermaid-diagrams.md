@@ -78,3 +78,6 @@ flowchart LR
     A4[Parquet] --> B4[TableAdapter] --> D4[Iceberg / Paimon]
     A5[Lance local] --> B5[SearchAdapter] --> D5[可扩展检索服务]
 ```
+
+> 📝 本项目的站内 Docs Center（`apps/web/src/modules/docs`）支持直接渲染 Mermaid 代码块。打开 `/docs/architecture/mermaid-diagrams.md` 即可看到上面所有图按流程图渲染，无需本地 mermaid-cli。
+

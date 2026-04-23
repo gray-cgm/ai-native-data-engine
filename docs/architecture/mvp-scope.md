@@ -93,3 +93,8 @@ local raw files
 - clips / dataset / task / workspace / export API
 - 多格式真实导出文件
 - 最小 Python SDK
+- Requirement / OperationsTask / PipelineRun 三层关系在 SQLite schema、services、BFF、Web 全链路打通
+- OperationsTask 模块聚焦 Labeling / Tagging / Checking / Release / Mining（Privacy 归入 Pipeline 自动化步骤）
+- Requirement Report 聚合视图（BFF engine + Web 页面，含 Superset / LLM 自动化占位）
+- DataTask ↔ OperationsTask 一键 handoff
+- 站内 Docs Center（nav header 入口 + 任务导向文档目录 + Mermaid 渲染）

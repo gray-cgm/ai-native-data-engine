@@ -149,3 +149,6 @@ Catalog（按 scenario 聚合 dataset）
 - `python/profiles` 中的 profile resolver
 
 这使得 Platform API、workflow、Dagster definitions 依赖的是运行时能力，而不是 DuckDB / SQLite / Lance / local fs 这些具体实现。BFF 通过调用 Platform API 间接使用这些能力，而不直接与底层 provider 耦合。
+
+
+这一轮开发的完整日志记录在 `docs/dev-logs/2026-04-23-experience-layer-upgrades.md`。

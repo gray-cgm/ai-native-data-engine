@@ -212,6 +212,13 @@ Operations/Tasks 是运营执行层，应该统一承载需要人工运营、执
 - 需要人工确认或运营决策
 - 需要跨角色协作和可追踪状态
 
+与 Requirement 的 DataTask 关系：
+
+- DataTask 定义“业务执行意图与验收目标”（例如某批补采、某类标注、某条质量门槛）。
+- OperationTask 定义“运营执行与交接对象”（owner、状态流、工单化过程）。
+- 推荐关系：`Requirement 1 --- n DataTask 1 --- n OperationTask 1 --- n PipelineRun`。
+- 落地字段：OperationTask 需保留 `requirement_id` 与 `data_task_id`，实现端到端可追溯。
+
 因此它们都属于 OperationsTask，而不是 Requirement 本体，也不是 PipelineRun 本体。
 
 ### 2) PipelineRun 的定位（执行与成本层）
@@ -290,3 +297,21 @@ Requirement 1 --- n RequirementReport
 	- `requirement_id`, `case_id`, `priority`, `target_count`, `acceptance_rule`
 
 这样 Requirement 管业务承诺，Case 管数据定义，MiningTask 管执行过程，职责清晰且可复用。
+
+## 字段与关系落地状态
+
+上面的模型已在本轮改造中真实落地到数据库 schema 与 API：
+
+- `job_runs` 表增列：`requirement_id` / `operation_task_id` / `trigger_source` / `reason_code` / `duration_seconds` / `cpu_seconds` / `gpu_seconds` / `input_bytes` / `output_bytes` / `estimated_cost` / `derived_assets`
+- `tasks`（OperationsTask）表增列：`requirement_id` / `data_task_id` / 同上的成本字段
+- 迁移通过 `SQLiteMetadataAdapter._ensure_column` 无感完成
+- `python/services/__init__.py` 的 scenario triage 在生成 run / task 时写入这些字段
+- BFF 资源 schema 与 `operationsEngine` 支持按 `requirementId` 过滤；Web 表格展示 `requirementId` / `dataTaskId`
+- Requirement 详情页提供 "Create / Open Ops Task" 一键 handoff，按 `task_type` 路由到 labeling / tagging / checking / release / mining 模块
+- 需求方视角新增 `Requirement Report` 聚合页（BFF `GET /requirements/:id/report`）
+
+后续仍建议优先补齐三项能力：
+
+- 将 `CaseTemplate` / `RequirementCaseLink` 升级为独立 API 资源
+- 在 Pipeline Monitor 提供成本聚合视图
+- 将 Requirement Report 的 Superset auto-BI 与 LLM 分析从占位态升级为可执行流程

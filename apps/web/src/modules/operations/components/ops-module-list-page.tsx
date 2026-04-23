@@ -66,6 +66,7 @@ export function OpsModuleListPage({ module }: Props) {
   const meta = MODULE_META[module]
   const [searchParams] = useSearchParams()
   const fromRequirement = searchParams.get('requirement') ?? ''
+  const fromDataTask = searchParams.get('dataTask') ?? searchParams.get('data_task') ?? ''
   const fromScenario = searchParams.get('scenario') ?? ''
   const fromDataset = searchParams.get('dataset') ?? ''
   const fromQ = searchParams.get('q') ?? ''
@@ -84,12 +85,13 @@ export function OpsModuleListPage({ module }: Props) {
       fetchOpsItems(module, {
         status: statusFilter === ALL ? undefined : statusFilter,
         kind: kindFilter === ALL ? undefined : kindFilter,
-        requirementId: module === 'mining' ? fromRequirement || undefined : undefined,
-        scenario: module === 'mining' ? fromScenario || undefined : undefined,
-        datasetId: module === 'mining' ? fromDataset || undefined : undefined,
+        requirementId: fromRequirement || undefined,
+        dataTaskId: fromDataTask || undefined,
+        scenario: fromScenario || undefined,
+        datasetId: fromDataset || undefined,
         q: search || undefined,
       }),
-    [module, statusFilter, kindFilter, fromRequirement, fromScenario, fromDataset, search],
+    [module, statusFilter, kindFilter, fromRequirement, fromDataTask, fromScenario, fromDataset, search],
   )
   const listQuery = useQuery<OpsItemListResponse>(listFetcher, {
     cacheKey: `ops-${module}-${statusFilter}-${kindFilter}-${search}`,
@@ -220,6 +222,7 @@ export function OpsModuleListPage({ module }: Props) {
             onClick={() => {
               createForm.setFieldsValue({
                 requirement_id: fromRequirement || undefined,
+                data_task_id: fromDataTask || undefined,
                 scenario: fromScenario || undefined,
                 dataset_id: fromDataset || undefined,
                 title: fromQ ? `Mining candidate set · ${fromQ}` : undefined,
@@ -248,6 +251,7 @@ export function OpsModuleListPage({ module }: Props) {
               <Link to="/explorer/search">Go to Explorer Search</Link>
               <Link to="/requirements">Go to Requirements</Link>
               {fromRequirement && <Tag>requirement: {fromRequirement}</Tag>}
+              {fromDataTask && <Tag>dataTask: {fromDataTask}</Tag>}
               {fromScenario && <Tag>scenario: {fromScenario}</Tag>}
               {fromDataset && <Tag>dataset: {fromDataset}</Tag>}
             </Space>
@@ -315,6 +319,7 @@ export function OpsModuleListPage({ module }: Props) {
               onClick={() => {
                 createForm.setFieldsValue({
                   requirement_id: fromRequirement || undefined,
+                  data_task_id: fromDataTask || undefined,
                   scenario: fromScenario || undefined,
                   dataset_id: fromDataset || undefined,
                   title: fromQ ? `Mining candidate set · ${fromQ}` : undefined,
@@ -360,6 +365,7 @@ export function OpsModuleListPage({ module }: Props) {
                   if (row.scenario) parts.push(`scenario:${row.scenario}`)
                   if (row.dataset_id) parts.push(`dataset:${row.dataset_id}`)
                   if (row.requirement_id) parts.push(`req:${row.requirement_id}`)
+                  if (row.data_task_id) parts.push(`dataTask:${row.data_task_id}`)
                   if (row.clip_ids.length) parts.push(`${row.clip_ids.length} clips`)
                   return parts.length ? parts.join(' · ') : <Text type="secondary">—</Text>
                 },
@@ -392,6 +398,7 @@ export function OpsModuleListPage({ module }: Props) {
                           scenario: row.scenario ?? undefined,
                           dataset_id: row.dataset_id ?? undefined,
                           requirement_id: row.requirement_id ?? undefined,
+                          data_task_id: row.data_task_id ?? undefined,
                           clip_ids_raw: (row.clip_ids ?? []).join(', '),
                         })
                       }}
@@ -465,6 +472,9 @@ export function OpsModuleListPage({ module }: Props) {
           </Space>
           <Form.Item name="requirement_id" label="Requirement">
             <Input placeholder="linked requirement id" />
+          </Form.Item>
+          <Form.Item name="data_task_id" label="Data Task">
+            <Input placeholder="linked data task id" />
           </Form.Item>
           <Form.Item name="clip_ids_raw" label="Clip IDs" help="Comma or whitespace separated">
             <Input.TextArea rows={3} placeholder="c-abc..., c-def..." />
@@ -554,6 +564,9 @@ export function OpsModuleListPage({ module }: Props) {
                 <Input />
               </Form.Item>
               <Form.Item name="requirement_id" label="Requirement">
+                <Input />
+              </Form.Item>
+              <Form.Item name="data_task_id" label="Data Task">
                 <Input />
               </Form.Item>
               <Form.Item name="clip_ids_raw" label="Clip IDs" help="Comma or whitespace separated">
