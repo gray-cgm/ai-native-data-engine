@@ -17,7 +17,6 @@ import {
   RocketOutlined,
   BarChartOutlined,
   CodeOutlined,
-  VideoCameraOutlined,
   TagsOutlined,
   HighlightOutlined,
   SafetyCertificateOutlined,
@@ -59,7 +58,6 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: 'Distribution', path: '/explorer', icon: PieChartOutlined },
       { label: 'Search', path: '/explorer/search', icon: SearchOutlined },
-      { label: 'Clips', path: '/explorer/clips', icon: VideoCameraOutlined },
     ],
   },
   {

@@ -20,7 +20,6 @@ import {
   ArrowLeftOutlined,
   SearchOutlined,
   UnorderedListOutlined,
-  VideoCameraOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
@@ -91,10 +90,6 @@ export default function DatasetDetailPage() {
     ? `/explorer/search?scenario=${encodeURIComponent(dataset.scenario)}&dataset=${encodeURIComponent(dataset.dataset_id)}`
     : `/explorer/search?dataset=${encodeURIComponent(dataset.dataset_id)}`
 
-  const clipsHref = dataset.scenario
-    ? `/explorer/clips?scenario=${encodeURIComponent(dataset.scenario)}&dataset=${encodeURIComponent(dataset.dataset_id)}`
-    : `/explorer/clips?dataset=${encodeURIComponent(dataset.dataset_id)}`
-
   return (
     <PageContainer
       title={dataset.name}
@@ -105,12 +100,7 @@ export default function DatasetDetailPage() {
             <Button icon={<ArrowLeftOutlined />}>Back</Button>
           </Link>
           <Link to={searchHref}>
-            <Button icon={<SearchOutlined />}>Search in Explorer</Button>
-          </Link>
-          <Link to={clipsHref}>
-            <Button type="primary" icon={<VideoCameraOutlined />}>
-              Browse clips
-            </Button>
+            <Button type="primary" icon={<SearchOutlined />}>Search in Explorer</Button>
           </Link>
         </Space>
       }
@@ -316,7 +306,7 @@ function ClipWallCard({ clip, datasetId }: { clip: ClipSummary; datasetId: strin
               />
             ) : (
               <div style={{ textAlign: 'center', padding: 12 }}>
-                <VideoCameraOutlined style={{ fontSize: 28, display: 'block', marginBottom: 4 }} />
+                <AppstoreOutlined style={{ fontSize: 28, display: 'block', marginBottom: 4 }} />
                 No thumbnail cached
               </div>
             )}

@@ -71,8 +71,8 @@ export default function ClipDetailPage() {
       <Button icon={<ArrowLeftOutlined />}>Back to requirement</Button>
     </Link>
   ) : (
-    <Link to="/explorer/clips">
-      <Button icon={<ArrowLeftOutlined />}>Back to clips</Button>
+    <Link to="/explorer/search">
+      <Button icon={<ArrowLeftOutlined />}>Back to search</Button>
     </Link>
   )
 
@@ -96,7 +96,7 @@ export default function ClipDetailPage() {
             ),
           },
         ]
-      : [{ title: <Link to="/explorer/clips">Clips</Link> }]),
+      : [{ title: <Link to="/explorer/search">Search</Link> }]),
     { title: summary.clip_id },
   ]
 

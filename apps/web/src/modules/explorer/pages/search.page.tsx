@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   Badge,
@@ -11,28 +11,34 @@ import {
   Input,
   Row,
   Select,
+  Segmented,
   Space,
   Tag,
-  Tooltip,
   Typography,
 } from 'antd'
 import {
+  AppstoreOutlined,
   BarChartOutlined,
-  BulbOutlined,
   ExperimentOutlined,
   FilterOutlined,
   SearchOutlined,
   ThunderboltOutlined,
-  VideoCameraOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
-import { DataTable } from '@/shared/components/data-table'
 import { fetchClips, type ClipSummary } from '../clips-api'
+import {
+  ClipResultTable,
+  ClipResultWall,
+  splitTags,
+  type ClipResultViewMode,
+} from '../components/clip-result-views'
 
 const { Text, Paragraph } = Typography
+const VIEW_MODE_KEY = 'explorer:search:view-mode'
 
 type FilterState = {
   naturalLanguage: string
@@ -43,26 +49,8 @@ type FilterState = {
   tags: string[]
 }
 
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return '—'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}m ${s}s`
-}
-
-function formatTs(ns: number | null): string {
-  if (!ns) return '—'
-  return new Date(ns / 1e6).toLocaleString()
-}
-
-function splitTags(raw: string | null | undefined): string[] {
-  if (!raw) return []
-  return raw.split(',').map((t) => t.trim()).filter(Boolean)
-}
-
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
 
   const initial: FilterState = useMemo(
     () => ({
@@ -80,6 +68,17 @@ export default function SearchPage() {
   )
 
   const [filters, setFilters] = useState<FilterState>(initial)
+  const [viewMode, setViewMode] = useState<ClipResultViewMode>(() => {
+    if (typeof window === 'undefined') return 'table'
+    const saved = window.localStorage.getItem(VIEW_MODE_KEY)
+    return saved === 'wall' ? 'wall' : 'table'
+  })
+
+  const handleViewModeChange = (value: string | number) => {
+    const next = (value as ClipResultViewMode) === 'wall' ? 'wall' : 'table'
+    setViewMode(next)
+    if (typeof window !== 'undefined') window.localStorage.setItem(VIEW_MODE_KEY, next)
+  }
 
   useEffect(() => {
     setFilters(initial)
@@ -205,9 +204,6 @@ export default function SearchPage() {
           <Link to="/explorer">
             <Button icon={<BarChartOutlined />}>Distribution</Button>
           </Link>
-          <Link to="/explorer/clips">
-            <Button icon={<VideoCameraOutlined />}>All clips</Button>
-          </Link>
           <Link to={miningHref}>
             <Button icon={<ExperimentOutlined />}>Open mining</Button>
           </Link>
@@ -238,7 +234,6 @@ export default function SearchPage() {
           style={{ marginBottom: 16 }}
           type="info"
           showIcon
-          icon={<BulbOutlined />}
           message="Search using natural language (preview)"
           description={
             <Text type="secondary">
@@ -354,88 +349,42 @@ export default function SearchPage() {
         </Row>
       </Card>
 
-      <Card title={`Results (${filtered.length} / ${clips.length})`}>
+      <Card
+        title={`Results (${filtered.length} / ${clips.length})`}
+        extra={
+          <Segmented
+            value={viewMode}
+            onChange={handleViewModeChange}
+            options={[
+              { label: 'Table', value: 'table', icon: <UnorderedListOutlined /> },
+              { label: 'Wall', value: 'wall', icon: <AppstoreOutlined /> },
+            ]}
+          />
+        }
+      >
         {state === 'empty' ? (
           <Empty description="No clips ingested yet. Run make ingest first." />
         ) : filtered.length === 0 ? (
           <Empty description="No clips matched your filters." />
-        ) : (
-          <DataTable
-            columns={[
-              {
-                key: 'clip_id',
-                header: 'Clip',
-                render: (row: ClipSummary) => (
-                  <div>
-                    <Tooltip title="Open clip detail">
-                      <span
-                        role="link"
-                        style={{
-                          cursor: 'pointer',
-                          color: 'var(--color-accent, #1677ff)',
-                          fontFamily: 'monospace',
-                        }}
-                        onClick={() =>
-                          navigate(
-                            `/explorer/clips/${encodeURIComponent(row.clip_id)}${
-                              fromDataset
-                                ? `?dataset=${encodeURIComponent(fromDataset)}`
-                                : ''
-                            }`,
-                          )
-                        }
-                      >
-                        {row.clip_id}
-                      </span>
-                    </Tooltip>
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {formatTs(row.start_time)}
-                      </Text>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: 'vehicle_name',
-                header: 'Vehicle / Location',
-                render: (row: ClipSummary) => (
-                  <div>
-                    <div>{row.vehicle_name ?? '—'}</div>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {[row.city, row.district].filter(Boolean).join(' / ') || '—'}
-                    </Text>
-                  </div>
-                ),
-              },
-              {
-                key: 'scenario',
-                header: 'Scenario',
-                render: (row: ClipSummary) => row.scenario ?? '—',
-              },
-              {
-                key: 'duration_seconds',
-                header: 'Duration',
-                render: (row: ClipSummary) => formatDuration(row.duration_seconds),
-              },
-              {
-                key: 'tags',
-                header: 'Tags',
-                render: (row: ClipSummary) => (
-                  <span>
-                    {splitTags(row.tags)
-                      .slice(0, 4)
-                      .map((t) => (
-                        <Tag key={t}>{t}</Tag>
-                      ))}
-                    {row.da_tags && <Tag color="gold">{row.da_tags}</Tag>}
-                  </span>
-                ),
-              },
-            ]}
-            data={filtered}
-            rowKey={(row) => row.clip_id}
+        ) : viewMode === 'table' ? (
+          <ClipResultTable
+            items={filtered}
             emptyText="No clips matched."
+            detailHref={(row) =>
+              `/explorer/clips/${encodeURIComponent(row.clip_id)}${
+                fromDataset ? `?dataset=${encodeURIComponent(fromDataset)}` : ''
+              }`
+            }
+          />
+        ) : (
+          <ClipResultWall
+            items={filtered}
+            emptyText="No clips matched."
+            detailHref={(row) =>
+              `/explorer/clips/${encodeURIComponent(row.clip_id)}${
+                fromDataset ? `?dataset=${encodeURIComponent(fromDataset)}` : ''
+              }`
+            }
           />
         )}
       </Card>
