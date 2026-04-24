@@ -152,6 +152,50 @@
 
 ---
 
+## 2.X 完成/进行中阶段（追加）
+
+- [x] **四层对象边界对齐（Requirement / DataTask / OperationsTask / PipelineRun）** — 已在 `docs/prd/requirement-management-system.md`、`docs/prd/ai-data-loop-infra-prd.md` 统一口径。
+- [x] **PipelineRun 统一事实模型 + `x_trace_id` 全链路追踪** — 见 `docs/adr/adr-pipelinerun-unified-fact-model.md`。
+  - [x] `OperationsTask` 持久化表 + `PipelineRun` 新增 `x_trace_id / trace_parent_id / requirement_id / operations_task_id / trigger_source / run_purpose`
+  - [x] API：`GET /api/v1/pipeline-runs` 全链路过滤、`GET /api/v1/pipeline-runs/{id}` 面包屑、`GET /api/v1/trace/{x_trace_id}` 聚合、`/api/v1/operations-tasks` CRUD
+  - [x] 随机 demo 播种：`apps/api/src/scripts/seed_trace_demo.py`（make seed-trace-demo）
+- [x] **BFF passthrough + Web RunDetail 抽屉**
+  - BFF：`apps/bff/src/routes/pipelines.ts` 暴露 `/pipelines/runs`、`/pipelines/runs/:id`、`/pipelines/trace/:traceId`、`/pipelines/stage-stats`，透传 API 的全链路过滤参数。
+  - Web：`modules/pipelines/components/run-detail.drawer.tsx` 以 Timeline 呈现 Requirement → DataTask → OperationsTask → Run 面包屑与 trace keys。
+- [x] **Pipelines 模块六视图升级**（Overview / Runs / RunDetail / Lineage / Quality / Cost，6 视图全部上线）
+  - 新页面 `apps/web/src/modules/pipelines/pages/pipelines.page.tsx` 使用 antd Tabs，Runs 视图带 `x_trace_id / requirement_id / operations_task_id / stage / status / trigger_source / run_purpose` 多维过滤；点击行弹出 RunDetail 抽屉。
+  - Lineage：支持 trace 选择器 + Mermaid DAG（Requirement -> DataTask -> OperationsTask -> PipelineRun）+ run 级钻取。
+  - Quality：支持 gate 分布、失败原因 TopN、按 run_purpose / stage 质量拆解。
+  - Cost：支持总成本与 CPU/GPU/Storage 聚合，按 Requirement/Pipeline/Stage/Purpose 成本归因。
+  - API 路径已统一到 `/api/v1/pipeline-stats/{stages,quality,cost}`，BFF 对外保持 `/api/pipelines/{stage-stats,quality-stats,cost-stats}`。
+- [x] **Alembic 迁移脚本**（替代 `create_all`，支撑生产升级）
+  - `apps/api/alembic.ini` + `alembic/env.py` + baseline `103d2e06c8e1_baseline_schema.py`；`init_db()` 首次启动自动 `stamp head`，可通过 `API_SKIP_AUTO_MIGRATE=1` 关闭。
+  - Makefile：`make db-upgrade / db-downgrade REV=… / db-stamp-head / db-revision MSG=… / db-current / db-history`。
+
+### Pipelines 下一步 Action（新增）
+
+- [ ] **Action P-1 - 时间趋势能力**
+  **输入：** `/pipeline-stats/quality` 与 `/pipeline-stats/cost` 当前聚合结果
+  **输出：** 按天/周趋势序列 + 时间窗口筛选（7d/30d/custom）
+  **验收标准：** Quality/Cost 页面可切换时间窗口并稳定展示趋势变化
+
+- [ ] **Action P-2 - Quality Gate 配置化与门禁联动**
+  **输入：** gate_result、run_purpose、pipeline/stage 维度
+  **输出：** 可配置阈值（pass_rate/block_rate）+ PolicyGate 拦截策略
+  **验收标准：** 低于阈值的发布候选在流程中被阻断并给出可解释原因
+
+- [ ] **Action P-3 - Cost drill-down 到 run 明细**
+  **输入：** `cost_usd/cpu_seconds/gpu_seconds/storage_gb` run 级指标
+  **输出：** 成本构成明细面板 + 高成本 run 排行
+  **验收标准：** 能从 Requirement/Pipeline 聚合一键下钻到 run 级成本证据
+
+- [ ] **Action P-4 - 回归测试与契约固化**
+  **输入：** 现有 seed demo 数据与 `/pipeline-stats/*` 接口
+  **输出：** API/BFF/Web 回归测试与契约样例
+  **验收标准：** 重播 seed 后，Quality/Cost/Lineage 关键断言可稳定通过
+
+---
+
 ## 4. 统一里程碑验收
 
 ### Milestone M1（2 周）

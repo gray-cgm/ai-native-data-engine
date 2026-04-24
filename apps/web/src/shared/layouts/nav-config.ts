@@ -22,6 +22,9 @@ import {
   SafetyCertificateOutlined,
   ExperimentOutlined,
   SendOutlined,
+  BranchesOutlined,
+  DollarOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 
 export interface NavItem {
@@ -76,7 +79,13 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Pipelines',
     icon: SyncOutlined,
-    items: [{ label: 'Pipeline Runs', path: '/pipelines', icon: HistoryOutlined }],
+    items: [
+      { label: 'Overview', path: '/pipelines?tab=overview', icon: DashboardOutlined },
+      { label: 'Runs', path: '/pipelines?tab=runs', icon: ThunderboltOutlined },
+      { label: 'Lineage', path: '/pipelines?tab=lineage', icon: BranchesOutlined },
+      { label: 'Quality', path: '/pipelines?tab=quality', icon: SafetyCertificateOutlined },
+      { label: 'Cost', path: '/pipelines?tab=cost', icon: DollarOutlined },
+    ],
   },
   {
     label: 'Tools',

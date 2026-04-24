@@ -17,16 +17,20 @@ from src.models.base import (
     AnnotationType,
     CollectionStatus,
     CoverageStatus,
+    OperationsModule,
+    OperationsTaskStatus,
     PipelineStage,
     PipelineStatus,
     Priority,
     ReconstructionLayer,
     RequirementSource,
     RequirementStatus,
+    RunPurpose,
     SensorTarget,
     SignOffStatus,
     TaskStatus,
     TaskType,
+    TriggerSource,
 )
 
 
@@ -291,6 +295,13 @@ class PipelineRunCreate(BaseModel):
     stage: PipelineStage = Field(..., description="流水线阶段")
     input_uri: str = Field(..., max_length=512, description="输入数据路径")
     config: Optional[dict] = None
+    # 全链路追踪字段
+    x_trace_id: Optional[str] = Field(None, max_length=64, description="跨系统追踪键")
+    trace_parent_id: Optional[str] = Field(None, max_length=64)
+    requirement_id: Optional[str] = Field(None, description="冗余需求 ID")
+    operations_task_id: Optional[str] = Field(None, description="归属 OperationsTask")
+    trigger_source: Optional[TriggerSource] = Field(TriggerSource.DATA_TASK)
+    run_purpose: Optional[RunPurpose] = Field(RunPurpose.INITIAL_BUILD)
 
 
 class PipelineRunUpdate(BaseModel):
@@ -317,10 +328,71 @@ class PipelineRunResponse(BaseModel):
     metrics: Optional[dict]
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
+    # 全链路追踪
+    x_trace_id: Optional[str] = None
+    trace_parent_id: Optional[str] = None
+    requirement_id: Optional[str] = None
+    operations_task_id: Optional[str] = None
+    trigger_source: TriggerSource
+    run_purpose: RunPurpose
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ═══════════════════════════ 运维任务 (OperationsTask) ═══════════════════════════
+
+
+class OperationsTaskCreate(BaseModel):
+    """创建运维任务"""
+
+    requirement_id: str = Field(..., description="所属需求 ID")
+    data_task_id: str = Field(..., description="所属数据任务 ID")
+    module: OperationsModule = Field(..., description="运维模块")
+    title: str = Field(..., max_length=256)
+    assigned_to: Optional[str] = Field(None, max_length=128)
+    x_trace_id: Optional[str] = Field(None, max_length=64)
+    payload: Optional[dict] = None
+
+
+class OperationsTaskUpdate(BaseModel):
+    """更新运维任务"""
+
+    status: Optional[OperationsTaskStatus] = None
+    assigned_to: Optional[str] = Field(None, max_length=128)
+    payload: Optional[dict] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+
+class OperationsTaskResponse(BaseModel):
+    """运维任务响应体"""
+
+    id: str
+    requirement_id: str
+    data_task_id: str
+    module: OperationsModule
+    title: str
+    status: OperationsTaskStatus
+    assigned_to: Optional[str]
+    x_trace_id: Optional[str] = None
+    payload: Optional[dict] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RunBreadcrumb(BaseModel):
+    """PipelineRun 详情面包屑：Requirement → DataTask → OperationsTask → Run"""
+
+    requirement: Optional[dict] = None
+    data_task: Optional[dict] = None
+    operations_task: Optional[dict] = None
+    run: dict
 
 
 # ═══════════════════════════ 通用 ═══════════════════════════

@@ -227,6 +227,9 @@ export default function RequirementDetailPage() {
                   const isProcessing = signingOff === row.id
                   return (
                     <Space>
+                      <Link to={`/data-tasks/${row.id}`}>
+                        <Button size="small">View Detail</Button>
+                      </Link>
                       <Link to={handoffHref}>
                         <Button
                           type="primary"

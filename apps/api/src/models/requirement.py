@@ -32,17 +32,21 @@ from src.models.base import (
     Base,
     CollectionStatus,
     CoverageStatus,
+    OperationsModule,
+    OperationsTaskStatus,
     PipelineStage,
     PipelineStatus,
     Priority,
     ReconstructionLayer,
     RequirementSource,
     RequirementStatus,
+    RunPurpose,
     SensorTarget,
     SignOffStatus,
     TaskStatus,
     TaskType,
     TimestampMixin,
+    TriggerSource,
     UUIDPrimaryKeyMixin,
 )
 
@@ -163,6 +167,12 @@ class DataTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         Date, nullable=True, comment="截止日期"
     )
 
+    # ── 全链路追踪 ──
+    x_trace_id: Mapped[Optional[str]] = mapped_column(
+        String(64), index=True, nullable=True,
+        comment="跨系统追踪键，同需求链路共享",
+    )
+
     # ── 关系 ──
     requirement: Mapped["Requirement"] = relationship(back_populates="data_tasks")
     reconstructions: Mapped[list["DigitalReconstruction"]] = relationship(
@@ -177,6 +187,62 @@ class DataTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     pipeline_runs: Mapped[list["PipelineRun"]] = relationship(
         back_populates="data_task", cascade="all, delete-orphan"
     )
+    operations_tasks: Mapped[list["OperationsTask"]] = relationship(
+        back_populates="data_task", cascade="all, delete-orphan"
+    )
+
+
+# ═══════════════════════════ 运维执行任务（OperationsTask） ═══════════════════════════
+
+
+class OperationsTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """运维执行任务表 —— 全链路 4 层模型的第 3 层
+
+    由 DataTask 拆分出的可排程的执行协调单元，对应 ops_modules 中的六大子域
+    （labeling/tagging/checking/mining/privacy/release）。
+    每个 OperationsTask 对应 0..N 个 PipelineRun（真正的运行事实）。
+    """
+
+    __tablename__ = "operations_tasks"
+
+    requirement_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("requirements.id"), nullable=False, comment="所属需求 ID"
+    )
+    data_task_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("data_tasks.id"), nullable=False, comment="所属数据任务 ID"
+    )
+    module: Mapped[str] = mapped_column(
+        Enum(OperationsModule, native_enum=False, length=32),
+        nullable=False,
+        comment="运维模块：labeling/tagging/checking/mining/privacy/release",
+    )
+    title: Mapped[str] = mapped_column(String(256), nullable=False, comment="运维任务标题")
+    status: Mapped[str] = mapped_column(
+        Enum(OperationsTaskStatus, native_enum=False, length=32),
+        default=OperationsTaskStatus.DRAFT,
+        nullable=False,
+        comment="执行状态",
+    )
+    assigned_to: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True, comment="执行人/小组"
+    )
+    x_trace_id: Mapped[Optional[str]] = mapped_column(
+        String(64), index=True, nullable=True,
+        comment="跨系统追踪键，同需求链路共享（HTTP X-Trace-Id 头约定）",
+    )
+    payload: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True, comment="模块特定配置"
+    )
+    started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="开始时间"
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="完成时间"
+    )
+
+    # ── 关系 ──
+    data_task: Mapped["DataTask"] = relationship(back_populates="operations_tasks")
+    pipeline_runs: Mapped[list["PipelineRun"]] = relationship(back_populates="operations_task")
 
 
 # ═══════════════════════════ 物理世界还原 ═══════════════════════════
@@ -341,6 +407,36 @@ class PipelineRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     data_task_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("data_tasks.id"), nullable=False, comment="所属数据任务 ID"
     )
+    # ── 全链路追踪字段（x_trace_id 为跨系统传播的主键） ──
+    x_trace_id: Mapped[Optional[str]] = mapped_column(
+        String(64), index=True, nullable=True,
+        comment="跨系统追踪键（HTTP 头 X-Trace-Id / 日志字段 / 任务参数统一名）",
+    )
+    trace_parent_id: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True,
+        comment="父追踪 ID（链路上上一个 span/run 的标识）",
+    )
+    requirement_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("requirements.id"), nullable=True,
+        comment="冗余需求 ID，便于跨层筛选",
+    )
+    operations_task_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("operations_tasks.id"), nullable=True,
+        comment="归属的 OperationsTask（可选：采集/流式场景可直接来自 DataTask 或 scheduler）",
+    )
+    trigger_source: Mapped[str] = mapped_column(
+        Enum(TriggerSource, native_enum=False, length=32),
+        default=TriggerSource.DATA_TASK,
+        nullable=False,
+        comment="触发来源：data_task/operations_task/scheduler/manual/external",
+    )
+    run_purpose: Mapped[str] = mapped_column(
+        Enum(RunPurpose, native_enum=False, length=32),
+        default=RunPurpose.INITIAL_BUILD,
+        nullable=False,
+        comment="运行目的：initial_build/backfill/repair/reindex/replay/validation",
+    )
+
     pipeline_name: Mapped[str] = mapped_column(
         String(128), nullable=False, comment="流水线名称"
     )
@@ -376,3 +472,6 @@ class PipelineRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # ── 关系 ──
     data_task: Mapped["DataTask"] = relationship(back_populates="pipeline_runs")
+    operations_task: Mapped[Optional["OperationsTask"]] = relationship(
+        back_populates="pipeline_runs"
+    )

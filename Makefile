@@ -6,7 +6,7 @@ COMPOSE_SERVICES := postgres dagster-user-code dagster-webserver dagster-daemon 
 APP_PORTS := $(WEB_PORT) $(BFF_PORT) $(API_PORT) $(DAGSTER_PORT) $(POSTGRES_PORT) $(JUPYTER_PORT) $(SUPERSET_PORT)
 COLIMA_MOUNT_EXISTS := $(shell colima ssh -- test -d "$(HOST_WORKSPACE_DIR)" >/dev/null 2>&1 && echo yes || echo no)
 
-.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance stream-demo export-parquet export-csv export-jsonl sdk-demo req-demo req-list req-stats req-sign-off clean clean-dev-data
+.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps ingest query lance stream-demo export-parquet export-csv export-jsonl sdk-demo req-demo req-list req-stats req-sign-off seed-trace-demo seed-trace-demo-reset db-upgrade db-downgrade db-stamp-head db-revision db-current db-history clean clean-dev-data
 
 setup: check-tools check-docker
 	@if [ ! -f .env ]; then \
@@ -179,6 +179,46 @@ req-stats:
 # 对首个 pending 任务执行 approve
 req-sign-off:
 	uv run --package api python -m src.scripts.requirements_demo sign-off
+
+# 全链路 (Requirement → DataTask → OperationsTask → PipelineRun) 随机 demo 数据
+seed-trace-demo:
+	uv run --package api python -m src.scripts.seed_trace_demo $(ARGS)
+
+# 清空后重新生成：make seed-trace-demo-reset ARGS="--requirements 3 --seed 42"
+seed-trace-demo-reset:
+	uv run --package api python -m src.scripts.seed_trace_demo --reset $(ARGS)
+
+
+# ── Alembic 数据库迁移 ──────────────────────────────────────────────────────
+# 约定：在 apps/api 目录下执行 alembic；使用 DATABASE_URL 环境变量控制目标库。
+# 本地无需传参（默认指向 <repo_root>/data/metadata/requirement.db）；
+# 生产通过 export DATABASE_URL=... 后再执行。
+ALEMBIC_DB_URL ?= sqlite:///$(CURDIR)/data/metadata/requirement.db
+ALEMBIC = cd apps/api && DATABASE_URL="$(ALEMBIC_DB_URL)" uv run --package api alembic
+
+# 升级到最新版本（首次初始化数据库推荐执行）
+db-upgrade:
+	$(ALEMBIC) upgrade head
+
+# 回滚 N 步：make db-downgrade REV=-1
+db-downgrade:
+	$(ALEMBIC) downgrade $(REV)
+
+# 为已存在的数据库标记当前为最新版本（不执行任何 DDL）：从 create_all 迁移到 alembic 时使用
+db-stamp-head:
+	$(ALEMBIC) stamp head
+
+# 基于模型变更自动生成迁移：make db-revision MSG="add foo column"
+db-revision:
+	$(ALEMBIC) revision --autogenerate -m "$(MSG)"
+
+# 显示当前数据库版本
+db-current:
+	$(ALEMBIC) current
+
+# 显示迁移历史
+db-history:
+	$(ALEMBIC) history --verbose
 
 
 clean:

@@ -252,6 +252,65 @@
 - adapter
 - runtime profile
 
+## 需求闭环对象边界（MVP 统一口径）
+
+为避免任务概念混淆，平台使用四层对象边界：
+
+- Requirement：定义业务目标与验收口径（要解决什么问题）
+- DataTask：定义数据建设单元（要补哪些数据）
+- OperationsTask：定义执行协同单元（由谁、以何方式推进）
+- PipelineRun：定义系统执行事实（实际跑了什么、结果如何）
+
+关系约束：
+
+- Requirement 1:N DataTask
+- DataTask 1:N OperationsTask
+- OperationsTask 1:N PipelineRun
+
+页面语义：
+
+- Requirements 页面看目标和拆解。
+- Operations 页面看执行协同和推进状态。
+- Pipelines 页面看运行事实与成本结果。
+
+设计原则：
+
+- 不把 PipelineRun 当成任务对象。
+- 不把 OperationsTask 与 DataTask 混用。
+- 用同一口径贯穿 API、BFF、Web 和报表。
+
+### PipelineRun 统一事实模型（参见 `docs/adr/adr-pipelinerun-unified-fact-model.md`）
+
+PipelineRun 不是 OperationsTask 的子资源，而是 **独立的运行事实对象**：
+
+- 持有对 Requirement / DataTask / OperationsTask 的外键引用，但 **不要求全部存在**（流式、Scheduler、External 场景下可直接归属 DataTask 或无上层）。
+- 通过 `trigger_source`（data_task/operations_task/scheduler/manual/external）+ `run_purpose`（initial_build/backfill/repair/reindex/replay/validation）描述运行语义。
+- 通过 `trace_parent_id` 建立同一追踪链上的父子 run 关系，支持回放、修复等场景的因果可视化。
+
+### 全链路追踪键：`x_trace_id`
+
+- 统一使用 `x_trace_id` 作为跨层、跨系统的主追踪键，命名与 HTTP 头 `X-Trace-Id` 一致，便于通过 header、日志字段、任务参数在 API/BFF/Worker/Dagster/外部采集方之间传播。
+- 同一需求链路中的 DataTask / OperationsTask / PipelineRun 冗余保存同一个 `x_trace_id`，支持"按链路筛选"与"按链路聚合"两类典型查询。
+- 对外契约（外部采集/标注方）：交付资产元数据必须附带 `x_trace_id` 与 `requirement_id`。
+
+### Pipelines 子域本次更新（2026-04-24）
+
+本次迭代已将 Pipelines 从 "Overview + Runs + RunDetail" 扩展为六视图可用状态：
+
+- 已上线 `Lineage`：支持基于 `x_trace_id` 的全链路 DAG（Requirement -> DataTask -> OperationsTask -> PipelineRun），并支持 trace 级别筛选与 run 级钻取。
+- 已上线 `Quality`：支持 `gate_result`（pass/block/waiver）分布、失败原因 TopN、按 `run_purpose` 与 `stage` 的质量拆解。
+- 已上线 `Cost`：支持总成本（USD）与 CPU/GPU/Storage/Duration 聚合，并支持按 Requirement/Pipeline/Stage/Purpose 归因。
+- API/BFF 契约完成对齐：聚合接口统一迁移到 `/pipeline-stats/*`，避免与 `/pipeline-runs/{run_id}` 动态路由冲突。
+- Demo 数据完成增强：`seed_trace_demo.py` 已生成 `gate_result/gate_reason/cost_usd/cpu_seconds/gpu_seconds/storage_gb` 指标，可直接用于质量与成本视图验证。
+
+### Pipelines 下一步 Action
+
+1. 引入时间窗口过滤（7d/30d/custom range）并为 Quality/Cost 增加趋势维度。
+2. 将 Quality Gate 阈值配置化（按 pipeline/stage/profile），并接入发布门禁（PolicyGate）。
+3. 增加 Cost drill-down 到 run 级明细（成本构成、输入输出规模、失败重试成本）。
+4. 增加 Lineage 导出能力（Mermaid/JSON）与 trace 级审计快照。
+5. 补齐 API/BFF/Web 端到端回归测试，固定 `/pipeline-stats/*` 契约与示例数据基线。
+
 ## Core Platform Layer 与 Domain Solution Layer
 
 这是产品设计里最重要的边界之一。

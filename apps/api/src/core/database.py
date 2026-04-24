@@ -42,7 +42,41 @@ def get_db():
 
 
 def init_db():
-    """启动时创建所有表（幂等操作）"""
+    """启动时确保数据库 schema 处于最新状态。
+
+    策略（本地开发友好、生产可控）：
+    1) 如果数据库里**已经**存在 alembic_version 表，什么都不做（由 `make db-upgrade` 管控）。
+    2) 如果不存在 alembic_version，则：
+       - 走 create_all 建表（兼容旧有开发流程，零配置可启动）
+       - 再 stamp 到最新 alembic head，让后续增量变更走正式迁移
+    设置环境变量 `API_SKIP_AUTO_MIGRATE=true` 可完全跳过，由运维显式执行 `alembic upgrade`。
+    """
+    if os.getenv("API_SKIP_AUTO_MIGRATE", "").lower() in {"1", "true", "yes"}:
+        return
+
+    from sqlalchemy import inspect
+
     from src.models.base import Base  # noqa: 延迟导入避免循环依赖
 
+    inspector = inspect(engine)
+    has_version = inspector.has_table("alembic_version")
+    if has_version:
+        return
+
     Base.metadata.create_all(bind=engine)
+
+    # 标记为最新版，避免未来 alembic upgrade 重复建表
+    try:
+        from pathlib import Path
+
+        from alembic import command
+        from alembic.config import Config
+
+        cfg_path = Path(__file__).resolve().parents[2] / "alembic.ini"
+        if cfg_path.exists():
+            cfg = Config(str(cfg_path))
+            cfg.set_main_option("script_location", str(cfg_path.parent / "alembic"))
+            cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+            command.stamp(cfg, "head")
+    except Exception:   # noqa: BLE001 — alembic 可选，失败不影响启动
+        pass

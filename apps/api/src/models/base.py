@@ -213,3 +213,52 @@ class PipelineStatus(str, PyEnum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+
+
+# ── 全链路追踪与 PipelineRun 统一事实模型 ──
+
+
+class TriggerSource(str, PyEnum):
+    """PipelineRun 触发来源：用于区分同一 DataTask 下不同语义的运行。"""
+
+    DATA_TASK = "data_task"
+    OPERATIONS_TASK = "operations_task"
+    SCHEDULER = "scheduler"
+    MANUAL = "manual"
+    EXTERNAL = "external"
+
+
+class RunPurpose(str, PyEnum):
+    """PipelineRun 运行目的：帮助 UI/审计区分初建、回补、修复、回放等语义。"""
+
+    INITIAL_BUILD = "initial_build"
+    BACKFILL = "backfill"
+    REPAIR = "repair"
+    REINDEX = "reindex"
+    REPLAY = "replay"
+    VALIDATION = "validation"
+
+
+# ── 运维任务（OperationsTask）状态 ──
+
+
+class OperationsTaskStatus(str, PyEnum):
+    """OperationsTask 执行状态：Req→DT 拆下来的执行协调单元。"""
+
+    DRAFT = "draft"
+    SCHEDULED = "scheduled"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class OperationsModule(str, PyEnum):
+    """OperationsTask 所属运维模块，对应 ops_modules 六大子域。"""
+
+    LABELING = "labeling"
+    TAGGING = "tagging"
+    CHECKING = "checking"
+    MINING = "mining"
+    PRIVACY = "privacy"
+    RELEASE = "release"

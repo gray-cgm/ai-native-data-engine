@@ -8,6 +8,7 @@ const DatasetDetailPage = lazy(() => import('./modules/catalog/pages/dataset-det
 const RequirementListPage = lazy(() => import('./modules/requirements/pages/requirement-list.page'))
 const RequirementDetailPage = lazy(() => import('./modules/requirements/pages/requirement-detail.page'))
 const RequirementReportPage = lazy(() => import('./modules/requirements/pages/requirement-report.page'))
+const DataTaskDetailPage = lazy(() => import('./modules/requirements/pages/data-task-detail.page'))
 const DistributionPage = lazy(() => import('./modules/explorer/pages/distribution.page'))
 const SearchPage = lazy(() => import('./modules/explorer/pages/search.page'))
 const ClipDetailPage = lazy(() => import('./modules/explorer/pages/clip-detail.page'))
@@ -19,6 +20,7 @@ const CheckingPage = lazy(() => import('./modules/operations/pages/checking.page
 const MiningPage = lazy(() => import('./modules/operations/pages/mining.page'))
 const ReleasePage = lazy(() => import('./modules/operations/pages/release.page'))
 const RunHistoryPage = lazy(() => import('./modules/pipelines/pages/run-history.page'))
+const PipelinesPage = lazy(() => import('./modules/pipelines/pages/pipelines.page'))
 const ToolsHomePage = lazy(() => import('./modules/tools/pages/tools-home.page'))
 const ToolWorkspacePage = lazy(() => import('./modules/tools/pages/tool-workspace.page'))
 const SettingsPage = lazy(() => import('./modules/settings/pages/settings.page'))
@@ -34,6 +36,7 @@ export const routes: RouteObject[] = [
       { path: '/requirements', element: <RequirementListPage /> },
       { path: '/requirements/:id', element: <RequirementDetailPage /> },
       { path: '/requirements/:id/report', element: <RequirementReportPage /> },
+      { path: '/data-tasks/:taskId', element: <DataTaskDetailPage /> },
       { path: '/explorer', element: <DistributionPage /> },
       { path: '/explorer/search', element: <SearchPage /> },
       { path: '/explorer/clips/:clipId', element: <ClipDetailPage /> },
@@ -44,7 +47,8 @@ export const routes: RouteObject[] = [
       { path: '/ops/checking', element: <CheckingPage /> },
       { path: '/ops/release', element: <ReleasePage /> },
       { path: '/ops/exports', element: <ExportListPage /> },
-      { path: '/pipelines', element: <RunHistoryPage /> },
+      { path: '/pipelines', element: <PipelinesPage /> },
+      { path: '/pipelines/legacy', element: <RunHistoryPage /> },
       { path: '/tools', element: <ToolsHomePage /> },
       { path: '/tools/:toolId', element: <ToolWorkspacePage /> },
       { path: '/settings', element: <SettingsPage /> },
