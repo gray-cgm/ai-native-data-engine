@@ -77,6 +77,57 @@
 3. 在 Web 层增加 Quality/Cost 趋势图（时间序列）与异常点高亮。
 4. 引入质量阈值配置（按 pipeline/stage/profile）并打通到发布门禁（PolicyGate）。
 5. 增加 e2e 回归用例覆盖：trace 选择、质量分布、成本归因、run 级联跳转。
+6. **Kafka Streaming 接入（已落地，2026-04-26）** —— 把 Streaming Pipeline 提升到与 Batch（Dagster）同等的可观测层级。详见下一节。
+
+## 8. Kafka Streaming 集成（2026-04-26 落地）
+
+### 8.1 背景
+
+Pipelines Overview 之前的"Streaming"列只展示由 `make stream-demo` 写出的本地 JSONL 摘要 ——
+没有真实 broker、没有消费 lag、没有 DLQ，也无法在产品层面"打开 Streaming Console"。本次将
+Streaming Pipeline 与 Kafka 对接，使它和 Batch（Dagster Console）形成对称的可观测体验。
+
+### 8.2 决策要点
+
+| 维度 | 决策 |
+| --- | --- |
+| Broker | `apache/kafka:3.7.0` 单节点 KRaft 模式（不引入 Zookeeper），双 listener：`PLAINTEXT_HOST://localhost:9092`（host）+ `PLAINTEXT://kafka:9093`（in-compose）。 |
+| Console | `provectuslabs/kafka-ui`，端口 `KAFKA_UI_PORT=8085`，作为平台 Tools 注册中心的第四个 tool（与 Dagster / Superset / Jupyter 同级，类别 `streaming`）。 |
+| Topics | `streaming.events.raw`（主流量）、`streaming.events.dlq`（死信），可通过 `KAFKA_TOPIC_*` 环境变量覆盖。 |
+| 幂等键 | 复合键 `(event_id, x_trace_id)`。`x_trace_id` 缺失时退化为 `(event_id, NULL)`，保证旧 producer 仍可去重。 |
+| 失败路径 | 解析失败 / 写 Bronze 失败 → 直接发到 DLQ topic（包含 `error_class`、`error_message`、`original_topic`、`original_offset`、`payload`）。 |
+| Lag 暴露 | 消费者每个 poll 周期把 `partition_lag` + counters 写入 `data/streaming/kafka_lag.json`，由 Platform API `/streaming/health` 读取并通过 BFF `/pipelines/streaming-health` 暴露到前端。 |
+| 提交策略 | Manual commit：仅在「ledger 写入 + Bronze 落盘」都成功后才 `consumer.commit()`，最大化 at-least-once 语义。 |
+
+### 8.3 代码改动地图
+
+| 模块 | 文件 | 作用 |
+| --- | --- | --- |
+| Infra | `docker-compose.yml`、`Makefile`、`.env.example` | 一键拉起 broker + console（`make kafka-up`），所有相关端口纳入 preflight 检查。 |
+| Producer | `apps/api/src/scripts/streaming_demo.py` | 通过 `STREAMING_DEMO_TARGET={file,kafka}` 切换 sink；Kafka 模式下使用 `x_trace_id` 作为 partition key 并在 header 上透传 `x-trace-id` / `x-requirement-id`。 |
+| Consumer | `apps/orchestrator/src/streaming/kafka_trigger.py` | 长驻进程（`make stream-kafka-consumer`），SQLite 幂等账本 + 自动 DLQ + 周期 lag 快照。 |
+| Platform API | `apps/api/src/api/routes/streaming.py` | 新增 `GET /streaming/health`，合并 broker config + consumer 快照 + StreamingSummary。 |
+| BFF | `apps/bff/src/engines/streamingEngine.ts`、`apps/bff/src/routes/pipelines.ts` | 新增 `/api/pipelines/streaming-health`：探测 kafka-ui `/actuator/health` + 转发 Platform `/streaming/health`，给前端一个 page-specific ViewModel。 |
+| Tool registry | API `routes/tools.py`、BFF `services/tools.ts`、Web `shared/microfrontends/registry.ts` | 注册 `kafka-ui` 为第四类 platform tool（category=`streaming`），iframe 直连或网关代理两种集成模式都已就绪。 |
+| Web Pipelines | `modules/pipelines/components/overview-view.tsx` | Streaming 卡片加 "Open Kafka UI console" 按钮（与 "Open Dagster console" 对称），新增 lag/DLQ 顶部 stat、按 partition 显示 lag 条、idle/down 状态有引导提示。 |
+
+### 8.4 追踪契约扩展
+
+ADR §5 的 trace propagation contract 增补 Kafka 行：
+
+| 传输通道 | 字段名 | 示例 |
+| --- | --- | --- |
+| Kafka message key | （以 `x_trace_id` 为分区键） | 保证同 trace 事件落同一 partition、保留顺序 |
+| Kafka header | `x-trace-id` | 与 HTTP `X-Trace-Id` 同义，由 producer 写入 |
+| Kafka header | `x-requirement-id` | 与 `Requirement.id` 一致，便于消费侧路由 |
+| DLQ envelope | `payload.x_trace_id` | DLQ 中保留原 payload，便于跨 topic trace 审计 |
+
+### 8.5 Follow-up（非本 ADR 但已记录）
+
+- 真正的 Dagster sensor / op 包装 `KafkaStreamingTrigger`，让 Dagster Runs 与 Kafka 消费形成统一血缘。
+- DLQ 的"重放（replay）"工具：选定 trace 一键重放到主 topic，伴生 `run_purpose=replay` 的 PipelineRun。
+- 多分区/多副本 broker 切换：本地 KRaft 单节点足够，部署到企业版时由 profile 切换为多节点 + SASL。
+- kafka-ui 的 SSO + workspace-scoped ACL（生产前置项）。
 
 ## 5. 追踪键传播契约 / Trace Propagation Contract
 

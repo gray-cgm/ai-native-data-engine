@@ -22,5 +22,14 @@ export const config = {
     dagster: (process.env.TOOL_DAGSTER_BASE_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, ''),
     superset: (process.env.TOOL_SUPERSET_BASE_URL ?? 'http://127.0.0.1:8088').replace(/\/$/, ''),
     jupyter: (process.env.TOOL_JUPYTER_BASE_URL ?? 'http://127.0.0.1:8888').replace(/\/$/, ''),
+    'kafka-ui': (process.env.TOOL_KAFKA_UI_BASE_URL ?? 'http://127.0.0.1:8085').replace(/\/$/, ''),
+  },
+  kafka: {
+    bootstrapServers: process.env.KAFKA_BOOTSTRAP_SERVERS ?? 'localhost:9092',
+    topicEvents: process.env.KAFKA_TOPIC_EVENTS ?? 'streaming.events.raw',
+    topicDlq: process.env.KAFKA_TOPIC_DLQ ?? 'streaming.events.dlq',
+    consumerGroup: process.env.KAFKA_CONSUMER_GROUP ?? 'ad-loop-streaming-consumer',
+    uiBaseUrl: (process.env.TOOL_KAFKA_UI_BASE_URL ?? 'http://127.0.0.1:8085').replace(/\/$/, ''),
+    uiHealthPath: process.env.KAFKA_UI_HEALTH_PATH ?? '/actuator/health',
   },
 }

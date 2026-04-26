@@ -207,6 +207,7 @@ dependencies = [
     { name = "ad-workflows" },
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "kafka-python" },
     { name = "oss2" },
     { name = "python-dotenv" },
     { name = "sqlalchemy" },
@@ -222,6 +223,7 @@ requires-dist = [
     { name = "ad-workflows", editable = "python/workflows" },
     { name = "alembic", specifier = ">=1.13.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "kafka-python", specifier = ">=2.0.2" },
     { name = "oss2", specifier = ">=2.19.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
@@ -976,6 +978,15 @@ wheels = [
 ]
 
 [[package]]
+name = "kafka-python"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/98/cbecbe20ec9e4e6f978c42229e7c777f498eec5061f986b4acfa34a7ec46/kafka_python-2.3.1.tar.gz", hash = "sha256:90f1caa12d8faa9fd059852b0c73adf169b979279aa2e3ff370f9fe615d654b6", size = 357302, upload-time = "2026-04-09T21:10:22.861Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/83/6f79b5e03f7d259cba60d3e48c97f7b76a86d20486a515e8ffadea97434e/kafka_python-2.3.1-py2.py3-none-any.whl", hash = "sha256:4908865da9e57f0f966a83788c71cb0ae91c33451a26ab6e6984a00b15c6ed71", size = 326065, upload-time = "2026-04-09T21:10:24.685Z" },
+]
+
+[[package]]
 name = "lance-namespace"
 version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1316,6 +1327,7 @@ dependencies = [
     { name = "dagster" },
     { name = "dagster-postgres" },
     { name = "dagster-webserver" },
+    { name = "kafka-python" },
 ]
 
 [package.metadata]
@@ -1326,6 +1338,7 @@ requires-dist = [
     { name = "dagster", specifier = ">=1.8.9" },
     { name = "dagster-postgres", specifier = ">=0.24.9" },
     { name = "dagster-webserver", specifier = ">=1.8.9" },
+    { name = "kafka-python", specifier = ">=2.0.2" },
 ]
 
 [[package]]

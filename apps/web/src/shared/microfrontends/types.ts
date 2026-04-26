@@ -1,4 +1,4 @@
-export type ToolCategory = 'orchestration' | 'analytics' | 'notebook'
+export type ToolCategory = 'orchestration' | 'analytics' | 'notebook' | 'streaming'
 
 export type ToolIntegrationMode = 'direct-iframe' | 'proxy-iframe'
 

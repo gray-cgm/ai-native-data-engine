@@ -17,6 +17,7 @@ import {
   RocketOutlined,
   BarChartOutlined,
   CodeOutlined,
+  ClusterOutlined,
   TagsOutlined,
   HighlightOutlined,
   SafetyCertificateOutlined,
@@ -95,6 +96,7 @@ export const navGroups: NavGroup[] = [
       { label: 'Dagster', path: '/tools/dagster', icon: RocketOutlined },
       { label: 'Superset', path: '/tools/superset', icon: BarChartOutlined },
       { label: 'Jupyter', path: '/tools/jupyter', icon: CodeOutlined },
+      { label: 'Kafka UI', path: '/tools/kafka-ui', icon: ClusterOutlined },
     ],
   },
 ]

@@ -1,22 +1,9 @@
 import { apiGet } from '@/shared/api/client'
-import type { PaginatedResponse, RunItem, StreamingSummary } from '@/shared/types/common'
+import type { PaginatedResponse, RunItem } from '@/shared/types/common'
 
 export async function fetchRuns(): Promise<RunItem[]> {
   const data = await apiGet<PaginatedResponse<RunItem>>('/runs')
   return data.items
-}
-
-export async function fetchStreamingSummary(): Promise<StreamingSummary | null> {
-  try {
-    const data = await apiGet<{ summary?: StreamingSummary | null } | StreamingSummary>('/streaming/summary')
-    // The BFF may wrap the response in { summary: ... } (from platformFetch) or return directly
-    if (data && typeof data === 'object' && 'summary' in data) {
-      return (data as { summary?: StreamingSummary | null }).summary ?? null
-    }
-    return (data as StreamingSummary) ?? null
-  } catch {
-    return null
-  }
 }
 
 // ── Full-chain pipeline runs (x_trace_id) ────────────────────────────────
@@ -139,4 +126,65 @@ export type TraceChain = {
 
 export async function fetchTraceChain(xTraceId: string): Promise<TraceChain> {
   return apiGet<TraceChain>(`/pipelines/trace/${encodeURIComponent(xTraceId)}`)
+}
+
+// ── Streaming health (Kafka UI + consumer lag + StreamingSummary) ────────
+
+export type KafkaUiHealth = {
+  endpoint: string
+  status_code: number | null
+  status: 'healthy' | 'degraded' | 'down'
+  reported_status: string | null
+  components: Record<string, { status?: string; details?: Record<string, unknown> }> | null
+  base_url: string
+  detail: string | null
+}
+
+export type ConsumerPartitionLag = {
+  topic: string
+  partition: number
+  current_offset: number
+  end_offset: number
+  lag: number
+}
+
+export type ConsumerCounters = {
+  polled?: number
+  accepted?: number
+  duplicates?: number
+  dlq?: number
+  parse_errors?: number
+  process_errors?: number
+  last_event_at?: string | null
+  last_x_trace_id?: string | null
+}
+
+export type PlatformStreamingHealth = {
+  checked_at?: string
+  broker?: {
+    bootstrap_servers: string
+    topic_events: string
+    topic_dlq: string
+    consumer_group: string
+  }
+  consumer?: {
+    status: 'healthy' | 'lagging' | 'degraded' | 'idle' | 'unknown'
+    counters?: ConsumerCounters
+    partition_lag?: ConsumerPartitionLag[]
+    total_lag?: number
+    detail?: string
+    snapshot_at?: string
+  }
+  summary?: Record<string, unknown> | null
+  error?: string
+}
+
+export type StreamingHealth = {
+  checked_at: string
+  kafka_ui: KafkaUiHealth
+  platform: PlatformStreamingHealth
+}
+
+export async function fetchStreamingHealth(): Promise<StreamingHealth> {
+  return apiGet<StreamingHealth>('/pipelines/streaming-health')
 }

@@ -19,7 +19,6 @@ const TaggingPage = lazy(() => import('./modules/operations/pages/tagging.page')
 const CheckingPage = lazy(() => import('./modules/operations/pages/checking.page'))
 const MiningPage = lazy(() => import('./modules/operations/pages/mining.page'))
 const ReleasePage = lazy(() => import('./modules/operations/pages/release.page'))
-const RunHistoryPage = lazy(() => import('./modules/pipelines/pages/run-history.page'))
 const PipelinesPage = lazy(() => import('./modules/pipelines/pages/pipelines.page'))
 const ToolsHomePage = lazy(() => import('./modules/tools/pages/tools-home.page'))
 const ToolWorkspacePage = lazy(() => import('./modules/tools/pages/tool-workspace.page'))
@@ -48,7 +47,6 @@ export const routes: RouteObject[] = [
       { path: '/ops/release', element: <ReleasePage /> },
       { path: '/ops/exports', element: <ExportListPage /> },
       { path: '/pipelines', element: <PipelinesPage /> },
-      { path: '/pipelines/legacy', element: <RunHistoryPage /> },
       { path: '/tools', element: <ToolsHomePage /> },
       { path: '/tools/:toolId', element: <ToolWorkspacePage /> },
       { path: '/settings', element: <SettingsPage /> },

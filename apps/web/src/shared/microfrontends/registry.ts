@@ -4,6 +4,7 @@ import type { ToolDescriptor } from './types'
 const dagsterBaseUrl = resolveToolBaseUrl(3001, import.meta.env.VITE_DAGSTER_BASE)
 const supersetBaseUrl = resolveToolBaseUrl(8088, import.meta.env.VITE_SUPERSET_BASE)
 const jupyterBaseUrl = resolveToolBaseUrl(8888, import.meta.env.VITE_JUPYTER_BASE)
+const kafkaUiBaseUrl = resolveToolBaseUrl(8085, import.meta.env.VITE_KAFKA_UI_BASE)
 
 export const toolRegistry: ToolDescriptor[] = [
   {
@@ -89,6 +90,36 @@ export const toolRegistry: ToolDescriptor[] = [
     quickLinks: [
       { label: 'Notebooks', path: '/lab/tree' },
       { label: 'File browser', path: '/lab' },
+    ],
+  },
+  {
+    id: 'kafka-ui',
+    name: 'Kafka UI Console',
+    shortName: 'Kafka UI',
+    icon: 'KF',
+    category: 'streaming',
+    summary: 'Topic browser, consumer-group lag, and DLQ inspection for the streaming pipeline.',
+    description:
+      'Kafka UI is the streaming counterpart to the Dagster console. It shows topic backlog, consumer-group lag, and DLQ traffic so operators can debug the streaming pipeline without leaving the platform shell.',
+    integrationMode: 'direct-iframe',
+    baseUrl: kafkaUiBaseUrl,
+    gatewayPath: resolveGatewayPath('/api/tools-gateway/kafka-ui/'),
+    healthPath: '/actuator/health',
+    workspacePath: '/tools/kafka-ui',
+    capabilities: ['Topic browse', 'Consumer-group lag', 'DLQ inspection', 'Live messages tail'],
+    useCases: ['Diagnose streaming backlog', 'Replay events from DLQ', 'Audit x_trace_id flows'],
+    route: {
+      path: '/tools/kafka-ui',
+      label: 'Kafka UI',
+    },
+    notes: [
+      'Local dev uses provectuslabs/kafka-ui on port KAFKA_UI_PORT (default 8085).',
+      'Production should front kafka-ui through the platform gateway with workspace-scoped auth.',
+    ],
+    quickLinks: [
+      { label: 'Topics', path: '/ui/clusters' },
+      { label: 'Consumer groups', path: '/ui/clusters' },
+      { label: 'Brokers', path: '/ui/clusters' },
     ],
   },
 ]

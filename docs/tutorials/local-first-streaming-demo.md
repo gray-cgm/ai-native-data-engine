@@ -144,6 +144,61 @@ make lance
 - 批式 triage demo 强调 scenario package
 - streaming demo 强调 event log -> current state snapshot
 
+## Kafka 模式（broker + DLQ + lag）
+
+JSONL 模式适合快速跑通最小语义。要把 streaming pipeline 提升到与 Batch（Dagster Console）同等的可观测层级，可切到 **Kafka 模式** —— 真正的 broker、消费者 lag、DLQ 与 kafka-ui 控制台都齐备。
+
+### 一键启动
+
+```bash
+make kafka-up                 # broker(9092) + kafka-ui(8085)
+make kafka-topics-init        # 预创建 streaming.events.{raw,dlq}
+make stream-demo-kafka        # producer → streaming.events.raw（x_trace_id 作 partition key）
+make stream-kafka-consumer    # 幂等消费者（另开终端，写 Bronze + DLQ + lag 快照）
+# 打开 http://localhost:3000/pipelines (Overview Tab) —— Streaming 卡片实时显示 lag / DLQ
+# 点 "Open Kafka UI console" 跳到 http://localhost:8085 直查 topic / consumer-group / 消息
+```
+
+### 关键约束
+
+- **幂等账本**：消费者用 SQLite 维护 `(event_id, x_trace_id)` 复合键。重复投递相同消息不会重复落 Bronze，duplicate counter +1。
+- **DLQ**：解析失败 / 写 Bronze 失败的消息直接入 `streaming.events.dlq`，envelope 含 `error_class / error_message / original_topic / original_offset / payload`。
+- **At-least-once 提交**：消费者 `auto_commit=False`，仅在 ledger 写入 + Bronze 落盘都成功后才 `consumer.commit()`。
+- **Lag 可视化**：每个 poll 周期把 partition lag + counters 写入 `data/streaming/kafka_lag.json`；Platform API `GET /streaming/health` 读取，BFF `GET /api/pipelines/streaming-health` 合并 kafka-ui `/actuator/health` 后给 Pipelines Overview 用。
+- **Trace 透传**：producer 用 `x_trace_id` 作为 partition key，并把 `x-trace-id` / `x-requirement-id` 写到 Kafka header；DLQ envelope 同样保留 `x_trace_id`，便于跨 topic 审计。
+
+### Topic 配置
+
+| topic | 分区数 | 用途 |
+|---|---|---|
+| `streaming.events.raw` | 3 | 主流量；按 `x_trace_id` 分区，保证同 trace 顺序 |
+| `streaming.events.dlq` | 1 | 死信队列；envelope 自带原 payload 与错误元数据 |
+
+可通过环境变量覆盖 `KAFKA_TOPIC_EVENTS` / `KAFKA_TOPIC_DLQ`。
+
+### 与 Pipelines 视图对接
+
+Pipelines Overview 的 Streaming 卡片是 Kafka 模式真正的产品入口：
+
+- 顶部 Stat：accepted / duplicates / DLQ / total_lag
+- 按 partition 显示 lag 进度条
+- 状态色：healthy（green）/ lagging（orange）/ degraded（red）/ idle / down
+- 一键打开 Kafka UI（与 Dagster Console 对称）
+
+如要构造 DLQ 场景，可手动往 `streaming.events.raw` 投递格式错误的消息，DLQ 计数与 kafka-ui 中的 `streaming.events.dlq` 都会更新。
+
+### 关停
+
+```bash
+make kafka-down              # 停 broker + kafka-ui（保留容器与卷）
+make kafka-logs              # tail broker + kafka-ui 日志
+```
+
+### 与 ADR 的对应关系
+
+Kafka 集成的完整设计、决策矩阵、Trace propagation contract 与 follow-up（DLQ replay、Dagster sensor 包装、kafka-ui 网关化与权限、多 broker profile 切换）见
+[`docs/adr/adr-pipelinerun-unified-fact-model.md`](../adr/adr-pipelinerun-unified-fact-model.md) §8。
+
 ## 未来该怎么演进
 
 这条 demo 对应的未来演进设计见：

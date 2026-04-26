@@ -194,6 +194,42 @@
   **输出：** API/BFF/Web 回归测试与契约样例
   **验收标准：** 重播 seed 后，Quality/Cost/Lineage 关键断言可稳定通过
 
+- [x] **Action P-5 - Kafka Streaming 对接 + Streaming Console 可观测（已落地，2026-04-26）**
+  **输入：** `apps/orchestrator/src/streaming/`（新增）、`apps/api/src/scripts/streaming_demo.py`（改造）、`docker-compose.yml`、`Makefile`
+  **输出：**
+    - `apache/kafka:3.7.0`（KRaft 单节点）+ `provectuslabs/kafka-ui`（端口 `KAFKA_UI_PORT=8085`）通过 `make kafka-up` / `make compose-deps` 一键拉起
+    - `KafkaStreamingTrigger`（`apps/orchestrator/src/streaming/kafka_trigger.py`）：SQLite 幂等账本（`event_id` × `x_trace_id`）+ DLQ + 周期性 lag 快照
+    - Producer：`make stream-demo-kafka` 用 `STREAMING_DEMO_TARGET=kafka` 把 clip-stream 事件发到 `streaming.events.raw`，`x_trace_id` 同时作为 partition key 与 `x-trace-id` header
+    - 平台 API `GET /streaming/health` + BFF `GET /api/pipelines/streaming-health`（合并 kafka-ui `/actuator/health` + 消费者快照 + StreamingSummary）
+    - kafka-ui 进入 Tools 注册中心（API/BFF/Web 三端 registry 全部更新，`/tools/kafka-ui` 工作台路由可用）
+    - Pipelines Overview 增加 "Open Kafka UI console" 按钮（与 "Open Dagster console" 对称），新增 Lag/DLQ 顶部 stat、按 partition 显示 lag 进度条、idle/down 状态有引导提示
+  **验收标准：**
+    - `make kafka-up && make kafka-topics-init && make stream-demo-kafka && make stream-kafka-consumer` 在 30s 内能在 Pipelines Overview 看到非零 accepted、partition lag 归零、kafka-ui 可访问
+    - 手工往 `streaming.events.raw` 投递格式错误的消息后，DLQ topic 出现错误信封，Overview 顶部 DLQ 计数 +1
+    - 重复投递相同 `event_id` × `x_trace_id` 的消息不会增加 accepted 计数（duplicate counter +1）
+
+### Kafka Streaming 后续 Action（新增 follow-up）
+
+- [ ] **Action P-6 - 把 Kafka 消费者包成 Dagster sensor / op**
+  **输入：** 现有 `KafkaStreamingTrigger`、Dagster `Definitions`
+  **输出：** Dagster 视图能看到 Kafka-driven run 与既有 batch run 共用同一 lineage
+  **验收标准：** 在 Dagster Runs 列表能看到 streaming run，且 PipelineRun 表里 `trigger_source=external` + `run_purpose=initial_build` 可被 trace 聚合到
+
+- [ ] **Action P-7 - DLQ replay 工具**
+  **输入：** `streaming.events.dlq` 中的错误信封
+  **输出：** CLI / BFF 命令，按 `x_trace_id` 把 DLQ 消息回放到主 topic，并伴生 `run_purpose=replay` 的 PipelineRun
+  **验收标准：** 用户在 Lineage 视图选定 trace → 一键 replay → 新 run 与原 run 形成 `trace_parent_id` 关系
+
+- [ ] **Action P-8 - kafka-ui 网关化与权限**
+  **输入：** 当前 direct-iframe 集成、企业 profile 的 SSO 需求
+  **输出：** `tools-gateway-proxy` 中加 kafka-ui 反代规则；按 workspace 限制可见 cluster
+  **验收标准：** 多 workspace 切换时 kafka-ui 仅展示当前 workspace 可访问的 topic，未授权动作（如 delete topic）被前置阻断
+
+- [ ] **Action P-9 - 多分区/多副本 profile 切换**
+  **输入：** `infra/profiles/local-dev.yaml` 当前为单节点，企业 profile 期望多 broker + SASL
+  **输出：** Profile 中新增 `streaming.kafka` 配置块；`KafkaStreamingTrigger` 从 RuntimeContainer 读取
+  **验收标准：** 切换 profile 后无需改代码即可连到外部 broker，且 README/quickstart 文档同步
+
 ---
 
 ## 4. 统一里程碑验收

@@ -1,3 +1,19 @@
+x-dagster-common: &dagster-common
+  image: ai-data-loop-engine-dagster:dev
+  build:
+    context: .
+    dockerfile: docker/python-workspace.Dockerfile
+  working_dir: /app
+  env_file:
+    - .env
+  environment: &dagster-env
+    UV_PROJECT_ENVIRONMENT: /opt/uv-venv
+  volumes:
+    - ${HOST_WORKSPACE_DIR:-.}:/app
+  depends_on:
+    postgres:
+      condition: service_healthy
+
 services:
   postgres:
     image: postgres:16
@@ -15,16 +31,12 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Build the Python workspace image ONCE, reuse everywhere ──
   dagster-user-code:
-    build:
-      context: .
-      dockerfile: docker/python-workspace.Dockerfile
-    working_dir: /app
-    env_file:
-      - .env
+    <<: *dagster-common
     environment:
-      DAGSTER_CURRENT_IMAGE: ai-data-loop-engine-dagster-user-code
-      UV_PROJECT_ENVIRONMENT: /opt/uv-venv
+      <<: *dagster-env
+      DAGSTER_CURRENT_IMAGE: ai-data-loop-engine-dagster:dev
     command: >-
       uv run --package orchestrator dagster api grpc
       -h 0.0.0.0
@@ -32,22 +44,17 @@ services:
       -f apps/orchestrator/src/definitions.py
     expose:
       - "4000"
-    volumes:
-      - ${HOST_WORKSPACE_DIR:-.}:/app
+
+  dagster-webserver:
+    <<: *dagster-common
     depends_on:
       postgres:
         condition: service_healthy
-
-  dagster-webserver:
-    build:
-      context: .
-      dockerfile: docker/python-workspace.Dockerfile
-    working_dir: /app
-    env_file:
-      - .env
+      dagster-user-code:
+        condition: service_started
     environment:
+      <<: *dagster-env
       DAGSTER_HOME: /app/docker/dagster
-      UV_PROJECT_ENVIRONMENT: /opt/uv-venv
     command: >-
       uv run --package orchestrator dagster-webserver
       -h 0.0.0.0
@@ -55,34 +62,20 @@ services:
       -w /app/docker/dagster/workspace.yaml
     ports:
       - "${DAGSTER_PORT:-3001}:${DAGSTER_PORT:-3001}"
-    volumes:
-      - ${HOST_WORKSPACE_DIR:-.}:/app
+
+  dagster-daemon:
+    <<: *dagster-common
     depends_on:
       postgres:
         condition: service_healthy
       dagster-user-code:
         condition: service_started
-
-  dagster-daemon:
-    build:
-      context: .
-      dockerfile: docker/python-workspace.Dockerfile
-    working_dir: /app
-    env_file:
-      - .env
     environment:
+      <<: *dagster-env
       DAGSTER_HOME: /app/docker/dagster
-      UV_PROJECT_ENVIRONMENT: /opt/uv-venv
     command: >-
       uv run --package orchestrator dagster-daemon run
       -w /app/docker/dagster/workspace.yaml
-    volumes:
-      - ${HOST_WORKSPACE_DIR:-.}:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      dagster-user-code:
-        condition: service_started
 
   jupyter:
     image: jupyter/scipy-notebook:python-3.11
@@ -100,8 +93,8 @@ services:
 
   superset:
     build:
-      context: .
-      dockerfile: docker/superset.Dockerfile
+      context: docker
+      dockerfile: superset.Dockerfile
     env_file:
       - .env
     environment:
@@ -123,6 +116,59 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── Kafka broker (single-node KRaft, no Zookeeper) ──
+  # Using confluentinc/cp-kafka because it ships native multi-arch images
+  # (linux/amd64 + linux/arm64) and avoids the SIGILL crashes observed with
+  # apache/kafka on Apple Silicon. KRaft mode means no Zookeeper sidecar.
+  # Listeners:
+  #   - EXTERNAL://localhost:${KAFKA_PORT:-9092} for host-side producers/consumers
+  #   - PLAINTEXT://kafka:9093 for in-compose services (kafka-ui, dagster, etc.)
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    hostname: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9094
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,EXTERNAL://localhost:${KAFKA_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9093 >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+
+  # ── Kafka UI (provectus/kafka-ui) — observable Kafka console ──
+  # Mirrors what Dagster Webserver does for batch: a one-click console for streaming.
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ${KAFKA_CLUSTER_NAME:-ad-loop-local}
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+      DYNAMIC_CONFIG_ENABLED: "true"
+      MANAGEMENT_HEALTH_DEFAULTS_ENABLED: "true"
+      AUTH_TYPE: DISABLED
+    ports:
+      - "${KAFKA_UI_PORT:-8085}:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   superset_home:
+  kafka_data:

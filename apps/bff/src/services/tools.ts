@@ -11,7 +11,7 @@ import type {
 } from '../types.js'
 import { platformFetch } from './platform.js'
 
-type ToolId = 'dagster' | 'superset' | 'jupyter'
+type ToolId = 'dagster' | 'superset' | 'jupyter' | 'kafka-ui'
 
 type ToolDefinition = Omit<ToolRegistryItem, 'id' | 'base_url' | 'gateway_path'>
 
@@ -63,6 +63,26 @@ const TOOL_DEFINITIONS: Record<ToolId, ToolDefinition> = {
     capabilities: ['Notebook editing', 'Kernel execution', 'Exploratory analysis', 'Ad hoc profiling'],
     use_cases: ['Validate samples', 'Prototype queries', 'Inspect intermediate artifacts'],
     notes: ['Production should isolate kernels by workspace and user policy.'],
+  },
+  'kafka-ui': {
+    name: 'Kafka UI Console',
+    short_name: 'Kafka UI',
+    category: 'streaming',
+    summary: 'Topic browser, consumer-group lag, and DLQ inspection for the streaming pipeline.',
+    description:
+      'Kafka UI is the streaming counterpart to the Dagster console. It surfaces topic backlog, consumer-group lag, and DLQ traffic so operators can debug the streaming pipeline without leaving the platform shell.',
+    integration_mode: 'direct-iframe',
+    health_path: '/actuator/health',
+    workspace_path: '/tools/kafka-ui',
+    contract_version: 'v2',
+    policy_profile: 'platform-default',
+    owner: 'data-platform',
+    capabilities: ['Topic browse', 'Consumer-group lag', 'DLQ inspection', 'Live messages tail'],
+    use_cases: ['Diagnose streaming backlog', 'Replay events from DLQ', 'Audit x_trace_id flows'],
+    notes: [
+      'Local dev uses provectuslabs/kafka-ui (port KAFKA_UI_PORT=8085 by default).',
+      'Production should front kafka-ui through the platform gateway with workspace-scoped auth.',
+    ],
   },
 }
 

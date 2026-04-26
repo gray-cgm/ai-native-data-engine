@@ -6,6 +6,7 @@ dependencies = [
   "dagster>=1.8.9",
   "dagster-webserver>=1.8.9",
   "dagster-postgres>=0.24.9",
+  "kafka-python>=2.0.2",
   "ad-workflows",
   "ad-profiles",
   "ad-services"

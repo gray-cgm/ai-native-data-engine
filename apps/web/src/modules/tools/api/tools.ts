@@ -61,6 +61,7 @@ function inferToolIcon(toolId: string) {
   if (toolId === 'dagster') return 'DR'
   if (toolId === 'superset') return 'BI'
   if (toolId === 'jupyter') return 'NB'
+  if (toolId === 'kafka-ui') return 'KF'
   return 'TL'
 }
 
@@ -87,6 +88,14 @@ function inferQuickLinks(toolId: string): ToolDescriptor['quickLinks'] {
     return [
       { label: 'Notebooks', path: '/lab/tree' },
       { label: 'File browser', path: '/lab' },
+    ]
+  }
+
+  if (toolId === 'kafka-ui') {
+    return [
+      { label: 'Topics', path: '/ui/clusters' },
+      { label: 'Consumer groups', path: '/ui/clusters' },
+      { label: 'Brokers', path: '/ui/clusters' },
     ]
   }
 

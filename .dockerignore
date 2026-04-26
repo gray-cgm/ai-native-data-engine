@@ -1,10 +1,32 @@
+# VCS & IDE
 .git
+.vscode
+*.code-workspace
+
+# Python
 .venv
-node_modules
-**/node_modules
 __pycache__
 **/__pycache__
 .pytest_cache
 .mypy_cache
+
+# Node / JS
+node_modules
+**/node_modules
 .turbo
+dist
+build
+pnpm-lock.yaml
+
+# Data (large files)
+data
+examples
+notebooks
+
+# Docs & misc
+docs
+*.md
 .DS_Store
+docker/dagster/storage
+docker/dagster/logs
+docker/dagster/.logs_queue

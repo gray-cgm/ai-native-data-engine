@@ -16,7 +16,7 @@ function isTabKey(value: string | null): value is TabKey {
 }
 
 const SUBTITLES: Record<TabKey, string> = {
-  overview: '概览：批处理 Dagster Runs 与流式事件 Pipeline 的综合态势。',
+  overview: '概览：批处理 Dagster Runs 与流式事件Kafka Pipeline 的综合态势。',
   runs: 'Runs：所有 PipelineRun 的全链路过滤（x_trace_id / Requirement / OperationsTask），点击行查看 RunDetail 抽屉。',
   lineage: 'Lineage：按 x_trace_id 聚合的 DAG 血缘视图 — Requirement → DataTask → OperationsTask → Run。',
   quality: 'Quality：Gate 结果分布、失败原因 Top-N，按 run_purpose / stage 维度钻取。',

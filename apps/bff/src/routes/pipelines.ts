@@ -95,6 +95,22 @@ export default [
   }),
   defineRoute({
     method: 'get',
+    path: '/pipelines/streaming-health',
+    validate: {
+      output: buildOutputSchema(Joi.object().unknown(true)),
+    },
+    meta: {
+      swagger: {
+        summary: 'Streaming pipeline health',
+        description:
+          'Aggregate streaming health for the Pipelines Overview tab: kafka-ui /actuator/health probe + Platform API /streaming/health (broker info, consumer lag, StreamingSummary).',
+        tags: ['pipelines'],
+      },
+    },
+    handler: pipelinesHandler.streamingHealth,
+  }),
+  defineRoute({
+    method: 'get',
     path: '/pipelines/runs/:id',
     validate: {
       params: { id: Joi.string().required() },

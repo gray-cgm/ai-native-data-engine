@@ -1,0 +1,41 @@
+{
+  "bootstrap_servers": "localhost:9092",
+  "topic": "streaming.events.raw",
+  "dlq_topic": "streaming.events.dlq",
+  "group_id": "ad-loop-streaming-consumer",
+  "counters": {
+    "polled": 0,
+    "accepted": 0,
+    "duplicates": 0,
+    "dlq": 0,
+    "parse_errors": 0,
+    "process_errors": 0,
+    "last_event_at": null,
+    "last_x_trace_id": null
+  },
+  "partition_lag": [
+    {
+      "topic": "streaming.events.raw",
+      "partition": 0,
+      "current_offset": 50,
+      "end_offset": 50,
+      "lag": 0
+    },
+    {
+      "topic": "streaming.events.raw",
+      "partition": 1,
+      "current_offset": 100,
+      "end_offset": 100,
+      "lag": 0
+    },
+    {
+      "topic": "streaming.events.raw",
+      "partition": 2,
+      "current_offset": 50,
+      "end_offset": 50,
+      "lag": 0
+    }
+  ],
+  "total_lag": 0,
+  "snapshot_at": "2026-04-26T23:37:13.751504+00:00"
+}

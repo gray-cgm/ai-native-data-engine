@@ -1,14 +1,16 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, Button, Card, Col, Input, Progress, Row, Space, Table, Typography } from 'antd'
-import { ExportOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Col, Input, Progress, Row, Space, Table, Tag, Tooltip, Typography } from 'antd'
+import { ApiOutlined, ExportOutlined, ReloadOutlined, SearchOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery } from '@/shared/hooks/use-query'
 import { StatusBadge } from '@/shared/components/status-badge'
 import { StatCard } from '@/shared/components/stat-card'
 import { TableCellText } from '@/shared/components/table-cell-text'
-import type { RunItem, StreamingBatchSummary, StreamingSummary } from '@/shared/types/common'
-import { fetchRuns, fetchStreamingSummary } from '../api'
+import { getToolById, getToolEmbedUrl } from '@/shared/microfrontends/registry'
+import type { RunItem } from '@/shared/types/common'
+import type { StreamingHealth } from '../api'
+import { fetchRuns, fetchStreamingHealth } from '../api'
 
 const { Title, Text } = Typography
 const PAGE_SIZE = 8
@@ -27,10 +29,6 @@ function filterRun(run: RunItem, q: string) {
     run.run_id.toLowerCase().includes(q) ||
     run.status.toLowerCase().includes(q)
   )
-}
-
-function filterBatch(batch: StreamingBatchSummary, q: string) {
-  return String(batch.batch_number).includes(q) || batch.run_status.toLowerCase().includes(q)
 }
 
 function useFilteredData<T>(items: T[], filterFn: (item: T, keyword: string) => boolean) {
@@ -60,22 +58,14 @@ const batchRunColumns: ColumnsType<RunItem> = [
     render: (text: string) => <TableCellText value={text} maxWidth={180} code /> },
 ]
 
-const streamingBatchColumns: ColumnsType<StreamingBatchSummary> = [
-  { key: 'batch_number', title: 'Batch', dataIndex: 'batch_number', width: 90,
-    render: (v: number) => <Text strong>#{v}</Text> },
-  { key: 'input_events', title: 'Events in', dataIndex: 'input_events', width: 110 },
-  { key: 'accepted_events', title: 'Accepted', dataIndex: 'accepted_events', width: 110 },
-  { key: 'unique_samples', title: 'New samples', dataIndex: 'unique_samples', width: 120 },
-  { key: 'run_status', title: 'Run status', dataIndex: 'run_status', width: 120,
-    render: (_: unknown, record) => <StatusBadge status={record.run_status} /> },
-]
-
 function BatchRunsSection({ runs, loading }: { runs: RunItem[]; loading: boolean }) {
   const { keyword, onKeyword, filtered } = useFilteredData(runs, filterRun)
+  const dagsterTool = getToolById('dagster')
+  const dagsterUrl = dagsterTool ? getToolEmbedUrl(dagsterTool) : 'http://localhost:3001'
   return (
     <Card
       title={<><Text type="secondary" style={EYEBROW}>Batch processing</Text><Title level={4} style={{ margin: 0 }}>Dagster runs</Title></>}
-      extra={<Button type="link" href="http://localhost:3001" target="_blank" icon={<ExportOutlined />}>Open Dagster console</Button>}
+      extra={<Button type="link" href={dagsterUrl} target="_blank" icon={<ExportOutlined />}>Open Dagster console</Button>}
     >
       {loading && <Text type="secondary">Loading runs…</Text>}
       {!loading && runs.length === 0 && (
@@ -101,62 +91,148 @@ function BatchRunsSection({ runs, loading }: { runs: RunItem[]; loading: boolean
   )
 }
 
-function StreamingSection({ summary, loading }: { summary: StreamingSummary | null; loading: boolean }) {
-  const batches = summary?.batch_summaries ?? []
-  const { keyword, onKeyword, filtered } = useFilteredData(batches, filterBatch)
+const STREAM_STATUS_TEXT: Record<string, string> = {
+  healthy: 'Healthy',
+  lagging: 'Lagging',
+  degraded: 'Degraded',
+  idle: 'Idle (consumer not running)',
+  unknown: 'Unknown',
+  down: 'Broker unreachable',
+}
+
+const STREAM_STATUS_COLOR: Record<string, string> = {
+  healthy: 'green',
+  lagging: 'orange',
+  degraded: 'red',
+  idle: 'default',
+  unknown: 'default',
+  down: 'red',
+}
+
+function StreamingHealthBlock({ health }: { health: StreamingHealth | null | undefined }) {
+  if (!health) return null
+  const consumer = health.platform?.consumer
+  const broker = health.platform?.broker
+  const counters = consumer?.counters ?? {}
+  const totalLag = consumer?.total_lag ?? 0
+  const partitionLag = consumer?.partition_lag ?? []
+  const consumerStatus = consumer?.status ?? 'unknown'
+  const kafkaUiStatus = health.kafka_ui?.status ?? 'down'
+
+  const polled = Number(counters.polled ?? 0)
+  const accepted = Number(counters.accepted ?? 0)
+  const duplicates = Number(counters.duplicates ?? 0)
+  const dlq = Number(counters.dlq ?? 0)
+
   return (
-    <Card title={<><Text type="secondary" style={EYEBROW}>Streaming processing</Text><Title level={4} style={{ margin: 0 }}>Event pipeline</Title></>}>
-      {loading && <Text type="secondary">Loading summary…</Text>}
-      {!loading && !summary && (
-        <Space direction="vertical" size={4}>
-          <Text type="secondary">No streaming data available yet.</Text>
-          <Text type="secondary">Run <Text code>make lance</Text> to bootstrap the local streaming pipeline.</Text>
-        </Space>
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      <Space wrap size={[8, 8]}>
+        <Tag color={STREAM_STATUS_COLOR[consumerStatus] ?? 'default'} icon={<ThunderboltOutlined />}>
+          Consumer · {STREAM_STATUS_TEXT[consumerStatus] ?? consumerStatus}
+        </Tag>
+        <Tag color={STREAM_STATUS_COLOR[kafkaUiStatus] ?? 'default'} icon={<ApiOutlined />}>
+          Kafka UI · {STREAM_STATUS_TEXT[kafkaUiStatus] ?? kafkaUiStatus}
+        </Tag>
+        {broker && (
+          <Tooltip title={`Bootstrap: ${broker.bootstrap_servers} · Group: ${broker.consumer_group}`}>
+            <Tag>{broker.topic_events}</Tag>
+          </Tooltip>
+        )}
+        {broker && <Tag color="purple">DLQ · {broker.topic_dlq}</Tag>}
+      </Space>
+
+      <Row gutter={[10, 10]}>
+        <Col span={8}><StatCard label="Total lag" value={totalLag} /></Col>
+        <Col span={8}><StatCard label="Accepted" value={accepted} /></Col>
+        <Col span={8}><StatCard label="Polled" value={polled} /></Col>
+        <Col span={8}><StatCard label="Duplicates" value={duplicates} /></Col>
+        <Col span={8}><StatCard label="DLQ" value={dlq} /></Col>
+        <Col span={8}>
+          <StatCard
+            label="Last event"
+            value={counters.last_event_at ? new Date(String(counters.last_event_at)).toLocaleTimeString() : '—'}
+          />
+        </Col>
+      </Row>
+
+      {partitionLag.length > 0 && (
+        <div>
+          <Text type="secondary" style={{ ...EYEBROW, marginBottom: 8 }}>Partition lag</Text>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            {partitionLag.map((p) => {
+              const pct = p.end_offset > 0 ? Math.min(100, Math.round((p.lag / p.end_offset) * 100)) : 0
+              return (
+                <div key={`${p.topic}-${p.partition}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Text strong style={{ width: 180, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.topic}#{p.partition}
+                  </Text>
+                  <Progress
+                    percent={pct}
+                    showInfo={false}
+                    strokeColor={p.lag > 0 ? '#faad14' : '#52c41a'}
+                    style={{ flex: 1, margin: 0 }}
+                  />
+                  <Text type="secondary" style={{ width: 110, textAlign: 'right', fontSize: 12 }}>
+                    {p.current_offset}/{p.end_offset} (+{p.lag})
+                  </Text>
+                </div>
+              )
+            })}
+          </Space>
+        </div>
       )}
-      {!loading && summary && (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Row gutter={[12, 12]}>
-            <Col span={6}><StatCard label="Total events" value={summary.event_count} /></Col>
-            <Col span={6}><StatCard label="Deduplicated" value={summary.event_count - summary.duplicate_events_skipped} /></Col>
-            <Col span={6}><StatCard label="Batches" value={summary.batch_count} /></Col>
-            <Col span={6}><StatCard label="Latest samples" value={summary.latest_sample_count} /></Col>
-          </Row>
-          {summary.distribution.length > 0 && (
-            <div>
-              <Text type="secondary" style={{ ...EYEBROW, marginBottom: 10 }}>Scene distribution</Text>
-              <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                {summary.distribution.map((row) => (
-                  <div key={row.scene} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Text strong style={{ width: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 13 }}>{row.scene}</Text>
-                    <Progress percent={summary.latest_sample_count > 0 ? Math.round((row.sample_count / summary.latest_sample_count) * 100) : 0}
-                      showInfo={false} strokeColor={{ from: '#2175ff', to: '#4f9bff' }} style={{ flex: 1, margin: 0 }} />
-                    <Text type="secondary" style={{ width: 40, textAlign: 'right', flexShrink: 0, fontSize: 13 }}>{row.sample_count}</Text>
-                  </div>
-                ))}
-              </Space>
-            </div>
+
+      {consumerStatus === 'idle' && (
+        <Alert
+          type="info"
+          showIcon
+          message="Streaming consumer is not running"
+          description={(
+            <span>
+              Run <Text code>make kafka-up</Text> then <Text code>make stream-kafka-consumer</Text> to start consuming
+              <Text code style={{ marginLeft: 4 }}>{broker?.topic_events ?? 'streaming.events.raw'}</Text>.
+            </span>
           )}
-          {batches.length > 0 && (
-            <>
-              <Input prefix={<SearchOutlined />} placeholder="Search by batch # or status…"
-                allowClear value={keyword} onChange={(e) => onKeyword(e.target.value)} />
-              <Table<StreamingBatchSummary> className="app-data-table" columns={streamingBatchColumns} dataSource={filtered}
-                rowKey={(row) => String(row.batch_number)} size="small" tableLayout="fixed" scroll={{ x: 'max-content' }}
-                pagination={{ pageSize: PAGE_SIZE, size: 'small', showTotal: (t) => `${t} batch${t !== 1 ? 'es' : ''}`, showSizeChanger: false }}
-                locale={{ emptyText: `No batches match "${keyword}".` }} />
-            </>
-          )}
-        </Space>
+        />
       )}
+
+      {kafkaUiStatus === 'down' && (
+        <Alert
+          type="warning"
+          showIcon
+          message="Kafka UI is unreachable"
+          description={health.kafka_ui?.detail ?? `No response from ${health.kafka_ui?.endpoint ?? 'kafka-ui'}.`}
+        />
+      )}
+    </Space>
+  )
+}
+
+function StreamingSection({ health }: { health: StreamingHealth | null | undefined }) {
+  const kafkaUiTool = getToolById('kafka-ui')
+  const kafkaUiUrl = kafkaUiTool ? getToolEmbedUrl(kafkaUiTool) : (health?.kafka_ui?.base_url ?? 'http://localhost:8085')
+  return (
+    <Card
+      title={<><Text type="secondary" style={EYEBROW}>Streaming processing</Text><Title level={4} style={{ margin: 0 }}>Kafka event pipeline</Title></>}
+      extra={
+        <Button type="link" href={kafkaUiUrl} target="_blank" icon={<ExportOutlined />}>
+          Open Kafka UI console
+        </Button>
+      }
+    >
+      <StreamingHealthBlock health={health} />
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+        <Link to="/tools/kafka-ui"><Button type="link" size="small" style={{ padding: 0 }}>View full Kafka UI workspace →</Button></Link>
+      </div>
     </Card>
   )
 }
 
 export function OverviewView() {
   const runsFetcher = useCallback(() => fetchRuns(), [])
-  const streamFetcher = useCallback(() => fetchStreamingSummary(), [])
+  const healthFetcher = useCallback(() => fetchStreamingHealth().catch(() => null), [])
   const { data: runs, state: runsState, error: runsError, refetch: refetchRuns } = useQuery(runsFetcher, { isEmpty: (d) => (d as RunItem[]).length === 0 })
-  const { data: streaming, state: streamState } = useQuery(streamFetcher)
+  const { data: health } = useQuery(healthFetcher)
 
   if (runsState === 'error') {
     return <Alert type="error" showIcon message="Failed to load pipeline runs" description={runsError?.message ?? 'An unexpected error occurred.'} action={<Button onClick={refetchRuns}><ReloadOutlined /> Retry</Button>} />
@@ -165,20 +241,35 @@ export function OverviewView() {
   const runList = runs ?? []
   const doneCount = runList.filter((r) => r.status === 'done' || r.status === 'completed').length
   const failedCount = runList.filter((r) => r.status === 'failed').length
+  const counters = health?.platform?.consumer?.counters ?? {}
+  const acceptedEvents = Number(counters.accepted ?? 0)
+  const totalLag = health?.platform?.consumer?.total_lag ?? null
+  const consumerStatus = health?.platform?.consumer?.status ?? 'unknown'
+  const dlqCount = Number(counters.dlq ?? 0)
 
   return (
     <>
       <Row gutter={[14, 14]} style={{ marginBottom: 24 }}>
-        <Col flex="1"><StatCard label="Total runs" value={runList.length} /></Col>
-        <Col flex="1"><StatCard label="Completed" value={doneCount} /></Col>
-        <Col flex="1"><StatCard label="Failed" value={failedCount} /></Col>
-        <Col flex="1"><StatCard label="Streaming batches" value={streaming?.batch_count ?? '—'} /></Col>
-        <Col flex="1"><StatCard label="Streaming events" value={streaming?.event_count ?? '—'} /></Col>
+        <Col flex="1"><StatCard label="Batch runs" value={runList.length} /></Col>
+        <Col flex="1"><StatCard label="Batch completed" value={doneCount} /></Col>
+        <Col flex="1"><StatCard label="Batch failed" value={failedCount} /></Col>
+        <Col flex="1"><StatCard label="Streaming accepted" value={acceptedEvents} /></Col>
+        <Col flex="1"><StatCard label="Kafka lag" value={totalLag === null ? '—' : totalLag} /></Col>
+        <Col flex="1"><StatCard label="DLQ" value={dlqCount} /></Col>
       </Row>
       <Row gutter={20} align="top">
         <Col xs={24} lg={12}><BatchRunsSection runs={runList} loading={runsState === 'loading'} /></Col>
-        <Col xs={24} lg={12}><StreamingSection summary={streaming ?? null} loading={streamState === 'loading'} /></Col>
+        <Col xs={24} lg={12}><StreamingSection health={health ?? null} /></Col>
       </Row>
+      {consumerStatus === 'unknown' && health?.platform && 'error' in health.platform && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginTop: 16 }}
+          message="Streaming health unavailable"
+          description={(health.platform as { error: string }).error}
+        />
+      )}
     </>
   )
 }

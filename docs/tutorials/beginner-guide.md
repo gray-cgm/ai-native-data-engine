@@ -752,6 +752,8 @@ make sdk-demo
 - Tasks
 - Workspaces
 - Exports
+- **Requirements（需求管理）**
+- **Pipelines（运行事实视图：Overview / Runs / Lineage / Quality / Cost）**
 
 这些都属于**应用层**，不是查询引擎本身。查询引擎只负责把数据读出来，真正的页面、检索体验、导出运营和工作流入口属于上层产品能力。
 
@@ -866,5 +868,73 @@ Dagster 在这里不是一个“为了有编排而有编排”的工具。
 > 如何在一台笔记本上，用正确的数据系统思维，搭出一个面向自动驾驶数据闭环的本地 DataLake 工作台。
 
 如果你理解了这件事，后面无论是走向团队版还是企业版，都会自然很多。
+
+---
+
+# 22. Pipelines & Streaming Console（运行事实视图）
+
+数据闭环里除了 "需求 → 任务" 这条人这一侧的链路，还有 "机器执行" 这一侧。这一节解释机器侧用什么对象建模，以及在 Web 工作台的 Pipelines 页面里能看到什么。
+
+## 22.1 四层闭环对象
+
+| 层 | 对象 | 关心的问题 |
+|---|---|---|
+| 业务承诺层 | `Requirement` | 为什么要做、验收口径是什么 |
+| 数据定义层 | `DataTask` | 这条需求需要什么数据、谁负责 |
+| 人机协同运营层 | `OperationsTask` | 谁、按什么流程、用哪个 ops 模块 |
+| 机器执行与成本层 | `PipelineRun` | 一次运行实际怎么跑、用了多少资源、Gate 是否通过 |
+
+`PipelineRun` 是**独立事实表**，不是 `OperationsTask` 的子资源 —— 它对 Requirement / DataTask / OperationsTask 都是**可选**外键，因为流式回补 / 修复 / 外部回放等场景下，一条 run 可能直接来自 Scheduler 或 External。
+
+关键字段：
+
+- `x_trace_id`：跨需求全链路追踪键，与 HTTP `X-Trace-Id` 对齐，沿 HTTP header / 日志 / Dagster op_config / Kafka header 传播
+- `trigger_source`：`data_task | operations_task | scheduler | manual | external`
+- `run_purpose`：`initial_build | backfill | repair | reindex | replay | validation`
+- `stage`：`raw_ingest | clip_extraction | feature_extraction | structured_dataset`（Bronze → Silver → Gold）
+- `metrics`：`cost_usd / cpu_seconds / gpu_seconds / storage_gb / duration_s / gate_result / gate_reason`
+
+## 22.2 Web Pipelines 五视图
+
+打开 `http://localhost:3000/pipelines`，按 Tab 阅读：
+
+| Tab | 你能看到什么 |
+|---|---|
+| Overview | Dagster Batch runs + Streaming pipeline 综合态势；流式块显示 partition lag / DLQ |
+| Runs | PipelineRun 全链路过滤（按 `x_trace_id` / `requirement_id` / `stage` / `status` / `trigger_source` / `run_purpose`），点行弹出 RunDetail 抽屉 |
+| Lineage | 按 `x_trace_id` 聚合的 Mermaid DAG：Requirement → DataTask → OperationsTask → PipelineRun |
+| Quality | Gate 结果分布（pass / waiver / block）、失败原因 Top-N |
+| Cost | 总成本与 CPU/GPU/Storage 聚合，按 Requirement / Pipeline / Stage / Purpose 归因 |
+
+## 22.3 灌一份 Demo Trace 数据
+
+```bash
+make seed-trace-demo            # 随机生成完整 4 层链路（共享同一 x_trace_id）
+make seed-trace-demo-reset      # 清库重灌
+```
+
+## 22.4 Streaming Pipeline · Kafka 模式
+
+`make stream-demo` 是最轻量的本地 streaming demo（写 JSONL、micro-batch 处理），细节见 [Local-First Streaming Demo](./local-first-streaming-demo.md)。要把 streaming pipeline 提升到与 Batch（Dagster Console）同等的可观测层级，可走 **Kafka 模式**：
+
+```bash
+make kafka-up                 # broker(9092) + kafka-ui(8085)
+make kafka-topics-init        # 预创建 streaming.events.{raw,dlq}
+make stream-demo-kafka        # producer → streaming.events.raw（x_trace_id 作 partition key）
+make stream-kafka-consumer    # 幂等消费者（另开终端，写 Bronze + DLQ + lag 快照）
+# 打开 http://localhost:3000/pipelines (Overview Tab) —— Streaming 卡片实时显示 lag / DLQ
+# 点 "Open Kafka UI console" 跳到 http://localhost:8085 直查 topic / consumer-group / 消息
+```
+
+关键约束：
+
+- **幂等账本**：消费者用 SQLite 维护 `(event_id, x_trace_id)` 复合键，重复投递不会重复落 Bronze
+- **DLQ**：解析失败 / 写 Bronze 失败的消息直接入 `streaming.events.dlq`，envelope 含 `error_class / error_message / original_topic / original_offset / payload`
+- **At-least-once**：仅在 ledger 写入 + Bronze 落盘都成功后才 `consumer.commit()`
+- **Lag 可视化**：每个 poll 周期把 partition lag + counters 写入 `data/streaming/kafka_lag.json`，由 Platform API `/streaming/health` 读取并通过 BFF `/api/pipelines/streaming-health` 暴露给 Pipelines Overview
+
+## 22.5 设计来源
+
+完整 ADR：[`docs/adr/adr-pipelinerun-unified-fact-model.md`](../adr/adr-pipelinerun-unified-fact-model.md)（PipelineRun 统一事实模型 + x_trace_id 全链路追踪 + Kafka Streaming 集成）。
 
 ---

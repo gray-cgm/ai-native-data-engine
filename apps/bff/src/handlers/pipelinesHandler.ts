@@ -1,5 +1,6 @@
 import type { Context } from 'koa'
 
+import { getStreamingHealth } from '../engines/streamingEngine.js'
 import {
   listPipelineRuns,
   getPipelineRunBreadcrumb,
@@ -64,6 +65,10 @@ class PipelinesHandler {
     const limitRaw = (ctx.request.query as Record<string, string>).limit
     const limit = limitRaw ? Math.max(1, Math.min(200, parseInt(limitRaw, 10) || 50)) : 50
     ctx.body = await listRecentTraces(limit)
+  }
+
+  async streamingHealth(ctx: Context) {
+    ctx.body = await getStreamingHealth()
   }
 }
 

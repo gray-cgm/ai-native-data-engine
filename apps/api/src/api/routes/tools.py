@@ -23,11 +23,18 @@ TOOL_DEFINITIONS = {
         'default_base_url': 'http://127.0.0.1:8888',
         'health_path': '/api/status',
     },
+    # provectus/kafka-ui — observable streaming console (Kafka analogue of Dagster UI).
+    'kafka-ui': {
+        'default_base_url': 'http://127.0.0.1:8085',
+        'health_path': '/actuator/health',
+    },
 }
 
 
 def _tool_base_url(tool_id: str) -> str:
-    env_key = f'TOOL_{tool_id.upper()}_BASE_URL'
+    # Hyphens and dots are not legal in env var names, so normalize them to `_`.
+    safe_key = tool_id.upper().replace('-', '_').replace('.', '_')
+    env_key = f'TOOL_{safe_key}_BASE_URL'
     default_url = TOOL_DEFINITIONS[tool_id]['default_base_url']
     return (os.environ.get(env_key) or default_url).rstrip('/')
 

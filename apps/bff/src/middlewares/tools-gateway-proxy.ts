@@ -3,8 +3,8 @@ import type { Context, Next } from 'koa'
 import { config } from '../config/index.js'
 import { AppError } from '../errors.js'
 
-const TOOL_ID_SET = new Set(['dagster', 'superset', 'jupyter'])
-type ToolId = 'dagster' | 'superset' | 'jupyter'
+const TOOL_ID_SET = new Set(['dagster', 'superset', 'jupyter', 'kafka-ui'])
+type ToolId = 'dagster' | 'superset' | 'jupyter' | 'kafka-ui'
 
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
@@ -28,6 +28,7 @@ const TOOL_REWRITE_PREFIXES: Record<string, string[]> = {
   dagster: ['/_next/', '/__next', '/graphql'],
   superset: ['/static/', '/superset/', '/api/', '/login/'],
   jupyter: ['/static/', '/api/', '/lab/', '/terminals/', '/nbextensions/'],
+  'kafka-ui': ['/static/', '/api/', '/actuator/', '/ui/'],
 }
 
 const REWRITABLE_CONTENT_TYPES = [
