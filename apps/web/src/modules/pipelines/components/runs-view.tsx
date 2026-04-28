@@ -11,7 +11,9 @@ import { RunDetailDrawer } from './run-detail.drawer'
 
 const { Text } = Typography
 
-const STAGE_OPTIONS = ['raw_ingest', 'clip_extraction', 'feature_extraction', 'structured_dataset']
+// stage 已降级为自由文本 step 名（v3）。这里给出 demo / orchestrator 中常用的标签便于过滤；
+// 用户也可以输入任意值。
+const STAGE_OPTIONS = ['collect', 'clip-extract', 'feature-compute', 'release', 'streaming-replay']
 const STATUS_OPTIONS = ['pending', 'running', 'success', 'failed']
 const TRIGGER_OPTIONS = ['data_task', 'operations_task', 'scheduler', 'manual', 'external']
 const PURPOSE_OPTIONS = ['initial_build', 'backfill', 'repair', 'reindex', 'replay', 'validation']

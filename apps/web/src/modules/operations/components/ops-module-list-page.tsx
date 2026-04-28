@@ -46,11 +46,15 @@ import {
   type OpsStats,
   type OpsVocab,
 } from '../ops-modules-api'
+import { DatasetPicker } from '@/modules/datasets/dataset-picker'
 
 const { Text, Paragraph } = Typography
 
 interface Props {
   module: OpsModuleKey
+  /** 额外的行级动作按钮（例：Release 模块的 Promote-to-Official）。
+   *  返回的 React 节点会插在 Edit / Delete 之前。 */
+  extraRowActions?: (row: OpsItem, refresh: () => Promise<void>) => React.ReactNode
 }
 
 const ALL = '__all__'
@@ -62,7 +66,7 @@ function parseClipIds(input: string): string[] {
     .filter(Boolean)
 }
 
-export function OpsModuleListPage({ module }: Props) {
+export function OpsModuleListPage({ module, extraRowActions }: Props) {
   const meta = MODULE_META[module]
   const [searchParams, setSearchParams] = useSearchParams()
   const fromRequirement = searchParams.get('requirement') ?? ''
@@ -577,6 +581,7 @@ export function OpsModuleListPage({ module }: Props) {
                     onClick={(e) => e.stopPropagation()}
                     size={4}
                   >
+                    {extraRowActions ? extraRowActions(row, refreshAll) : null}
                     <Button
                       size="small"
                       type="link"
@@ -661,7 +666,10 @@ export function OpsModuleListPage({ module }: Props) {
               <Input placeholder="e.g. xminer-pipeline-video" />
             </Form.Item>
             <Form.Item name="dataset_id" label="Dataset" style={{ flex: 1 }}>
-              <Input placeholder="e.g. scenario:xminer-pipeline-video" />
+              <DatasetPicker
+                filterType={module === 'release' ? 'customized' : undefined}
+                placeholder="Pick a dataset or create one"
+              />
             </Form.Item>
           </Space>
           <Form.Item name="requirement_id" label="Requirement">
@@ -758,7 +766,10 @@ export function OpsModuleListPage({ module }: Props) {
                 <Input />
               </Form.Item>
               <Form.Item name="dataset_id" label="Dataset">
-                <Input />
+                <DatasetPicker
+                  filterType={module === 'release' ? 'customized' : undefined}
+                  placeholder="Pick a dataset or create one"
+                />
               </Form.Item>
               <Form.Item name="requirement_id" label="Requirement">
                 <Input />

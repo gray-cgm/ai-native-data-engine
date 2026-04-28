@@ -79,7 +79,14 @@ def _resolve_data_path(env_name: str, *parts: str) -> Path:
 
 LEDGER_PATH = _resolve_data_path("STREAMING_LEDGER_PATH", "data", "streaming", "kafka_ledger.db")
 LAG_SNAPSHOT_PATH = _resolve_data_path("STREAMING_LAG_PATH", "data", "streaming", "kafka_lag.json")
-BRONZE_LOG_PATH = _resolve_data_path("STREAMING_BRONZE_LOG", "data", "raw", "streaming", "local-events.jsonl")
+# 原 BRONZE_LOG_PATH，保留 env 别名向后兼容；新读 STREAMING_INGEST_LOG。
+INGEST_LOG_PATH = _resolve_data_path(
+    "STREAMING_INGEST_LOG",
+    "data", "raw", "streaming", "local-events.jsonl",
+) if "STREAMING_INGEST_LOG" in os.environ else _resolve_data_path(
+    "STREAMING_BRONZE_LOG",
+    "data", "raw", "streaming", "local-events.jsonl",
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -225,7 +232,7 @@ class KafkaStreamingTrigger:
         dlq_topic: str = DEFAULT_DLQ_TOPIC,
         group_id: str = DEFAULT_GROUP_ID,
         ledger_path: Path = LEDGER_PATH,
-        bronze_log_path: Path = BRONZE_LOG_PATH,
+        ingest_log_path: Path = INGEST_LOG_PATH,
         lag_snapshot_path: Path = LAG_SNAPSHOT_PATH,
         poll_timeout_ms: int = 1000,
         max_poll_records: int = 256,
@@ -237,8 +244,8 @@ class KafkaStreamingTrigger:
         self.poll_timeout_ms = poll_timeout_ms
         self.max_poll_records = max_poll_records
         self.ledger = DedupLedger(ledger_path)
-        self.bronze_log_path = bronze_log_path
-        self.bronze_log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.ingest_log_path = ingest_log_path
+        self.ingest_log_path.parent.mkdir(parents=True, exist_ok=True)
         self.lag_snapshot_path = lag_snapshot_path
         self.lag_snapshot_path.parent.mkdir(parents=True, exist_ok=True)
         self.counters = Counters()
@@ -340,12 +347,12 @@ class KafkaStreamingTrigger:
             self.counters.duplicates += 1
             return
 
-        # 4. Side-effect: append to Bronze JSONL (the local-first workflow consumes this).
+        # 4. Side-effect: append to ingest JSONL (the local-first workflow consumes this).
         try:
-            self._append_bronze(payload)
+            self._append_ingest(payload)
         except Exception as exc:  # noqa: BLE001
             self.counters.process_errors += 1
-            self._publish_dlq(record, payload=payload, error=exc, reason="bronze_write_failed")
+            self._publish_dlq(record, payload=payload, error=exc, reason="ingest_write_failed")
             return
 
         # 5. Remember in ledger AFTER the side-effect succeeded.
@@ -361,12 +368,12 @@ class KafkaStreamingTrigger:
         self.counters.last_event_at = datetime.now(UTC).isoformat()
         self.counters.last_x_trace_id = x_trace_id
 
-    def _append_bronze(self, payload: dict[str, Any]) -> None:
+    def _append_ingest(self, payload: dict[str, Any]) -> None:
         # Tag the event with a kafka-ingest timestamp so downstream batches can
         # tell file-mode events apart from kafka-mode events.
         enriched = dict(payload)
         enriched.setdefault("kafka_ingested_at", datetime.now(UTC).isoformat())
-        with self.bronze_log_path.open("a", encoding="utf-8") as handle:
+        with self.ingest_log_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(enriched, ensure_ascii=False) + "\n")
 
     # ── DLQ ───────────────────────────────────────────────────────────────

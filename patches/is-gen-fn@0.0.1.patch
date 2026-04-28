@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index c65b492efb04856b08f53f8c7bf3eee41f07a697..987c3c2b45a8e271b0992e4db98427642cb96785 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "is-gen-fn",
+   "version": "0.0.1",
+   "description": "determine if a function is a generator function",
+-  "main": "yes",
++  "main": "index.js",
+   "scripts": {
+     "test": "make test"
+   },

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppstoreOutlined } from '@ant-design/icons'
-import { Card, Col, Row, Tag, Typography } from 'antd'
+import { Card, Col, Row, Space, Tag, Typography } from 'antd'
 import { DataTable } from '@/shared/components/data-table'
 import { buildClipVideoUrl, type ClipSummary } from '../clips-api'
+import { ClipProgressBar } from './clip-progress-bar'
 
 const { Text } = Typography
 
@@ -194,29 +195,61 @@ function ClipWallCard({ row, detailHref }: { row: ClipSummary; detailHref?: (cli
           </div>
         }
       >
-        <div style={{ fontFamily: 'monospace', fontSize: 12, marginBottom: 4 }}>{row.clip_id}</div>
-        <div>
+        <div
+          style={{
+            fontFamily: 'monospace',
+            fontSize: 12,
+            marginBottom: 4,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          title={row.clip_id}
+        >
+          {row.clip_id}
+        </div>
+        <div
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           <Text strong>{row.vehicle_name ?? '—'}</Text>
           <Text type="secondary" style={{ marginLeft: 6, fontSize: 12 }}>
             {[row.city, row.district].filter(Boolean).join(' / ') || '—'}
           </Text>
         </div>
-        <div style={{ marginTop: 4 }}>
+        <div
+          style={{
+            marginTop: 4,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           <Text type="secondary" style={{ fontSize: 12 }}>
             {formatTimestamp(row.start_time)} · {formatDuration(row.duration_seconds)}
           </Text>
         </div>
         <div style={{ marginTop: 6 }}>
-          <Tag color="blue">{row.topics.length} topics</Tag>
-          <Tag color="green">{row.cameras.length} cams</Tag>
-          {row.has_wm && <Tag color="orange">wm</Tag>}
+          <ClipProgressBar startNs={row.start_time} endNs={row.end_time} size="compact" />
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <Space size={[4, 4]} wrap>
+            <Tag color="blue" style={{ marginInlineEnd: 0 }}>{row.topics.length} topics</Tag>
+            <Tag color="green" style={{ marginInlineEnd: 0 }}>{row.cameras.length} cams</Tag>
+            {row.has_wm && <Tag color="orange" style={{ marginInlineEnd: 0 }}>wm</Tag>}
+          </Space>
         </div>
         {tags.length > 0 && (
           <div style={{ marginTop: 6 }}>
-            {tags.slice(0, 4).map((t) => (
-              <Tag key={t}>{t}</Tag>
-            ))}
-            {tags.length > 4 && <Tag>+{tags.length - 4}</Tag>}
+            <Space size={[4, 4]} wrap>
+              {tags.slice(0, 4).map((t) => (
+                <Tag key={t} style={{ marginInlineEnd: 0 }}>{t}</Tag>
+              ))}
+              {tags.length > 4 && <Tag style={{ marginInlineEnd: 0 }}>+{tags.length - 4}</Tag>}
+            </Space>
           </div>
         )}
       </Card>

@@ -1,15 +1,33 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Card, Col, Input, Row, Statistic, Tag, Typography } from 'antd'
-import { AppstoreOutlined, SearchOutlined } from '@ant-design/icons'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import {
+  Button,
+  Card,
+  Col,
+  Empty,
+  Input,
+  Row,
+  Segmented,
+  Space,
+  Statistic,
+  Tabs,
+  Tag,
+  Typography,
+} from 'antd'
+import { AppstoreOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
 import { DataTable } from '@/shared/components/data-table'
 import { fetchClipDatasets, type ClipDataset } from '../clip-datasets'
+import { listDatasets, type DatasetV2 } from '@/modules/datasets/datasets-api'
+import { NewDatasetModal } from '@/modules/datasets/new-dataset-modal'
 
-const { Text, Paragraph } = Typography
+const { Text } = Typography
+
+type View = 'datasets' | 'scenario'
+type DatasetTab = 'customized' | 'official'
 
 function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return '—'
@@ -23,6 +41,245 @@ function formatDuration(seconds: number): string {
 }
 
 export default function DatasetListPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = (searchParams.get('view') as View) || 'datasets'
+
+  const setView = useCallback(
+    (next: View) => {
+      const params = new URLSearchParams(searchParams)
+      if (next === 'datasets') params.delete('view')
+      else params.set('view', next)
+      setSearchParams(params, { replace: true })
+    },
+    [searchParams, setSearchParams],
+  )
+
+  return (
+    <PageContainer
+      title="Catalog"
+      actions={
+        <Segmented
+          value={view}
+          onChange={(v) => setView(v as View)}
+          options={[
+            { label: 'Datasets', value: 'datasets' },
+            { label: 'By scenario', value: 'scenario' },
+          ]}
+        />
+      }
+    >
+      {view === 'datasets' ? <DatasetsView /> : <ScenarioView />}
+    </PageContainer>
+  )
+}
+
+// ─────────────────────────── Datasets v2 view ───────────────────────────
+
+function DatasetsView() {
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<DatasetTab>('customized')
+  const [keyword, setKeyword] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+
+  const fetcher = useCallback(
+    () => listDatasets({ status: 'active', dataset_type: tab, limit: 200 }),
+    [tab],
+  )
+  const { data, state, error, refetch } = useQuery(fetcher, {
+    cacheKey: `catalog:datasets:v2:${tab}`,
+    isEmpty: (d) => (d?.items ?? []).length === 0,
+  })
+
+  const filtered = useMemo<DatasetV2[]>(() => {
+    const rows = data?.items ?? []
+    if (!keyword) return rows
+    const lower = keyword.toLowerCase()
+    return rows.filter((d) =>
+      [d.name, d.id, d.tag_expr ?? '', d.requirement_id ?? '', d.created_by]
+        .join(' ')
+        .toLowerCase()
+        .includes(lower),
+    )
+  }, [data, keyword])
+
+  if (state === 'loading') return <PageLoading message="Loading datasets…" />
+  if (state === 'error') return <PageError message={error?.message} onRetry={refetch} />
+
+  const customizedCount = tab === 'customized' ? data?.items.length ?? 0 : null
+  const officialCount = tab === 'official' ? data?.items.length ?? 0 : null
+
+  return (
+    <>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title={`${tab === 'customized' ? 'Customized' : 'Official'} datasets`}
+              value={data?.items.length ?? 0}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Trainable"
+              value={(data?.items ?? []).filter((d) => d.allow_train).length}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Total samples (visible page)"
+              value="—"
+              valueStyle={{ color: '#bfbfbf' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Tabs
+        activeKey={tab}
+        onChange={(k) => setTab(k as DatasetTab)}
+        items={[
+          {
+            key: 'customized',
+            label: `Customized${customizedCount != null ? ` (${customizedCount})` : ''}`,
+          },
+          {
+            key: 'official',
+            label: `Official${officialCount != null ? ` (${officialCount})` : ''}`,
+          },
+        ]}
+      />
+
+      <Card>
+        <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Search by name / id / tag_expr / requirement"
+            prefix={<SearchOutlined />}
+            allowClear
+            size="large"
+            style={{ width: 420 }}
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+            New dataset
+          </Button>
+        </Space>
+
+        {state === 'empty' ? (
+          <Empty description={`No ${tab} datasets yet.`}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+              Create first dataset
+            </Button>
+          </Empty>
+        ) : (
+          <DataTable<DatasetV2>
+            columns={[
+              {
+                key: 'name',
+                header: 'Dataset',
+                render: (row) => (
+                  <div>
+                    <Link
+                      to={`/catalog/v2/${encodeURIComponent(row.id)}`}
+                      style={{ fontWeight: 500 }}
+                    >
+                      <AppstoreOutlined style={{ marginRight: 6 }} />
+                      {row.name}
+                    </Link>
+                    <div>
+                      <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                        {row.id}
+                      </Text>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: 'dataset_type',
+                header: 'Type',
+                render: (row) => (
+                  <Tag color={row.dataset_type === 'official' ? 'blue' : 'default'}>
+                    {row.dataset_type}
+                  </Tag>
+                ),
+              },
+              {
+                key: 'dataset_version',
+                header: 'Version',
+                render: (row) => `v${row.dataset_version}`,
+              },
+              {
+                key: 'allow_train',
+                header: 'Trainable',
+                render: (row) =>
+                  row.allow_train ? <Tag color="green">yes</Tag> : <Tag>no</Tag>,
+              },
+              {
+                key: 'slice_strategy',
+                header: 'Slice',
+                render: (row) => (
+                  <Space size={4}>
+                    <Tag>{row.slice_strategy}</Tag>
+                    <Tag>{row.ts_policy}</Tag>
+                  </Space>
+                ),
+              },
+              {
+                key: 'requirement_id',
+                header: 'Requirement',
+                render: (row) =>
+                  row.requirement_id ? (
+                    <Link to={`/requirements/${row.requirement_id}`}>
+                      req:{row.requirement_id.slice(0, 8)}
+                    </Link>
+                  ) : (
+                    <Text type="secondary">—</Text>
+                  ),
+              },
+              {
+                key: 'tag_expr',
+                header: 'Tag expr',
+                render: (row) => (
+                  <Text style={{ fontSize: 12 }} ellipsis>
+                    {row.tag_expr ?? '—'}
+                  </Text>
+                ),
+              },
+              {
+                key: 'created_at',
+                header: 'Created',
+                render: (row) =>
+                  row.created_at ? new Date(row.created_at).toLocaleString() : '—',
+              },
+            ]}
+            data={filtered}
+            rowKey={(row) => row.id}
+            emptyText={keyword ? 'No datasets matched your search.' : 'No datasets.'}
+          />
+        )}
+      </Card>
+
+      <NewDatasetModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        defaultDatasetType={tab}
+        onCreated={(ds) => {
+          if (ds.dataset_type === tab) refetch()
+          else setTab(ds.dataset_type)
+          navigate(`/catalog/v2/${encodeURIComponent(ds.id)}`)
+        }}
+      />
+    </>
+  )
+}
+
+// ─────────────────────────── Scenario aggregate view ───────────────────────────
+
+function ScenarioView() {
   const [keyword, setKeyword] = useState('')
   const fetcher = useCallback(() => fetchClipDatasets(), [])
   const { data, state, error, refetch } = useQuery(fetcher, {
@@ -57,14 +314,11 @@ export default function DatasetListPage() {
   const totalDuration = (data ?? []).reduce((s, d) => s + d.duration_total_seconds, 0)
 
   return (
-    <PageContainer
-      title="Catalog · Datasets"
-      description="Clip-centric datasets aggregated by scenario. Drill down to see member clips, jump into Explorer to search, or roll up from a single clip back to its dataset."
-    >
+    <>
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={24} md={6}>
           <Card>
-            <Statistic title="Datasets" value={data?.length ?? 0} />
+            <Statistic title="Scenarios" value={data?.length ?? 0} />
           </Card>
         </Col>
         <Col xs={24} md={6}>
@@ -85,16 +339,10 @@ export default function DatasetListPage() {
       </Row>
 
       <Card>
-        <Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          Grouping key: <Text code>scenario</Text>. Each row aggregates the clips that share the
-          same <Text code>meta.scenario</Text>; clips without a scenario fall into a single
-          <Text code> unassigned</Text> bucket.
-        </Paragraph>
-
         <Input
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Search datasets by scenario / vehicle / city / tag"
+          placeholder="Search by scenario / vehicle / city / tag"
           prefix={<SearchOutlined />}
           allowClear
           size="large"
@@ -102,16 +350,13 @@ export default function DatasetListPage() {
         />
 
         {state === 'empty' ? (
-          <Text type="secondary">
-            No clips found under data/lance/. Run <Text code>make ingest</Text> after copying clip
-            data into that directory.
-          </Text>
+          <Empty description="No clips found." />
         ) : (
           <DataTable
             columns={[
               {
                 key: 'name',
-                header: 'Dataset',
+                header: 'Scenario bucket',
                 render: (row: ClipDataset) => (
                   <div>
                     <Link
@@ -179,10 +424,10 @@ export default function DatasetListPage() {
             ]}
             data={filtered}
             rowKey={(row) => row.dataset_id}
-            emptyText={keyword ? 'No datasets matched your search.' : 'No datasets available.'}
+            emptyText={keyword ? 'No scenarios matched.' : 'No scenarios.'}
           />
         )}
       </Card>
-    </PageContainer>
+    </>
   )
 }

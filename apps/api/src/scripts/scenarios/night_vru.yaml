@@ -11,7 +11,7 @@ source: dre
 estimated_data_volume: 5000
 
 # DataTask = 项目经理在工单里能写出来的"业务级里程碑"，
-# 不写 Bronze/Silver/Gold、2D/3D 等工程实现，那些归 OperationsTask / PipelineRun
+# 不写 step 名 / 2D/3D 等工程实现，那些归 OperationsTask / PipelineRun
 data_tasks:
   - task_type: collection
     title: 夜间路口路采 800 km / 80 h
@@ -49,10 +49,10 @@ clip_filter:
   fallback_take: 3   # 匹配不到时随机取前 N 条 clip，保证 demo 不会断
 
 stage_sequence:
-  - raw_ingest
-  - clip_extraction
-  - feature_extraction
-  - structured_dataset
+  - collect
+  - clip-extract
+  - feature-compute
+  - release
 
 cost_template:
   cpu_seconds_range: [120, 600]

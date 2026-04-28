@@ -1,9 +1,11 @@
 """End-to-end self-driving demo —— ``make e2e-demo`` 主驱动。
 
-按 8 步贯穿 Requirement → DataTask → Mining → Pipeline(batch+streaming) →
-Labeling/Tagging/Checking → Explorer → Release → Catalog → Export，所有对象共享
-同一个 ``x_trace_id``，最终落一份 ``DatasetSnapshotManifest`` + ``data/exports/
-e2e-snapshot-<trace>.json`` 链路 receipt。
+按 9 步贯穿 Requirement → DataTask → Mining → Pipeline(batch+streaming) →
+Labeling/Tagging/Checking → Explorer → **Build customized Dataset** → **Release
+Promote → official Dataset** → **Export Dataset Artifact**。所有对象共享同一个
+``x_trace_id``，最终交付物是一个可被算法工程师消费的 **official Dataset**
+（datasets_v2 表 + DatasetSample 行 + 导出 parquet/jsonl artifact + LineageEvent
+release）；同时落一份 ``DatasetSnapshotManifest`` 作为链路 receipt。
 
 执行方式（直接走 SessionLocal，不依赖 API 在跑）：
     uv run --package api python -m src.scripts.e2e_demo
@@ -16,13 +18,14 @@ e2e-snapshot-<trace>.json`` 链路 receipt。
     LANCE_ROOT          覆盖 data/lance 路径
 
 设计要点：
+- **交付终点 = Dataset**：v3 重构后 dataset 只有 customized + official。Step 7
+  把通过 checking 的 clip 收成 customized；Step 8 通过 release OpsItem 调
+  ``promote_to_official`` 复制 sample → 新建 official Dataset + LineageEvent。
 - **直接 SessionLocal**：CI 友好，不需要先 ``make dev-api``。如果 API 已在跑，
   Web UI 与 API 都可立刻看到结果（同一个 SQLite 文件）。
 - **Streaming 软依赖**：``streaming_probe`` 探活，broker 不可达自动降级 file-mode。
-- **Catalog 自动登记**：把 data/lance/ 下的候选 clip 注册为 dataset，否则后续
-  release 阶段挂不上 dataset_version。
-- **链路 receipt**：snapshot_service 在 release/export 写 manifest，是 demo 的
-  最终交付物。
+- **链路 receipt**：snapshot_service 在 release/export 写 manifest，记录
+  requirement → ... → official_dataset 的完整产物。
 """
 
 from __future__ import annotations
@@ -46,7 +49,6 @@ from src.models.base import (
     CollectionStatus,
     OperationsModule,
     OperationsTaskStatus,
-    PipelineStage,
     PipelineStatus,
     Priority,
     RequirementSource,
@@ -57,7 +59,10 @@ from src.models.base import (
     TaskType,
     TriggerSource,
 )
+from src.models.asset import Asset
+from src.models.dataset import Dataset, DatasetSample
 from src.models.dataset_snapshot import DatasetSnapshotManifest
+from src.models.lineage_event import EventResult, LineageEvent
 from src.models.ops_item import OpsItem
 from src.models.requirement import (
     AnnotationTask,
@@ -68,7 +73,10 @@ from src.models.requirement import (
     Requirement,
 )
 from src.scripts.lib import clip_matcher, scenario_loader, streaming_probe
-from src.services import snapshot_service
+from src.services import dataset_slice_service, snapshot_service
+
+# clip_reader 在 python/adapters；直接导入读 lance meta（start_time / end_time 纳秒）
+from adapters import clip_reader
 
 
 _PRIORITY_MAP = {"high": Priority.HIGH, "medium": Priority.MEDIUM, "low": Priority.LOW}
@@ -78,12 +86,27 @@ _SOURCE_MAP = {
     "algorithm": RequirementSource.ALGORITHM,
     "test": RequirementSource.TEST,
 }
-_STAGE_MAP = {
-    "raw_ingest": PipelineStage.RAW_INGEST,
-    "clip_extraction": PipelineStage.CLIP_EXTRACTION,
-    "feature_extraction": PipelineStage.FEATURE_EXTRACTION,
-    "structured_dataset": PipelineStage.STRUCTURED_DATASET,
+# Step 名映射（v3）：scenario yaml 里的历史值归一为简单 step 名。
+# v3 起 stage 是自由文本，不再做枚举校验；这里只是把同一语义的旧名归并到一个标签。
+_STAGE_MAP: dict[str, str] = {
+    # identity（当前 yaml 直接用这些 step 名）
+    "collect": "collect",
+    "clip-extract": "clip-extract",
+    "feature-compute": "feature-compute",
+    "process": "process",
+    "release": "release",
+    # legacy ingest/curate/publish 三段
+    "ingest": "collect",
+    "curate": "process",
+    "publish": "release",
+    # 更早的 raw_ingest/clip_extraction/...
+    "raw_ingest": "collect",
+    "clip_extraction": "clip-extract",
+    "feature_extraction": "feature-compute",
+    "structured_dataset": "release",
 }
+# release / publish step 用作"终态"判定
+_TERMINAL_STAGES = {"release"}
 
 
 @dataclass
@@ -100,14 +123,25 @@ class DemoContext:
     pipeline_data_task_id: str = ""
     data_tasks: dict[str, str] = field(default_factory=dict)  # task_type -> id
     pipeline_run_ids: list[str] = field(default_factory=list)
-    gold_run_id: str | None = None
+    # release step 的终态 PipelineRun（旧名 gold_run_id / publish_run_id 已弃用）
+    release_run_id: str | None = None
     mining_ops_task_id: str = ""
     release_ops_task_id: str = ""
+    # ── 交付物：customized + official Dataset（v3） ───────────────────
+    customized_dataset_id: str = ""
+    customized_dataset_name: str = ""
+    customized_sample_count: int = 0
+    official_dataset_id: str = ""        # 最终交付给算法工程师的 Dataset
+    official_dataset_name: str = ""
+    official_sample_count: int = 0
+    release_event_id: str | None = None  # promote_to_official 写的 LineageEvent
+    # legacy catalog adapter 字段（保留是为了 snapshot manifest 兼容）
     dataset_id: str = ""
     dataset_version_id: str = ""
     export_job_id: str | None = None
     export_artifact_uri: str | None = None
     export_format: str = "parquet"
+    asset_id: str | None = None  # 导出 artifact 登记的 Asset 行
 
     # ── 帮助：按业务语义把对象挂到对的 DataTask 上 ───────────────────
     def data_task_for(self, key: str) -> str:
@@ -115,12 +149,18 @@ class DemoContext:
         return self.data_tasks.get(key) or self.pipeline_data_task_id
 
 
-# ── stage → 业务上归属的 DataTask 类型 ───────────────────────────────
-# raw_ingest      落属"采集"工单（采集 → 入仓是同一段链路）
-# clip_extraction 落属"标注"工单（切片是为了标注）
-# feature_extr    落属"质检"工单（特征用于回归校验）
-# structured_dat  落属"发版"工单（gold 训练集）
+# ── stage（step 名） → 业务上归属的 DataTask 类型 ─────────────────────
+# 这里 step 名按 v3 的简单字符串建表；老 yaml 名也兼容。
 _STAGE_TO_TASK_TYPE: dict[str, str] = {
+    "collect": "collection",
+    "clip-extract": "annotation",
+    "feature-compute": "quality_check",
+    "process": "quality_check",
+    "release": "pipeline",
+    # 兼容旧 yaml / 旧 enum 字符串
+    "ingest": "collection",
+    "curate": "quality_check",
+    "publish": "pipeline",
     "raw_ingest": "collection",
     "clip_extraction": "annotation",
     "feature_extraction": "quality_check",
@@ -174,6 +214,31 @@ def reset_existing(db) -> int:
     if not trace_ids:
         return 0
 
+    # 1) 清掉本次 trace 涉及的 customized + official Dataset_v2（顺带 cascade samples）
+    dataset_ids_to_drop: set[str] = {m.dataset_id for m in targets if m.dataset_id}
+    # 通过 LineageEvent 反查同 trace 还登记过的其它 dataset（promote 出的 official）
+    for ev in db.query(LineageEvent).filter(LineageEvent.x_trace_id.in_(trace_ids)).all():
+        payload = ev.payload or {}
+        for k in ("customized_dataset_id", "official_dataset_id"):
+            v = payload.get(k)
+            if v:
+                dataset_ids_to_drop.add(v)
+    if dataset_ids_to_drop:
+        db.query(DatasetSample).filter(
+            DatasetSample.dataset_id.in_(dataset_ids_to_drop)
+        ).delete(synchronize_session=False)
+        db.query(Dataset).filter(Dataset.id.in_(dataset_ids_to_drop)).delete(synchronize_session=False)
+
+    # 2) Asset / EventResult / LineageEvent（按 x_trace_id 过滤）
+    db.query(Asset).filter(Asset.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
+    event_pks = [
+        ev.id for ev in db.query(LineageEvent).filter(LineageEvent.x_trace_id.in_(trace_ids)).all()
+    ]
+    if event_pks:
+        db.query(EventResult).filter(EventResult.event_pk.in_(event_pks)).delete(synchronize_session=False)
+        db.query(LineageEvent).filter(LineageEvent.id.in_(event_pks)).delete(synchronize_session=False)
+
+    # 3) ops_items / pipeline_runs / operations_tasks / data_tasks
     db.query(OpsItem).filter(OpsItem.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
     db.query(PipelineRun).filter(PipelineRun.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
     db.query(OperationsTask).filter(OperationsTask.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
@@ -192,7 +257,7 @@ def reset_existing(db) -> int:
 
 
 def step_requirement(db, ctx: DemoContext) -> None:
-    _section("Step 1/8 — Requirement", f"scenario={ctx.scenario.name} trace={ctx.x_trace_id}")
+    _section("Step 1/9 — Requirement", f"scenario={ctx.scenario.name} trace={ctx.x_trace_id}")
     req = Requirement(
         title=f"[E2E] {ctx.scenario.title}",
         description=ctx.scenario.description.strip(),
@@ -244,7 +309,7 @@ _DEFAULT_DATA_TASKS: list[dict[str, Any]] = [
 
 
 def step_data_tasks(db, ctx: DemoContext) -> None:
-    _section("Step 2/8 — Data Tasks (项目经理视角的 4 条业务里程碑，自动 sign-off)")
+    _section("Step 2/9 — Data Tasks (项目经理视角的 4 条业务里程碑，自动 sign-off)")
     plan = ctx.scenario.data_tasks or _DEFAULT_DATA_TASKS
     now = datetime.now(timezone.utc)
 
@@ -291,13 +356,13 @@ def step_data_tasks(db, ctx: DemoContext) -> None:
                 vehicle_id=f"L4-{ctx.rng.randint(100, 999)}",
                 route_id=f"R-{ctx.scenario.name}-{ctx.rng.randint(1, 9)}",
                 status=CollectionStatus.UPLOADED,
-                raw_data_uri=f"s3://bronze/raw/{ctx.x_trace_id}/{dt.id[:8]}.bag",
+                raw_data_uri=f"data/raw/{ctx.x_trace_id}/{dt.id[:8]}.bag",
                 total_frames=target_count * 30 if target_unit == "公里" else target_count,
             ))
         elif task_type == TaskType.ANNOTATION:
             db.add(AnnotationTask(
                 data_task_id=dt.id,
-                clip_uri=f"s3://silver/clips/{ctx.x_trace_id}/clips.lance",
+                clip_uri=f"data/assets/clips/{ctx.x_trace_id}/clips.lance",
                 annotation_type=AnnotationType.BBOX_2D,
                 annotation_vendor="appen",
                 status=AnnotationStatus.IN_PROGRESS,
@@ -321,7 +386,7 @@ def step_data_tasks(db, ctx: DemoContext) -> None:
 
 
 def step_mining(db, ctx: DemoContext) -> None:
-    _section("Step 3/8 — Operation Mining (filter clips by scene_tags)")
+    _section("Step 3/9 — Operation Mining (filter clips by scene_tags)")
 
     cf = ctx.scenario.clip_filter or {}
     candidates = clip_matcher.list_candidates(
@@ -418,7 +483,7 @@ def _build_metrics(ctx: DemoContext, success: bool) -> dict[str, Any]:
 
 
 def step_pipeline_batch(db, ctx: DemoContext) -> None:
-    _section("Step 4/8 — Pipeline Batch (Bronze → Silver → Gold) — 按 stage 归属对应 DataTask")
+    _section("Step 4/9 — Pipeline Batch (collect → clip-extract → feature-compute → release)")
     parent = ctx.mining_ops_task_id
     last_run_id: str | None = None
     pass_rate = float(ctx.scenario.quality_gate.get("pass_rate", 0.85))
@@ -430,9 +495,10 @@ def step_pipeline_batch(db, ctx: DemoContext) -> None:
         status = PipelineStatus.SUCCESS if success else PipelineStatus.FAILED
         started = datetime.now(timezone.utc) - timedelta(minutes=60 - idx * 12)
         ended = started + timedelta(minutes=ctx.rng.randint(5, 30))
-        # 按业务语义把 PipelineRun 挂到对的 DataTask 上：raw_ingest→采集 / clip→标注 /
-        # feature→质检 / structured→发版。这样 PM 点开任一 DataTask 都能看到自己关心的运行。
-        run_dt_id = ctx.data_task_for(_STAGE_TO_TASK_TYPE.get(stage_str, "pipeline"))
+        # 按业务语义把 PipelineRun 挂到对的 DataTask 上：collect→采集 /
+        # clip-extract→标注 / feature-compute→质检 / release→发版。这样 PM 点开
+        # 任一 DataTask 都能看到自己关心的运行。
+        run_dt_id = ctx.data_task_for(_STAGE_TO_TASK_TYPE.get(stage, "pipeline"))
         run = PipelineRun(
             data_task_id=run_dt_id,
             x_trace_id=ctx.x_trace_id,
@@ -441,13 +507,13 @@ def step_pipeline_batch(db, ctx: DemoContext) -> None:
             operations_task_id=parent,
             trigger_source=TriggerSource.OPERATIONS_TASK,
             run_purpose=RunPurpose.INITIAL_BUILD if idx == 0 else RunPurpose.BACKFILL,
-            pipeline_name=f"{ctx.scenario.name}-{stage_str}",
+            pipeline_name=f"{ctx.scenario.name}-{stage}",
             stage=stage,
-            input_uri=f"s3://bronze/{ctx.x_trace_id}/{stage_str}/in.parquet",
-            output_uri=f"s3://silver/{ctx.x_trace_id}/{stage_str}/out.parquet"
+            input_uri=f"data/raw/{ctx.x_trace_id}/{stage}/in.parquet",
+            output_uri=f"data/assets/{ctx.x_trace_id}/{stage}/out.parquet"
                        if status == PipelineStatus.SUCCESS else None,
             status=status,
-            config={"stage_index": idx, "candidate_clip_count": len(ctx.candidates)},
+            config={"step_index": idx, "candidate_clip_count": len(ctx.candidates)},
             metrics=_build_metrics(ctx, success),
             started_at=started,
             completed_at=ended,
@@ -456,11 +522,11 @@ def step_pipeline_batch(db, ctx: DemoContext) -> None:
         db.flush()
         ctx.pipeline_run_ids.append(run.id)
         last_run_id = run.id
-        if stage == PipelineStage.STRUCTURED_DATASET and status == PipelineStatus.SUCCESS:
-            ctx.gold_run_id = run.id
-        print(f"  • {stage_str:<22} status={status.value:<7} gate={run.metrics['gate_result']}  data_task={run_dt_id[:8]}")
+        if stage in _TERMINAL_STAGES and status == PipelineStatus.SUCCESS:
+            ctx.release_run_id = run.id
+        print(f"  • {stage:<16} status={status.value:<7} gate={run.metrics['gate_result']}  data_task={run_dt_id[:8]}")
     db.flush()
-    _section_done(f"{len(ctx.pipeline_run_ids)} pipeline runs (gold_run={ctx.gold_run_id or 'none'})")
+    _section_done(f"{len(ctx.pipeline_run_ids)} pipeline runs (release_run={ctx.release_run_id or 'none'})")
 
 
 # ── Step 4b : Pipeline streaming ────────────────────────────────────
@@ -468,9 +534,9 @@ def step_pipeline_batch(db, ctx: DemoContext) -> None:
 
 def step_pipeline_streaming(db, ctx: DemoContext) -> None:
     if not ctx.include_streaming:
-        _section("Step 4b/8 — Streaming SKIPPED (INCLUDE_STREAMING=0)")
+        _section("Step 4b/9 — Streaming SKIPPED (INCLUDE_STREAMING=0)")
         return
-    _section(f"Step 4b/8 — Pipeline Streaming (mode={ctx.streaming_mode})")
+    _section(f"Step 4b/9 — Pipeline Streaming (mode={ctx.streaming_mode})")
     started = datetime.now(timezone.utc) - timedelta(minutes=8)
     ended = started + timedelta(minutes=4)
     metrics = _build_metrics(ctx, success=True)
@@ -484,7 +550,7 @@ def step_pipeline_streaming(db, ctx: DemoContext) -> None:
         trigger_source=TriggerSource.EXTERNAL,
         run_purpose=RunPurpose.REPLAY,
         pipeline_name=f"{ctx.scenario.name}-streaming-replay",
-        stage=PipelineStage.RAW_INGEST,
+        stage="streaming-replay",
         input_uri=f"kafka://{ctx.scenario.streaming_topic}"
                   if ctx.streaming_mode == "kafka"
                   else "file://data/exports/clip-stream-events.jsonl",
@@ -549,7 +615,7 @@ def _ops_task(
 
 
 def step_labeling_tagging_checking(db, ctx: DemoContext) -> None:
-    _section("Step 5/8 — Labeling / Tagging / Checking (按业务语义挂到对应 DataTask)")
+    _section("Step 5/9 — Labeling / Tagging / Checking (按业务语义挂到对应 DataTask)")
     if not ctx.candidates:
         print("  ⚠ 没有候选 clip，跳过 5 步内容（仅创建占位 ops_task）")
         _ops_task(db, ctx, module=OperationsModule.LABELING, title=f"标注（占位）：{ctx.scenario.title}")
@@ -617,7 +683,7 @@ def step_labeling_tagging_checking(db, ctx: DemoContext) -> None:
 
 
 def step_explorer_hint(ctx: DemoContext) -> None:
-    _section("Step 6/8 — Explorer (verification only — no DB write)")
+    _section("Step 6/9 — Explorer (verification only — no DB write)")
     print("  Explorer 复用 /clips API 查询候选 clip：")
     if ctx.candidates:
         for cand in ctx.candidates[:3]:
@@ -627,67 +693,180 @@ def step_explorer_hint(ctx: DemoContext) -> None:
     _section_done("explorer step is informational")
 
 
-# ── Step 7 : Release → Catalog ──────────────────────────────────────
+# ── Step 7-9 : Build customized → Promote official → Export ────────
 
 
-def _bootstrap_catalog(container, candidates: list[clip_matcher.ClipCandidate]) -> str:
-    """把 data/lance/ 下的 clip 注册成 catalog dataset，确保后续 release 能挂版本。"""
-    workspace_id = container.profile.scenario.workspace_id
-    container.metadata.create_workspace({"workspace_id": workspace_id, "name": "Local AD Workspace"})
-    for cand in candidates:
-        container.metadata.create_dataset({
-            "dataset_id": cand.clip_id,
-            "name": f"{cand.vehicle_name or 'clip'}@{cand.city or 'unknown'}",
-            "workspace_id": workspace_id,
-            "profile": container.profile.name,
-        })
-    return workspace_id
+def _passed_candidates(db, ctx: DemoContext) -> list[clip_matcher.ClipCandidate]:
+    """挑出本 trace 通过 checking 的 clip（status=passed 或 waived）。"""
+    if not ctx.candidates:
+        return []
+    rows = (
+        db.query(OpsItem)
+        .filter(
+            OpsItem.x_trace_id == ctx.x_trace_id,
+            OpsItem.module == OperationsModule.CHECKING,
+            OpsItem.status.in_(["passed", "waived"]),
+        )
+        .all()
+    )
+    passed_ids = {cid for r in rows for cid in (r.clip_ids or [])}
+    if not passed_ids:
+        # checking 没产出 / 全 failed —— 兜底用所有 candidates（demo 可看到）
+        return list(ctx.candidates)
+    return [c for c in ctx.candidates if c.clip_id in passed_ids]
 
 
-def step_release(db, ctx: DemoContext) -> None:
-    _section("Step 7/8 — Release → Catalog (DatasetVersion + Snapshot Manifest)")
-    container = get_runtime_container()
-    if ctx.candidates:
-        _bootstrap_catalog(container, ctx.candidates)
+def _clip_window_ns(ctx: DemoContext, cand: clip_matcher.ClipCandidate) -> tuple[int, int]:
+    """读 lance meta 拿 (start_ns, end_ns)；缺失时合成一个稳定窗口。"""
+    try:
+        meta = clip_reader.load_meta(Path(cand.path))
+        start = int(meta.get("start_time") or 0)
+        end = int(meta.get("end_time") or 0)
+        if end > start > 0:
+            return start, end
+    except Exception:  # noqa: BLE001
+        pass
+    # 合成：用 keyframe_count * 100ms 估算时长，clip_id hash 作起点保稳定
+    duration_ns = max(int((cand.keyframe_count or 30) * 1e8), int(3 * 1e9))
+    base = (abs(hash(cand.clip_id)) % (10**10)) * int(1e9)
+    return base, base + duration_ns
 
+
+# ── Step 7 : Build customized Dataset (samples) ──────────────────────
+
+
+def step_build_customized_dataset(db, ctx: DemoContext) -> None:
+    _section("Step 7/9 — Build customized Dataset (samples from passed clips)")
+
+    passed = _passed_candidates(db, ctx)
+    if not passed:
+        print("  ⚠ 没有通过 checking 的 clip，跳过 customized dataset 构建")
+        return
+
+    name = f"ds_{ctx.scenario.name.replace('-', '_')}_{ctx.x_trace_id[-8:]}_customized"
+    ds = dataset_slice_service.create_dataset(
+        db,
+        name=name,
+        dataset_type="customized",
+        source_type="other",
+        requirement_id=ctx.requirement_id,
+        allow_train=False,
+        tag_expr=" AND ".join(ctx.scenario.scene_tags) if ctx.scenario.scene_tags else None,
+        slice_strategy="flexible",
+        ts_policy="flexible_window",
+        default_range_l=-1,
+        default_range_r=3,
+        created_by="e2e-demo",
+        resolved_meta={
+            "rules": [f"e2e:scenario={ctx.scenario.name}"],
+            "x_trace_id": ctx.x_trace_id,
+        },
+    )
+    ctx.customized_dataset_id = ds.id
+    ctx.customized_dataset_name = name
+
+    written = 0
+    for cand in passed:
+        start_ns, end_ns = _clip_window_ns(ctx, cand)
+        ts = (start_ns + end_ns) // 2
+        sample = DatasetSample(
+            dataset_id=ds.id,
+            clip_id=cand.clip_id,
+            ts=ts,
+            range_l=ds.default_range_l,
+            range_r=ds.default_range_r,
+            ts_origin="flexible",
+            origin_ref=f"window:{start_ns}-{end_ns}",
+            extra_meta={
+                "window": [start_ns, end_ns],
+                "scenario": cand.scenario,
+                "vehicle": cand.vehicle_name,
+                "city": cand.city,
+            },
+            training_type=ctx.rng.choices(
+                ["train", "test", "holdout"], weights=[7, 2, 1]
+            )[0],
+        )
+        db.add(sample)
+        try:
+            db.flush()
+            written += 1
+        except Exception:  # noqa: BLE001 — 唯一约束撞了，幂等跳过
+            db.rollback()
+
+    ctx.customized_sample_count = written
+    db.commit()
+    _section_done(
+        f"customized dataset={ds.id[:8]}… name={name} samples={written}"
+    )
+
+
+# ── Step 8 : Release → Promote to Official Dataset ──────────────────
+
+
+def step_release_promote(db, ctx: DemoContext) -> None:
+    _section("Step 8/9 — Release → Promote customized → official Dataset")
+
+    if not ctx.customized_dataset_id:
+        print("  ⚠ 没有 customized dataset，跳过 promote")
+        return
+
+    # release OpsTask + 一条 release OpsItem（status=approved）—— 与 UI promote 流程同形
     op = _ops_task(db, ctx, module=OperationsModule.RELEASE, title=f"发版：{ctx.scenario.title}")
     ctx.release_ops_task_id = op.id
     op.status = OperationsTaskStatus.COMPLETED
+
+    release_item = OpsItem(
+        operations_task_id=op.id,
+        requirement_id=ctx.requirement_id,
+        data_task_id=op.data_task_id,
+        x_trace_id=ctx.x_trace_id,
+        module=OperationsModule.RELEASE,
+        title=f"release {ctx.customized_dataset_name}",
+        status="approved",  # 直接进 approved，下一步 promote
+        kind="training",
+        owner="release@example.com",
+        clip_ids=[c.clip_id for c in ctx.candidates],
+        dataset_id=ctx.customized_dataset_id,
+        scenario=ctx.scenario.name,
+        payload={"intent": "promote-to-official"},
+    )
+    db.add(release_item)
     db.flush()
 
-    # 主 dataset：以 mining 出的第一条候选 clip 为名（demo 直观）。无候选则用 trace_id。
-    dataset_id = (ctx.candidates[0].clip_id if ctx.candidates
-                  else f"e2e-dataset-{ctx.x_trace_id}")
-    if not ctx.candidates:
-        # 没有候选时也得在 catalog 登记 dataset，否则 list_dataset_versions 失败
-        container.metadata.create_workspace({
-            "workspace_id": container.profile.scenario.workspace_id,
-            "name": "Local AD Workspace",
-        })
-        container.metadata.create_dataset({
-            "dataset_id": dataset_id,
-            "name": f"E2E Demo {ctx.scenario.name}",
-            "workspace_id": container.profile.scenario.workspace_id,
-            "profile": container.profile.name,
-        })
-    version_id = f"e2e-{ctx.x_trace_id[-8:]}"
-    container.metadata.create_dataset_version({
-        "dataset_id": dataset_id,
-        "version_id": version_id,
-        "sample_count": sum(c.keyframe_count for c in ctx.candidates) or 0,
-        "table_name": "topic.lance" if ctx.candidates else "dataset_samples",
-    })
-    ctx.dataset_id = dataset_id
-    ctx.dataset_version_id = version_id
+    customized = db.query(Dataset).filter(Dataset.id == ctx.customized_dataset_id).first()
+    if customized is None:
+        print("  ✗ 未找到 customized dataset，无法 promote")
+        return
 
-    # 写 / 更新 snapshot
+    official_name = ctx.customized_dataset_name.replace("_customized", "_official")
+    result = dataset_slice_service.promote_to_official(
+        db,
+        customized=customized,
+        name=official_name,
+        tag_expr=customized.tag_expr or f"promoted_from:{customized.id}",
+        allow_train=True,
+        requirement_id=ctx.requirement_id,
+        ops_item_id=release_item.id,
+        x_trace_id=ctx.x_trace_id,
+        pipeline_run_id=ctx.release_run_id,
+        created_by="e2e-demo",
+    )
+    db.commit()
+
+    ctx.official_dataset_id = result["official_dataset"]["id"]
+    ctx.official_dataset_name = result["official_dataset"]["name"]
+    ctx.official_sample_count = result["samples_copied"]
+    ctx.release_event_id = result["event"]["id"]
+
+    # snapshot manifest：把 official dataset 当作交付物登记
     snapshot_service.open_or_create(
         db,
         x_trace_id=ctx.x_trace_id,
         requirement_id=ctx.requirement_id,
         data_task_id=ctx.pipeline_data_task_id,
         operations_task_id=ctx.release_ops_task_id,
-        gold_pipeline_run_id=ctx.gold_run_id,
+        gold_pipeline_run_id=ctx.release_run_id,
         pipeline_run_count=len(ctx.pipeline_run_ids),
         clip_ids=[c.clip_id for c in ctx.candidates],
         scenario=ctx.scenario.name,
@@ -697,59 +876,106 @@ def step_release(db, ctx: DemoContext) -> None:
     snapshot_service.attach_dataset_version(
         db,
         x_trace_id=ctx.x_trace_id,
-        dataset_id=dataset_id,
-        dataset_version_id=version_id,
+        dataset_id=ctx.official_dataset_id,
+        dataset_version_id=f"v{result['official_dataset']['dataset_version']}",
     )
     db.commit()
-    _section_done(f"release op_task={op.id} dataset={dataset_id}@{version_id}")
+    # 回填 dataset_id 给 export 步骤
+    ctx.dataset_id = ctx.official_dataset_id
+    ctx.dataset_version_id = f"v{result['official_dataset']['dataset_version']}"
+
+    _section_done(
+        f"official dataset={ctx.official_dataset_id[:8]}… name={ctx.official_dataset_name} "
+        f"samples={ctx.official_sample_count} (deduped={result['samples_deduped']}) "
+        f"event={(ctx.release_event_id or '')[:8]}…"
+    )
 
 
-# ── Step 8 : Export ─────────────────────────────────────────────────
+# ── Step 9 : Export Official Dataset Artifact ───────────────────────
 
 
 def step_export(db, ctx: DemoContext) -> None:
-    _section("Step 8/8 — Export → Final Receipt")
-    container = get_runtime_container()
-    output_path = Path("data/exports") / f"{ctx.dataset_id}-{ctx.dataset_version_id}.{ctx.export_format}"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    # 直接尝试通过 table adapter 导出（与 export 路由内部相同的调用）；失败时写一个
-    # stub 文件，保证 demo 可重复跑。
-    try:
-        container.table.export(
-            "topic.lance" if ctx.candidates else "dataset_samples",
-            output_path,
-            format=ctx.export_format,
-        )
-        export_status = "ready"
-    except Exception as exc:  # noqa: BLE001
-        # stub fallback：写一个占位文件 + manifest 记录原因
-        output_path.write_text(
-            json.dumps({"stub": True, "reason": str(exc), "trace": ctx.x_trace_id}),
-            encoding="utf-8",
-        )
-        export_status = "ready-stub"
-        print(f"  ⚠ table.export failed, wrote stub artifact: {exc}")
+    _section("Step 9/9 — Export Official Dataset → Algorithm Engineer Artifact")
 
+    if not ctx.official_dataset_id:
+        print("  ⚠ 没有 official dataset，跳过 export")
+        return
+
+    samples = (
+        db.query(DatasetSample)
+        .filter(DatasetSample.dataset_id == ctx.official_dataset_id)
+        .order_by(DatasetSample.created_at.asc())
+        .all()
+    )
+    rows = [
+        {
+            "id": s.id,
+            "dataset_id": s.dataset_id,
+            "clip_id": s.clip_id,
+            "ts": s.ts,
+            "range_l": s.range_l,
+            "range_r": s.range_r,
+            "ts_origin": s.ts_origin,
+            "training_type": s.training_type,
+            "extra_meta": s.extra_meta,
+        }
+        for s in samples
+    ]
+
+    # 算法工程师消费：JSON Lines 直接读 / parquet 走 pandas（demo 优先 jsonl，可用性最高）
+    fmt = ctx.export_format if ctx.export_format in {"jsonl", "json"} else "jsonl"
+    output_path = Path("data/exports") / f"{ctx.official_dataset_id}-{ctx.dataset_version_id}.{fmt}"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    ctx.export_artifact_uri = str(output_path)
+    ctx.export_format = fmt
+
+    container = get_runtime_container()
     job = container.metadata.create_export_job({
-        "export_id": f"export-{ctx.dataset_id}-{ctx.dataset_version_id}-{ctx.export_format}",
-        "dataset_id": ctx.dataset_id,
-        "format": ctx.export_format,
-        "status": export_status,
+        "export_id": f"export-{ctx.official_dataset_id}-{ctx.dataset_version_id}-{fmt}",
+        "dataset_id": ctx.official_dataset_id,
+        "format": fmt,
+        "status": "ready",
         "output_path": str(output_path),
     })
     ctx.export_job_id = job.get("export_id")
-    ctx.export_artifact_uri = str(output_path)
+
+    # 登记一条 derived Asset：交付物本身就是一个 derived data asset
+    asset = Asset(
+        name=f"official-dataset-{ctx.official_dataset_id[:8]}.{fmt}",
+        asset_kind="derived",
+        uri=str(output_path),
+        format=fmt,
+        clip_id=None,
+        producer_pipeline_run_id=ctx.release_run_id,
+        producer_event_id=ctx.release_event_id,
+        requirement_id=ctx.requirement_id,
+        x_trace_id=ctx.x_trace_id,
+        byte_size=output_path.stat().st_size if output_path.exists() else None,
+        row_count=len(rows),
+        payload={
+            "dataset_id": ctx.official_dataset_id,
+            "dataset_version_id": ctx.dataset_version_id,
+            "delivered_to": "algorithm_engineer",
+            "schema": list(rows[0].keys()) if rows else [],
+        },
+    )
+    db.add(asset)
+    db.flush()
+    ctx.asset_id = asset.id
 
     snapshot_service.attach_export_artifact(
         db,
         x_trace_id=ctx.x_trace_id,
         export_job_id=ctx.export_job_id,
         export_artifact_uri=ctx.export_artifact_uri,
-        export_format=ctx.export_format,
+        export_format=fmt,
     )
     db.commit()
     _section_done(
-        f"export job={ctx.export_job_id} artifact={ctx.export_artifact_uri}"
+        f"artifact={output_path} rows={len(rows)} asset={asset.id[:8]}…"
     )
 
 
@@ -759,26 +985,38 @@ def step_export(db, ctx: DemoContext) -> None:
 def print_banner(ctx: DemoContext) -> None:
     print()
     print("═" * 72)
-    print("✔ E2E Demo Complete")
+    print("✔ E2E Demo Complete — deliverable: official Dataset")
     print("═" * 72)
     receipt = Path("data/exports") / f"e2e-snapshot-{ctx.x_trace_id}.json"
-    print(f"  scenario        : {ctx.scenario.name} ({ctx.scenario.title})")
-    print(f"  trace_id        : {ctx.x_trace_id}")
-    print(f"  requirement_id  : {ctx.requirement_id}")
-    print(f"  release_task    : {ctx.pipeline_data_task_id}")
-    print(f"  pipeline_runs   : {len(ctx.pipeline_run_ids)} (gold={ctx.gold_run_id or 'n/a'})")
-    print(f"  candidate_clips : {len(ctx.candidates)}")
-    print(f"  dataset_version : {ctx.dataset_id}@{ctx.dataset_version_id}")
-    print(f"  export_artifact : {ctx.export_artifact_uri}")
-    print(f"  streaming       : {ctx.streaming_mode} ({ctx.streaming_detail})"
-          if ctx.include_streaming else "  streaming       : skipped")
-    print(f"  receipt         : {receipt}")
+    print(f"  scenario          : {ctx.scenario.name} ({ctx.scenario.title})")
+    print(f"  trace_id          : {ctx.x_trace_id}")
+    print(f"  requirement_id    : {ctx.requirement_id}")
+    print(f"  pipeline_runs     : {len(ctx.pipeline_run_ids)} (release_run={ctx.release_run_id or 'n/a'})")
+    print(f"  candidate_clips   : {len(ctx.candidates)}")
     print("─" * 72)
-    print("Verify (API expected at http://localhost:8000):")
+    print("  ── Datasets (v3) ──")
+    print(f"  customized        : {ctx.customized_dataset_id or '—'}  ({ctx.customized_sample_count} samples)")
+    print(f"  ★ official        : {ctx.official_dataset_id or '—'}  ({ctx.official_sample_count} samples)")
+    print(f"    name            : {ctx.official_dataset_name or '—'}")
+    print(f"    release_event   : {ctx.release_event_id or '—'}")
+    print("─" * 72)
+    print(f"  artifact (file)   : {ctx.export_artifact_uri or '—'}")
+    print(f"  asset_id          : {ctx.asset_id or '—'}")
+    print(f"  trace receipt     : {receipt}")
+    print(f"  streaming         : {ctx.streaming_mode} ({ctx.streaming_detail})"
+          if ctx.include_streaming else "  streaming         : skipped")
+    print("─" * 72)
+    print("For the algorithm engineer (API expected at http://localhost:8000):")
+    if ctx.official_dataset_id:
+        print(f"  curl 'http://localhost:8000/api/v1/datasets/{ctx.official_dataset_id}'")
+        print(f"  curl 'http://localhost:8000/api/v1/datasets/{ctx.official_dataset_id}/samples?limit=200'")
+        print(f"  open  http://localhost:5173/catalog/v2/{ctx.official_dataset_id}")
+    print()
+    print("Trace verification:")
     print(f"  curl http://localhost:8000/api/v1/snapshots/{ctx.x_trace_id}")
     print(f"  curl 'http://localhost:8000/api/v1/pipeline-runs?x_trace_id={ctx.x_trace_id}'")
-    print(f"  curl 'http://localhost:8000/api/v1/ops/mining?x_trace_id={ctx.x_trace_id}'")
-    print(f"  curl 'http://localhost:8000/api/v1/ops/labeling?x_trace_id={ctx.x_trace_id}'")
+    print(f"  curl 'http://localhost:8000/api/v1/events?x_trace_id={ctx.x_trace_id}'")
+    print(f"  curl 'http://localhost:8000/api/v1/assets?x_trace_id={ctx.x_trace_id}'")
     print(f"  curl 'http://localhost:8000/api/v1/trace/{ctx.x_trace_id}'")
     print(f"  open  http://localhost:5173/pipelines?x_trace_id={ctx.x_trace_id}")
     print("═" * 72)
@@ -845,7 +1083,8 @@ def main() -> None:
         step_pipeline_streaming(db, ctx); db.commit()
         step_labeling_tagging_checking(db, ctx); db.commit()
         step_explorer_hint(ctx)
-        step_release(db, ctx)
+        step_build_customized_dataset(db, ctx); db.commit()
+        step_release_promote(db, ctx)
         step_export(db, ctx)
         print_banner(ctx)
     except Exception as exc:

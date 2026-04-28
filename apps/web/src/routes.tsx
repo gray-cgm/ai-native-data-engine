@@ -5,6 +5,7 @@ import { MainLayout } from './shared/layouts/main-layout'
 const OverviewPage = lazy(() => import('./modules/overview/pages/overview.page'))
 const DatasetListPage = lazy(() => import('./modules/catalog/pages/dataset-list.page'))
 const DatasetDetailPage = lazy(() => import('./modules/catalog/pages/dataset-detail.page'))
+const DatasetV2DetailPage = lazy(() => import('./modules/catalog/pages/dataset-v2-detail.page'))
 const RequirementListPage = lazy(() => import('./modules/requirements/pages/requirement-list.page'))
 const RequirementDetailPage = lazy(() => import('./modules/requirements/pages/requirement-detail.page'))
 const RequirementReportPage = lazy(() => import('./modules/requirements/pages/requirement-report.page'))
@@ -31,6 +32,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: '/', element: <OverviewPage /> },
       { path: '/catalog', element: <DatasetListPage /> },
+      { path: '/catalog/v2/:datasetId', element: <DatasetV2DetailPage /> },
       { path: '/catalog/:datasetId', element: <DatasetDetailPage /> },
       { path: '/requirements', element: <RequirementListPage /> },
       { path: '/requirements/:id', element: <RequirementDetailPage /> },

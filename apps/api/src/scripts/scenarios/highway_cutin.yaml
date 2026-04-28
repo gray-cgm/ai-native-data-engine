@@ -46,10 +46,10 @@ clip_filter:
   fallback_take: 2
 
 stage_sequence:
-  - raw_ingest
-  - clip_extraction
-  - feature_extraction
-  - structured_dataset
+  - collect
+  - clip-extract
+  - feature-compute
+  - release
 
 cost_template:
   cpu_seconds_range: [180, 800]

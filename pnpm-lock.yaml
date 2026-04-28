@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  is-gen-fn@0.0.1:
+    hash: zldllomx6x7v6ryyeluxddcqgy
+    path: patches/is-gen-fn@0.0.1.patch
+
 importers:
 
   .:
@@ -3309,9 +3314,10 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
-  /is-gen-fn@0.0.1:
+  /is-gen-fn@0.0.1(patch_hash=zldllomx6x7v6ryyeluxddcqgy):
     resolution: {integrity: sha512-KB/QRnp3FOjYZzP7XnsitrYvw9c3UpMlIKeKAq1FfSIotGKrMfy5lCqlskANC78tV9kc7gM9g7Il8MmO6uSWtQ==}
     dev: false
+    patched: true
 
   /is-hexadecimal@2.0.1:
     resolution: {integrity: sha512-DgZQp241c8oO6cA1SbTEWiXeoxV42vlcJxgH+B3hi1AiqqKruZR3ZGF8In3fj4+/y/7rHvlOZLZtgJ/4ttYGZg==}
@@ -3401,7 +3407,7 @@ packages:
       debug: 4.1.1
       delegates: 1.0.0
       flatten: 1.0.3
-      is-gen-fn: 0.0.1
+      is-gen-fn: 0.0.1(patch_hash=zldllomx6x7v6ryyeluxddcqgy)
       joi: 17.13.3
       methods: 1.1.2
       sliced: 1.0.1

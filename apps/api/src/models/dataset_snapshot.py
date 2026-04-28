@@ -1,6 +1,6 @@
 """DatasetSnapshotManifest —— 端到端链路 receipt。
 
-把一个 trace 的全链路产物（requirement → gold pipeline_run → dataset_version
+把一个 trace 的全链路产物（requirement → release pipeline_run → dataset_version
 → export artifact）固化成一行 + 一份 JSON。release 阶段写入，export 完成时回写
 artifact_uri。前端的 /snapshots/{trace_id} 直接读这张表。
 
@@ -39,7 +39,8 @@ class DatasetSnapshotManifest(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # ── pipeline 侧 ──
     gold_pipeline_run_id: Mapped[Optional[str]] = mapped_column(
-        String(36), nullable=True, comment="终态 Gold PipelineRun"
+        String(36), nullable=True,
+        comment="终态 release PipelineRun（字段名沿用 gold_，避免迁移；语义已改）",
     )
     pipeline_run_count: Mapped[int] = mapped_column(
         Integer, default=0, comment="本 trace 涉及的 PipelineRun 总数"

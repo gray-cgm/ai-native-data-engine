@@ -1,19 +1,18 @@
 """数据湖仓流水线 —— Dagster 软件定义资产 (SDA)
 
-实现从原始采集包到最终发版数据集的全链路流转，对应 One-Pipeline 四阶段模型：
-  Bronze(raw_ingest) → Silver(clip_extraction) → Silver(feature_extraction) → Gold(structured_dataset)
+v3 设计：放弃 ingest/curate/publish 三段命名（也再无 Bronze/Silver/Gold）。
+Dataset 只剩 customized + official 两类；非 dataset 的数据资产（raw 采集 /
+派生产物）走 Asset 表登记。这里的 Dagster asset 仍按"产出什么"组织，每个
+output 都是一个 Asset 行（asset_kind=raw 或 derived），通过 PipelineRun
+反查血缘。
 
 设计取舍：
-- 使用 Dagster @asset 而非 @op/@job，拥抱"软件定义资产"理念
-  * 每个 asset 声明"我产出什么数据"，而非"我执行什么步骤"
-  * Dagster 自动推导依赖关系、增量更新和数据血缘
-- DuckDB 作为 Silver 层的轻量级数据质量引擎：
-  * 本地开发零依赖即可运行质量校验
-  * 生产环境可平滑替换为 StarRocks/Trino
-- 数据目录结构遵循现有工程约定：
-  * data/bronze/ → 原始数据
-  * data/silver/ → 清洗/特征数据
-  * data/gold/   → 发版数据集
+- 使用 Dagster @asset 而非 @op/@job：每个 asset 声明"我产出什么数据"。
+- DuckDB 作为质检引擎：本地开发零依赖；生产可换 StarRocks/Trino。
+- 数据目录：
+  * data/raw/    → raw asset 落地（原始采集 / 入仓 jsonl）
+  * data/assets/ → derived asset 落地（切片清单 / 特征 / 质检报告）
+  * data/exports/→ 发版 artifact + e2e receipt（official 数据集）
 """
 
 import json
@@ -45,64 +44,66 @@ def _timestamp_tag() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-# ═══════════════════════════ Bronze 层：原始数据入库 ═══════════════════════════
+# ═══════════════════════════ raw asset：原始数据入库 ═══════════════════════════
 
 
 @asset(
     group_name="data_pipeline",
-    description="Bronze 层：将原始采集包（ROS bag / 传感器数据）注册到数据目录",
+    description="raw asset：将原始采集包（ROS bag / 传感器数据）登记到数据目录",
 )
 def raw_collection_ingest(context: AssetExecutionContext) -> dict[str, Any]:
-    """原始采集包入库
+    """原始采集包入库 —— 产出 raw asset
 
-    从指定目录扫描原始数据文件，注册到 Bronze 层目录。
-    实际生产中这里会对接车端数据上传服务或 S3 同步。
+    从指定目录扫描原始数据文件，登记到 data/raw/。实际生产中这里会
+    对接车端数据上传服务或 S3 同步。后续可通过 Asset 表把每行登记成
+    asset_kind=raw 的资产。
     """
-    bronze_dir = _data_root() / "bronze"
-    bronze_dir.mkdir(parents=True, exist_ok=True)
+    raw_dir = _data_root() / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
 
     # 模拟扫描原始数据（实际场景对接 StorageAdapter）
-    raw_files = list(bronze_dir.glob("**/*"))
+    raw_files = list(raw_dir.glob("**/*"))
     manifest = {
-        "stage": "raw_ingest",
+        "step": "collect",
+        "asset_kind": "raw",
         "timestamp": _timestamp_tag(),
-        "bronze_dir": str(bronze_dir),
+        "raw_dir": str(raw_dir),
         "file_count": len(raw_files),
-        "files": [str(f.relative_to(bronze_dir)) for f in raw_files[:100]],
+        "files": [str(f.relative_to(raw_dir)) for f in raw_files[:100]],
     }
 
     # 写入入库清单
-    manifest_path = bronze_dir / "ingest_manifest.json"
+    manifest_path = raw_dir / "collect_manifest.json"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
 
     context.add_output_metadata(
         {
             "file_count": MetadataValue.int(len(raw_files)),
-            "bronze_dir": MetadataValue.path(str(bronze_dir)),
+            "raw_dir": MetadataValue.path(str(raw_dir)),
         }
     )
-    context.log.info(f"Bronze 层入库完成：{len(raw_files)} 个文件")
+    context.log.info(f"raw asset 登记完成：{len(raw_files)} 个文件")
     return manifest
 
 
-# ═══════════════════════════ Silver 层：多模态切片 ═══════════════════════════
+# ═══════════════════════════ derived asset：多模态切片清单 ═══════════════════════════
 
 
 @asset(
     group_name="data_pipeline",
     ins={"raw_data": AssetIn(key="raw_collection_ingest")},
-    description="Silver 层-切片：将原始数据按场景/时间窗口切割为 Clip/Episode",
+    description="derived asset-切片清单：将原始数据按场景/时间窗口切割为 Clip/Episode",
 )
 def multimodal_clip_extraction(
     context: AssetExecutionContext, raw_data: dict[str, Any]
 ) -> dict[str, Any]:
-    """多模态切片提取
+    """多模态切片提取 —— 产出 derived asset
 
-    从 Bronze 层原始数据中，按场景和时间窗口切割出 Clip（片段），
+    从 raw asset 中按场景和时间窗口切割出 Clip（片段），
     每个 Clip 包含多模态同步数据（Camera + LiDAR + CAN 等）。
     """
-    silver_dir = _data_root() / "silver" / "clips"
-    silver_dir.mkdir(parents=True, exist_ok=True)
+    clips_dir = _data_root() / "assets" / "clips"
+    clips_dir.mkdir(parents=True, exist_ok=True)
 
     # 模拟切片逻辑（实际场景使用 One-Pipeline 的切片引擎）
     clip_count = max(raw_data.get("file_count", 0) // 10, 1)
@@ -111,7 +112,7 @@ def multimodal_clip_extraction(
         clip_id = f"clip_{_timestamp_tag()}_{i:04d}"
         clip_meta = {
             "clip_id": clip_id,
-            "source_stage": "raw_ingest",
+            "source_step": "collect",
             "sensors": ["camera_front", "lidar_top", "can_bus"],
             "frame_count": 30,
             "duration_sec": 3.0,
@@ -119,34 +120,35 @@ def multimodal_clip_extraction(
         clips.append(clip_meta)
 
     result = {
-        "stage": "clip_extraction",
+        "step": "clip-extract",
+        "asset_kind": "derived",
         "timestamp": _timestamp_tag(),
         "clip_count": len(clips),
-        "output_dir": str(silver_dir),
+        "output_dir": str(clips_dir),
         "clips": clips[:50],  # 限制输出大小
     }
 
     # 持久化切片元数据
-    meta_path = silver_dir / "clips_manifest.json"
+    meta_path = clips_dir / "clips_manifest.json"
     meta_path.write_text(json.dumps(result, ensure_ascii=False, indent=2))
 
     context.add_output_metadata(
         {
             "clip_count": MetadataValue.int(len(clips)),
-            "output_dir": MetadataValue.path(str(silver_dir)),
+            "output_dir": MetadataValue.path(str(clips_dir)),
         }
     )
-    context.log.info(f"Silver 层切片完成：{len(clips)} 个 Clip")
+    context.log.info(f"derived asset (clips) 切片完成：{len(clips)} 个 Clip")
     return result
 
 
-# ═══════════════════════════ Silver 层：特征提取 + 质量校验 ═══════════════════════════
+# ═══════════════════════════ derived asset：特征提取 + 质量校验 ═══════════════════════════
 
 
 @asset(
     group_name="data_pipeline",
     ins={"clips": AssetIn(key="multimodal_clip_extraction")},
-    description="Silver 层-特征：从切片中提取结构化特征，并用 DuckDB 做数据质量校验",
+    description="derived asset-特征：从切片中提取结构化特征，并用 DuckDB 做数据质量校验",
 )
 def feature_extraction_with_quality_check(
     context: AssetExecutionContext, clips: dict[str, Any]
@@ -154,16 +156,17 @@ def feature_extraction_with_quality_check(
     """特征提取与数据质量校验
 
     1. 从切片中提取结构化特征（检测框、车道线、场景标签等）
-    2. 使用 DuckDB 进行 Silver 层数据质量校验：
+    2. 使用 DuckDB 做数据质量校验：
        - 拦截缺失关键特征的样本
        - 检查数值范围异常
        - 统计特征分布
 
     设计取舍：DuckDB 作为嵌入式分析引擎，零部署成本，
-    且与现有 QueryAdapter(duckdb) 保持技术栈一致。
+    且与现有 QueryAdapter(duckdb) 保持技术栈一致。产出的特征文件 +
+    质检报告可登记为 derived Asset。
     """
-    silver_dir = _data_root() / "silver" / "features"
-    silver_dir.mkdir(parents=True, exist_ok=True)
+    features_dir = _data_root() / "assets" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
 
     # ── 步骤 1：模拟特征提取 ──
     features = []
@@ -181,7 +184,7 @@ def feature_extraction_with_quality_check(
         features.append(feature)
 
     # 写入 Parquet（此处简化为 JSON，实际使用 PyArrow 写 Parquet/Lance）
-    features_path = silver_dir / "features.json"
+    features_path = features_dir / "features.json"
     features_path.write_text(json.dumps(features, ensure_ascii=False, indent=2))
 
     # ── 步骤 2：DuckDB 数据质量校验 ──
@@ -250,14 +253,15 @@ def feature_extraction_with_quality_check(
     }
 
     # 持久化质量报告
-    report_path = silver_dir / "quality_report.json"
+    report_path = features_dir / "quality_report.json"
     report_path.write_text(json.dumps(quality_report, ensure_ascii=False, indent=2))
 
     result = {
-        "stage": "feature_extraction",
+        "step": "feature-compute",
+        "asset_kind": "derived",
         "timestamp": _timestamp_tag(),
         "feature_count": len(features),
-        "output_dir": str(silver_dir),
+        "output_dir": str(features_dir),
         "quality_report": quality_report,
     }
 
@@ -281,36 +285,36 @@ def feature_extraction_with_quality_check(
     return result
 
 
-# ═══════════════════════════ Gold 层：发版数据集 ═══════════════════════════
+# ═══════════════════════════ official dataset：发版数据集 ═══════════════════════════
 
 
 @asset(
     group_name="data_pipeline",
     ins={"features": AssetIn(key="feature_extraction_with_quality_check")},
-    description="Gold 层：生成最终发版数据集，仅包含通过质量校验的样本",
+    description="release step：生成最终发版数据集（official 类型），仅含通过质量校验的样本",
 )
 def structured_dataset_release(
     context: AssetExecutionContext, features: dict[str, Any]
 ) -> dict[str, Any]:
-    """最终发版数据集
+    """最终发版数据集 —— 升格为 official Dataset（allow_train 可为 true）
 
-    从 Silver 层的特征数据中：
+    从特征 derived asset 中：
     1. 过滤掉未通过质量校验的样本
     2. 组装结构化数据集（对应 Image → Group → Line → Point → Properties）
-    3. 生成数据集版本清单
+    3. 生成数据集版本清单（落 data/exports/）
 
     即使质量校验有问题，仍然产出数据集（标记质量状态），
     让下游消费者自行决定是否使用，避免流水线完全阻塞。
     """
-    gold_dir = _data_root() / "gold" / "datasets"
-    gold_dir.mkdir(parents=True, exist_ok=True)
+    exports_dir = _data_root() / "exports"
+    exports_dir.mkdir(parents=True, exist_ok=True)
 
     quality_report = features.get("quality_report", {})
     quality_issues = quality_report.get("quality_issues", {})
     blocked_clips = set(quality_issues.get("missing_lane_marking", []))
 
     # 过滤出通过校验的特征
-    features_path = _data_root() / "silver" / "features" / "features.json"
+    features_path = _data_root() / "assets" / "features" / "features.json"
     all_features = json.loads(features_path.read_text()) if features_path.exists() else []
     passed_features = [f for f in all_features if f["clip_id"] not in blocked_clips]
 
@@ -318,7 +322,8 @@ def structured_dataset_release(
     dataset = {
         "dataset_id": f"ds_{version_tag}",
         "version": version_tag,
-        "stage": "structured_dataset",
+        "step": "release",
+        "dataset_type": "official",
         "total_samples": len(all_features),
         "passed_samples": len(passed_features),
         "blocked_samples": len(blocked_clips),
@@ -340,11 +345,11 @@ def structured_dataset_release(
     }
 
     # 持久化发版数据集
-    dataset_path = gold_dir / f"dataset_{version_tag}.json"
+    dataset_path = exports_dir / f"dataset_{version_tag}.json"
     dataset_path.write_text(json.dumps(dataset, ensure_ascii=False, indent=2))
 
     # 更新最新版本指针
-    latest_path = gold_dir / "latest.json"
+    latest_path = exports_dir / "latest.json"
     latest_path.write_text(
         json.dumps(
             {"latest_version": version_tag, "path": str(dataset_path)},
@@ -363,6 +368,6 @@ def structured_dataset_release(
         }
     )
     context.log.info(
-        f"Gold 层发版完成：{dataset['passed_samples']}/{dataset['total_samples']} 样本通过"
+        f"official dataset 发版完成：{dataset['passed_samples']}/{dataset['total_samples']} 样本通过"
     )
     return dataset

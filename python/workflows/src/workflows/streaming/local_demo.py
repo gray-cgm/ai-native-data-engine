@@ -10,11 +10,13 @@ from core.domain.models import LineageEvent, SampleRecord
 from core.profiles.runtime import RuntimeContainer
 
 DEFAULT_EVENT_LOG_PATH = Path('data/raw/streaming/local-events.jsonl')
-DEFAULT_BRONZE_LOG_PATH = Path('data/bronze/streaming/normalized-events.jsonl')
+# v3：放弃 ingest/curate/publish 三段；产物按 Asset 概念落到 data/raw/ 与
+# data/assets/，发版数据集落到 data/exports/。
+DEFAULT_NORMALIZED_LOG_PATH = Path('data/raw/streaming/normalized-events.jsonl')
 DEFAULT_QUERY_DB_PATH = Path('data/duckdb/streaming_demo.duckdb')
-DEFAULT_QUERY_DATASET_PATH = Path('data/silver/streaming_samples.lance')
+DEFAULT_QUERY_DATASET_PATH = Path('data/assets/streaming_samples.lance')
 DEFAULT_SEARCH_INDEX_PATH = Path('data/lance/streaming_samples.lance')
-DEFAULT_GOLD_ROOT = Path('data/gold/streaming')
+DEFAULT_RELEASE_ROOT = Path('data/exports/streaming')
 DEFAULT_EXPORT_PATH = Path('data/exports/local-streaming-demo-latest.jsonl')
 DEFAULT_SUMMARY_PATH = Path('data/exports/local-streaming-summary.json')
 
@@ -142,7 +144,7 @@ def run_local_streaming_demo(
         data_path=DEFAULT_QUERY_DATASET_PATH,
     )
     search = LanceVectorAdapter(DEFAULT_SEARCH_INDEX_PATH)
-    table = LanceTableAdapter(DEFAULT_GOLD_ROOT)
+    table = LanceTableAdapter(DEFAULT_RELEASE_ROOT)
 
     container.metadata.create_workspace(
         {'workspace_id': STREAM_WORKSPACE_ID, 'name': 'Local Streaming Workspace'}
@@ -156,8 +158,8 @@ def run_local_streaming_demo(
         }
     )
 
-    DEFAULT_BRONZE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    DEFAULT_BRONZE_LOG_PATH.write_text('')
+    DEFAULT_NORMALIZED_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DEFAULT_NORMALIZED_LOG_PATH.write_text('')
 
     seen_event_ids: set[str] = set()
     latest_records: dict[str, SampleRecord] = {}
@@ -208,7 +210,7 @@ def run_local_streaming_demo(
                 }
             )
 
-        _append_jsonl(DEFAULT_BRONZE_LOG_PATH, normalized_batch)
+        _append_jsonl(DEFAULT_NORMALIZED_LOG_PATH, normalized_batch)
 
         current_records = sorted(latest_records.values(), key=lambda record: (record.timestamp, record.id))
         query.create_sample_table(current_records)
@@ -253,7 +255,7 @@ def run_local_streaming_demo(
                     'batch_number': batch_number,
                     'accepted_events': len(normalized_batch),
                     'duplicate_events_skipped': total_duplicates,
-                    'gold_table': STREAM_TABLE_NAME,
+                    'release_table': STREAM_TABLE_NAME,
                 },
             )
         )
@@ -276,11 +278,11 @@ def run_local_streaming_demo(
         'dataset_name': STREAM_DATASET_NAME,
         'profile': container.profile.name,
         'event_log_path': str(event_log_path),
-        'bronze_log_path': str(DEFAULT_BRONZE_LOG_PATH),
+        'normalized_log_path': str(DEFAULT_NORMALIZED_LOG_PATH),
         'query_db_path': str(DEFAULT_QUERY_DB_PATH),
-        'silver_dataset_path': str(DEFAULT_QUERY_DATASET_PATH),
+        'sample_dataset_path': str(DEFAULT_QUERY_DATASET_PATH),
         'search_index_path': str(DEFAULT_SEARCH_INDEX_PATH),
-        'gold_table_root': str(DEFAULT_GOLD_ROOT),
+        'release_table_root': str(DEFAULT_RELEASE_ROOT),
         'export_path': str(export_path),
         'event_count': len(events),
         'duplicate_events_skipped': total_duplicates,

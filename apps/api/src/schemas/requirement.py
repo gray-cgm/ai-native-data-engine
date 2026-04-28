@@ -19,7 +19,6 @@ from src.models.base import (
     CoverageStatus,
     OperationsModule,
     OperationsTaskStatus,
-    PipelineStage,
     PipelineStatus,
     Priority,
     ReconstructionLayer,
@@ -292,7 +291,7 @@ class PipelineRunCreate(BaseModel):
 
     data_task_id: str = Field(..., description="所属数据任务 ID")
     pipeline_name: str = Field(..., max_length=128, description="流水线名称")
-    stage: PipelineStage = Field(..., description="流水线阶段")
+    stage: str = Field(..., max_length=32, description="流水线 step 名（自由文本）")
     input_uri: str = Field(..., max_length=512, description="输入数据路径")
     config: Optional[dict] = None
     # 全链路追踪字段
@@ -320,7 +319,7 @@ class PipelineRunResponse(BaseModel):
     id: str
     data_task_id: str
     pipeline_name: str
-    stage: PipelineStage
+    stage: str
     input_uri: str
     output_uri: Optional[str]
     status: PipelineStatus

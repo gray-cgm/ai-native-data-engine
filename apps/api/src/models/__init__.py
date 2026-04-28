@@ -17,6 +17,9 @@ from src.models.requirement import (  # noqa: F401
 )
 from src.models.ops_item import OpsItem  # noqa: F401
 from src.models.dataset_snapshot import DatasetSnapshotManifest  # noqa: F401
+from src.models.dataset import Dataset, DatasetSample  # noqa: F401
+from src.models.lineage_event import EventResult, LineageEvent  # noqa: F401
+from src.models.asset import Asset, AssetKind  # noqa: F401
 
 __all__ = [
     "Base",
@@ -29,4 +32,10 @@ __all__ = [
     "PipelineRun",
     "OpsItem",
     "DatasetSnapshotManifest",
+    "Dataset",
+    "DatasetSample",
+    "LineageEvent",
+    "EventResult",
+    "Asset",
+    "AssetKind",
 ]

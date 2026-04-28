@@ -16,7 +16,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { ArrowLeftOutlined, PlayCircleOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PlayCircleOutlined, ScissorOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import { useQuery } from '@/shared/hooks/use-query'
 import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
@@ -32,6 +32,9 @@ import {
   type ClipFrameRow,
   type ClipSummary,
 } from '../clips-api'
+import { VideoTimeline, type TimelineWindow } from '../components/video-timeline'
+import { SaveCutModal } from '../components/save-cut-modal'
+import { ClipProgressBar } from '../components/clip-progress-bar'
 
 const { Text, Paragraph } = Typography
 
@@ -131,17 +134,16 @@ export default function ClipDetailPage() {
                 {' · '}
                 {summary.keyframe_count} keyframes
               </Descriptions.Item>
-              <Descriptions.Item label="Start">
-                {formatTimestamp(summary.start_time)}
-              </Descriptions.Item>
-              <Descriptions.Item label="End">
-                {formatTimestamp(summary.end_time)}
-              </Descriptions.Item>
               <Descriptions.Item label="Tags">
-                {(summary.tags ?? '').split(',').filter(Boolean).map((t) => (
-                  <Tag key={t}>{t}</Tag>
-                ))}
-                {summary.da_tags && <Tag color="gold">{summary.da_tags}</Tag>}
+                <Space size={[4, 4]} wrap>
+                  {(summary.tags ?? '').split(',').map((t) => t.trim()).filter(Boolean).map((t) => (
+                    <Tag key={t} style={{ marginInlineEnd: 0 }}>{t}</Tag>
+                  ))}
+                  {summary.da_tags && (
+                    <Tag color="gold" style={{ marginInlineEnd: 0 }}>{summary.da_tags}</Tag>
+                  )}
+                  {!summary.tags && !summary.da_tags && <Text type="secondary">—</Text>}
+                </Space>
               </Descriptions.Item>
               <Descriptions.Item label="Jira">
                 {data.meta.jira_id ?? '—'}
@@ -150,6 +152,18 @@ export default function ClipDetailPage() {
                 v{data.meta.calibration_version ?? '—'}
               </Descriptions.Item>
             </Descriptions>
+
+            {/* Timeline 拆出 Descriptions —— 单元格太窄会撑破布局；这里整张卡全宽展示。 */}
+            <div style={{ marginTop: 12 }}>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                Timeline (Lance metadata · ns)
+              </Text>
+              <ClipProgressBar
+                startNs={summary.start_time}
+                endNs={summary.end_time}
+                size="detailed"
+              />
+            </div>
           </Card>
         </Col>
         <Col xs={24} lg={12}>
@@ -178,7 +192,7 @@ export default function ClipDetailPage() {
                   <VideoCameraOutlined /> Video & cameras
                 </span>
               ),
-              children: <CamerasPanel clipId={summary.clip_id} cameras={data.camera_catalog} />,
+              children: <CamerasPanel clipId={summary.clip_id} cameras={data.camera_catalog} summary={summary} />,
             },
             {
               key: 'topics',
@@ -205,7 +219,15 @@ export default function ClipDetailPage() {
 
 // ── Cameras + video playback ────────────────────────────────────────────────
 
-function CamerasPanel({ clipId, cameras }: { clipId: string; cameras: ClipCameraCatalogItem[] }) {
+function CamerasPanel({
+  clipId,
+  cameras,
+  summary,
+}: {
+  clipId: string
+  cameras: ClipCameraCatalogItem[]
+  summary: ClipSummary
+}) {
   const recordableCams = cameras.filter((c) => !c.is_avm || c.mp4_path)
   const [selected, setSelected] = useState<string>(() => recordableCams[0]?.name ?? cameras[0]?.name ?? '')
 
@@ -263,7 +285,7 @@ function CamerasPanel({ clipId, cameras }: { clipId: string; cameras: ClipCamera
       </Col>
       <Col xs={24} lg={14}>
         {current ? (
-          <VideoPlayer clipId={clipId} camera={current} />
+          <VideoPlayer clipId={clipId} camera={current} summary={summary} />
         ) : (
           <Empty description="No camera selected" />
         )}
@@ -272,7 +294,15 @@ function CamerasPanel({ clipId, cameras }: { clipId: string; cameras: ClipCamera
   )
 }
 
-function VideoPlayer({ clipId, camera }: { clipId: string; camera: ClipCameraCatalogItem }) {
+function VideoPlayer({
+  clipId,
+  camera,
+  summary,
+}: {
+  clipId: string
+  camera: ClipCameraCatalogItem
+  summary: ClipSummary
+}) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const framesFetcher = useCallback(
@@ -282,11 +312,93 @@ function VideoPlayer({ clipId, camera }: { clipId: string; camera: ClipCameraCat
   const framesKey = `explorer:clip:${clipId}:cam:${camera.name}:aligned`
   const frames = useQuery(framesFetcher, { cacheKey: framesKey, isEmpty: (d) => d.items.length === 0 })
 
+  // ── Flexible cut state ─────────────────────────────────────────────
+  // Lance metadata 是时间轴 single source of truth：start_time / end_time 为 ns。
+  // 缺失时回退到 video.duration（秒）合成一个伪时间轴，仅用于 UI 渲染。
+  const clipStartNs = summary.start_time ?? 0
+  const fallbackDurationNs = Math.max(1, Math.round((summary.duration_seconds ?? 0) * 1e9))
+  const clipEndNs = summary.end_time ?? clipStartNs + fallbackDurationNs
+  const clipDurationNs = Math.max(1, clipEndNs - clipStartNs)
+
+  const [currentNs, setCurrentNs] = useState<number>(clipStartNs)
+  const [videoDurationSec, setVideoDurationSec] = useState(summary.duration_seconds ?? 0)
+  // 默认 in/out 直接用 lance metadata 的整段范围；用户拖动手柄即可收紧。
+  const [cutWindow, setCutWindow] = useState<TimelineWindow>({
+    startNs: clipStartNs,
+    endNs: clipEndNs,
+  })
+  const [cutModalOpen, setCutModalOpen] = useState(false)
+
   const videoUrl = buildClipVideoUrl(clipId, camera.name)
 
   useEffect(() => {
     setLoadError(null)
-  }, [clipId, camera.name])
+    setCurrentNs(clipStartNs)
+    setCutWindow({ startNs: clipStartNs, endNs: clipEndNs })
+  }, [clipId, camera.name, clipStartNs, clipEndNs])
+
+  const fps = camera.has_local_video ? 10 : 10 // metadata not yet exposed; default 10Hz
+  const timelineMarkers = useMemo(() => {
+    const items = frames.data?.items ?? []
+    return items
+      .filter((f) => f.video_frame_index != null)
+      .map((f) => ({ frameIndex: f.video_frame_index as number }))
+  }, [frames.data])
+
+  // ── seconds (video.currentTime) ↔ ns (Lance) 双向映射 ──
+  const secondsToNs = useCallback(
+    (seconds: number): number => {
+      const total = videoDurationSec || (clipDurationNs / 1e9)
+      if (!total || total <= 0) return clipStartNs
+      const ratio = Math.max(0, Math.min(1, seconds / total))
+      return Math.round(clipStartNs + ratio * clipDurationNs)
+    },
+    [videoDurationSec, clipDurationNs, clipStartNs],
+  )
+
+  const nsToSeconds = useCallback(
+    (ns: number): number => {
+      const total = videoDurationSec || (clipDurationNs / 1e9)
+      if (!total || total <= 0) return 0
+      const ratio = Math.max(0, Math.min(1, (ns - clipStartNs) / clipDurationNs))
+      return ratio * total
+    },
+    [videoDurationSec, clipDurationNs, clipStartNs],
+  )
+
+  const onLoadedMetadata = () => {
+    const v = videoRef.current
+    if (!v) return
+    const total = Number.isFinite(v.duration) ? v.duration : summary.duration_seconds ?? 0
+    if (total > 0) setVideoDurationSec(total)
+  }
+
+  const onTimeUpdate = () => {
+    const v = videoRef.current
+    if (!v) return
+    setCurrentNs(secondsToNs(v.currentTime))
+  }
+
+  const handleScrubNs = (ns: number) => {
+    const v = videoRef.current
+    if (!v) return
+    v.currentTime = nsToSeconds(ns)
+    setCurrentNs(ns)
+  }
+
+  const handleMarkIn = () => {
+    setCutWindow((prev) => ({ startNs: currentNs, endNs: prev.endNs ?? null }))
+  }
+
+  const handleMarkOut = () => {
+    setCutWindow((prev) => ({ startNs: prev.startNs ?? null, endNs: currentNs }))
+  }
+
+  // Reset 回到 lance metadata 的整段范围（不是 null），保持"in/out 默认覆盖整 clip"语义。
+  const handleClearWindow = () => setCutWindow({ startNs: clipStartNs, endNs: clipEndNs })
+
+  const cutValid =
+    cutWindow.startNs != null && cutWindow.endNs != null && cutWindow.endNs > cutWindow.startNs
 
   const handleError = () => {
     setLoadError(
@@ -308,6 +420,8 @@ function VideoPlayer({ clipId, camera }: { clipId: string; camera: ClipCameraCat
             preload="metadata"
             style={{ width: '100%', background: '#000', maxHeight: 480 }}
             onError={handleError}
+            onLoadedMetadata={onLoadedMetadata}
+            onTimeUpdate={onTimeUpdate}
           />
         ) : (
           <Alert
@@ -328,6 +442,44 @@ function VideoPlayer({ clipId, camera }: { clipId: string; camera: ClipCameraCat
         {loadError && (
           <Alert type="warning" showIcon message={loadError} style={{ marginTop: 8 }} />
         )}
+        {camera.has_local_video && clipDurationNs > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <VideoTimeline
+              clipStartNs={clipStartNs}
+              clipEndNs={clipEndNs}
+              currentNs={currentNs}
+              markers={timelineMarkers}
+              fps={fps}
+              window={cutWindow}
+              onWindowChange={setCutWindow}
+              onScrubNs={handleScrubNs}
+            />
+            <Space size="small" style={{ marginTop: 8 }} wrap>
+              <Button size="small" onClick={handleMarkIn}>
+                Mark In ({currentNs} ns)
+              </Button>
+              <Button size="small" onClick={handleMarkOut}>
+                Mark Out ({currentNs} ns)
+              </Button>
+              <Button
+                size="small"
+                type="primary"
+                icon={<ScissorOutlined />}
+                disabled={!cutValid}
+                onClick={() => setCutModalOpen(true)}
+              >
+                Save Cut
+              </Button>
+              <Button
+                size="small"
+                onClick={handleClearWindow}
+                disabled={cutWindow.startNs === clipStartNs && cutWindow.endNs === clipEndNs}
+              >
+                Reset to clip range
+              </Button>
+            </Space>
+          </div>
+        )}
         <Descriptions size="small" column={2} style={{ marginTop: 12 }}>
           <Descriptions.Item label="Resolution">
             {camera.width ?? '?'} × {camera.height ?? '?'}
@@ -346,6 +498,16 @@ function VideoPlayer({ clipId, camera }: { clipId: string; camera: ClipCameraCat
         </Descriptions>
         <MediaPathsPanel mp4Path={camera.mp4_path} resizePaths={camera.mp4_resize_paths} />
       </Card>
+      <SaveCutModal
+        open={cutModalOpen}
+        clipId={clipId}
+        windowNs={{
+          startNs: cutWindow.startNs ?? clipStartNs,
+          endNs: cutWindow.endNs ?? clipEndNs,
+        }}
+        onClose={() => setCutModalOpen(false)}
+        onSaved={() => handleClearWindow()}
+      />
       <Card size="small" title={`Aligned frames (${frames.data?.items.length ?? 0})`}>
         {frames.state === 'loading' && <Paragraph type="secondary">Loading aligned frames…</Paragraph>}
         {frames.state === 'error' && (

@@ -1,7 +1,7 @@
 """DatasetSnapshotManifest 写入服务
 
 封装一个 trace 的 receipt 生命周期：
-- ``open_or_create``：release 阶段调用，先把 requirement / gold-run / clip 列
+- ``open_or_create``：release 阶段调用，先把 requirement / release-run / clip 列
   锁定下来；如果已存在则 idempotent 更新。
 - ``attach_dataset_version``：把 catalog 库里新建的 dataset_version 字符串 ID
   挂回来。catalog 与 apps/api 是异构 DB，**只存 ID 字符串、不建 FK**。

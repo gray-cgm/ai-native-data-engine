@@ -9,6 +9,11 @@ CLEAN_DOCKER=false
 
 DATA_DIRS=(
   "data/raw"
+  "data/assets"
+  # legacy stage dirs (ingest/curate/publish, bronze/silver/gold) — cleaned for backward compat
+  "data/ingest"
+  "data/curate"
+  "data/publish"
   "data/bronze"
   "data/silver"
   "data/gold"

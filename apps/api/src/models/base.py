@@ -193,17 +193,13 @@ class AnnotationStatus(str, PyEnum):
 # ── 流水线加工 ──
 
 
-class PipelineStage(str, PyEnum):
-    """流水线阶段：对应 One-Pipeline 的数据湖仓层级流转
-
-    RAW_INGEST → CLIP_EXTRACTION → FEATURE_EXTRACTION → STRUCTURED_DATASET
-    (Bronze)      (Silver-切片)      (Silver-特征)         (Gold-发版)
-    """
-
-    RAW_INGEST = "raw_ingest"
-    CLIP_EXTRACTION = "clip_extraction"
-    FEATURE_EXTRACTION = "feature_extraction"
-    STRUCTURED_DATASET = "structured_dataset"
+# ── 流水线 step（v3，2026-04-28）：自由文本，不再用枚举 ──
+#
+# 设计取舍：彻底删除 PipelineStage 枚举（曾短暂为 INGEST/CURATE/PUBLISH，再之前
+# 是 RAW_INGEST/CLIP_EXTRACTION/...）。
+# Dataset 现只剩 customized + official 两类；非 dataset 的数据资产（raw 采集 /
+# 派生产物）登记为 Asset 行（apps/api/src/models/asset.py）。
+# PipelineRun.stage 列保留但仅作"step 名"自由文本展示用，不再做语义约束。
 
 
 class PipelineStatus(str, PyEnum):

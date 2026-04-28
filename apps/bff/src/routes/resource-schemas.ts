@@ -5,19 +5,9 @@ export const workspaceSchema = Joi.object({
   name: Joi.string().required(),
 }).unknown(true)
 
-export const datasetSchema = Joi.object({
-  dataset_id: Joi.string().required(),
-  name: Joi.string().required(),
-  workspace_id: Joi.string().required(),
-  profile: Joi.string().required(),
-}).unknown(true)
-
-export const datasetVersionSchema = Joi.object({
-  version_id: Joi.string().required(),
-  dataset_id: Joi.string().required(),
-  sample_count: Joi.number().integer().required(),
-  table_name: Joi.string().required(),
-}).unknown(true)
+// Legacy dataset / dataset_version schemas 已下线（v3 重构去掉 BFF 的旧 datasets 路由）。
+// 新 dataset CRUD 在 routes/datasets.ts，schema 直接用 unknown object —— 平台 API
+// 是 source of truth，BFF 只透传。
 
 export const taskSchema = Joi.object({
   task_id: Joi.string().required(),
@@ -57,8 +47,3 @@ export const exportSchema = Joi.object({
   output_path: Joi.string().required(),
 }).unknown(true)
 
-export const datasetDetailSchema = Joi.object({
-  item: datasetSchema.allow(null),
-  versions: Joi.array().items(datasetVersionSchema).required(),
-  versionCount: Joi.number().integer().required(),
-}).unknown(true)

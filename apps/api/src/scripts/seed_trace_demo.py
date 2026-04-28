@@ -31,7 +31,6 @@ from src.core.database import SessionLocal, init_db
 from src.models.base import (
     OperationsModule,
     OperationsTaskStatus,
-    PipelineStage,
     PipelineStatus,
     Priority,
     RequirementSource,
@@ -279,9 +278,9 @@ def seed_chain(db, seq: int) -> dict[str, Any]:
                 run = PipelineRun(
                     data_task_id=dt.id,
                     pipeline_name=_choice(PIPELINE_NAMES),
-                    stage=_choice(list(PipelineStage)),
-                    input_uri=f"s3://bronze/demo/{req.id[:8]}/{dt.id[:8]}/in.parquet",
-                    output_uri=f"s3://silver/demo/{req.id[:8]}/{dt.id[:8]}/out.parquet",
+                    stage=_choice(["collect", "clip-extract", "feature-compute", "release"]),
+                    input_uri=f"data/raw/demo/{req.id[:8]}/{dt.id[:8]}/in.parquet",
+                    output_uri=f"data/assets/demo/{req.id[:8]}/{dt.id[:8]}/out.parquet",
                     status=run_status,
                     config={"purpose": purpose.value, "retry": run_idx},
                     metrics={

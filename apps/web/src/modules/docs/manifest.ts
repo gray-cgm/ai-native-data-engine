@@ -78,6 +78,16 @@ export const DOC_SECTIONS: DocManifestSection[] = [
         label: '领域模型',
         items: [
           { path: 'architecture/domain-model.md', title: '领域模型与语义' },
+          {
+            path: 'architecture/dataset-snowflake-redesign.md',
+            title: 'Dataset + Snowflake 重构（v3）',
+            hint: 'customized / official 提级 / Catalog / Asset / LineageEvent / 灵活切割',
+          },
+          {
+            path: 'architecture/dataset-domain-model.md',
+            title: 'Dataset 与领域模型详细设计（v1 历史快照）',
+            hint: 'Catalog Dataset / Snapshot Receipt / OpsItem / Clip 域',
+          },
           { path: 'architecture/core-adapters-profiles-workflows.md', title: 'Core · Adapters · Profiles · Workflows' },
           { path: 'architecture/system-directory-and-domain-design.md', title: '系统目录与领域设计' },
         ],
@@ -141,6 +151,7 @@ export const DOC_SECTIONS: DocManifestSection[] = [
       { path: 'ddia2_reading_notes/chapter2_nonfunctional_requirements.md', title: '第 2 章 · 非功能性需求' },
       { path: 'ddia2_reading_notes/chapter3_data_models_and_query_languages.md', title: '第 3 章 · 数据模型与查询语言' },
       { path: 'ddia2_reading_notes/chapter11_batch_processing.md', title: '第 11 章 · 批处理' },
+      { path: 'ddia2_reading_notes/chapter12_streaming_processing.md', title: '第 12 章 · 流处理' },
     ],
   },
   {
@@ -150,6 +161,11 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     description: '按日期记录每次迭代的改造内容与待办项',
     items: [
       { path: 'dev-logs/README.md', title: '开发日志说明' },
+      {
+        path: 'dev-logs/2026-04-28-snowflake-event-and-flexible-cut.md',
+        title: '2026-04-28 · Snowflake + Catalog/Release 工作流 + Asset',
+        hint: 'customized→official 提级 / Catalog 双视图 / VideoTimeline 改 ns / Asset',
+      },
       {
         path: 'dev-logs/2026-04-28-e2e-demo-and-snapshot-manifest.md',
         title: '2026-04-28 · E2E Demo and Snapshot Manifest',

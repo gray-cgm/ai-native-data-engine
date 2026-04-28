@@ -87,11 +87,11 @@ export type StreamingSummary = {
   dataset_name: string
   profile: string
   event_log_path: string
-  bronze_log_path: string
+  normalized_log_path: string
   query_db_path: string
-  silver_dataset_path: string
+  sample_dataset_path: string
   search_index_path: string
-  gold_table_root: string
+  release_table_root: string
   export_path: string
   event_count: number
   duplicate_events_skipped: number

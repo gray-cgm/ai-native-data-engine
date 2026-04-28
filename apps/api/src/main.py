@@ -6,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.middleware.x_trace import XTraceMiddleware
 from src.api.routes.catalog import router as catalog_router
 from src.api.routes.clips import router as clips_router
+from src.api.routes.assets import router as assets_router
 from src.api.routes.data_tasks import router as data_tasks_router
+from src.api.routes.datasets import router as datasets_router
+from src.api.routes.events import router as events_router
 from src.api.routes.export import router as export_router
 from src.api.routes.health import router as health_router
 from src.api.routes.operations import router as operations_router
@@ -46,6 +49,9 @@ app.include_router(requirements_router)
 app.include_router(data_tasks_router)
 app.include_router(pipelines_router)
 app.include_router(snapshots_router)
+app.include_router(datasets_router)
+app.include_router(events_router)
+app.include_router(assets_router)
 
 
 @app.on_event('startup')

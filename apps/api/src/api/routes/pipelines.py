@@ -18,7 +18,6 @@ from src.models.base import (
     CoverageStatus,
     OperationsModule,
     OperationsTaskStatus,
-    PipelineStage,
     PipelineStatus,
     ReconstructionLayer,
     RunPurpose,
@@ -283,8 +282,8 @@ def create_pipeline_run(
 ):
     """创建流水线运行
 
-    对应 One-Pipeline 的数据加工流转：
-    原始采集包(Bronze) → 切片(Silver) → 特征(Silver) → 发版数据集(Gold)
+    对应 One-Pipeline 的数据加工流转（v3）：
+    采集 → 切片 → 特征/质检 → 发版（每个 step 自由命名；血缘走 Asset / DatasetSnapshotManifest）
     """
     task = db.query(DataTask).filter(DataTask.id == payload.data_task_id).first()
     if not task:
@@ -302,7 +301,7 @@ def list_pipeline_runs(
     requirement_id: str | None = Query(None, description="按需求过滤（全链路）"),
     operations_task_id: str | None = Query(None, description="按运维任务过滤"),
     x_trace_id: str | None = Query(None, description="按链路追踪键过滤（X-Trace-Id）"),
-    stage: PipelineStage | None = Query(None),
+    stage: str | None = Query(None, description="按 step 名过滤（自由文本）"),
     status: PipelineStatus | None = Query(None),
     trigger_source: TriggerSource | None = Query(None),
     run_purpose: RunPurpose | None = Query(None),
@@ -393,7 +392,7 @@ def update_pipeline_run(
 def get_pipeline_stage_stats(db: Session = Depends(get_db)):
     """流水线阶段统计
 
-    按阶段（Bronze → Silver → Gold）和状态维度统计运行情况，
+    按 step 名（自由文本，如 collect / clip-extract / feature-compute / release）和状态维度统计运行情况，
     服务于 One-Pipeline 执行监控看板。
     """
     stats = (

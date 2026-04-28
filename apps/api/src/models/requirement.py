@@ -34,7 +34,6 @@ from src.models.base import (
     CoverageStatus,
     OperationsModule,
     OperationsTaskStatus,
-    PipelineStage,
     PipelineStatus,
     Priority,
     ReconstructionLayer,
@@ -398,7 +397,7 @@ class PipelineRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """流水线运行记录表
 
     对应 One-Pipeline 的数据加工流转：
-    原始采集包(Bronze) → 多模态切片(Silver) → 特征提取(Silver) → 发版数据集(Gold)
+    采集 → 切片 → 特征/质检 → 发版（v3：step 名自由文本，血缘走 Asset 表）
     每次运行记录输入/输出路径、配置和执行指标。
     """
 
@@ -441,9 +440,8 @@ class PipelineRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(128), nullable=False, comment="流水线名称"
     )
     stage: Mapped[str] = mapped_column(
-        Enum(PipelineStage, native_enum=False, length=32),
-        nullable=False,
-        comment="流水线阶段",
+        String(32), nullable=False,
+        comment="流水线 step 名（自由文本，仅展示用；v3 起不再做枚举约束，血缘走 Asset）",
     )
     input_uri: Mapped[str] = mapped_column(
         String(512), nullable=False, comment="输入数据路径"

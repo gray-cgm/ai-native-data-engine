@@ -1,33 +1,18 @@
-import type { DatasetItem, DatasetVersion, WorkspaceItem } from '../types.js'
+import type { WorkspaceItem } from '../types.js'
 import { applyCollectionQuery } from '../utils/collection.js'
 import { platformFetch } from '../services/platform.js'
+
+/**
+ * Catalog 引擎只保留 workspace 列表。
+ *
+ * 旧的 dataset / dataset-version 列表函数已下线 —— v3 重构后 dataset 主数据
+ * 走 ``datasets_v2`` 表（apps/bff/src/engines/datasetsEngine.ts）。
+ */
 
 type Query = Record<string, unknown>
 
 async function listWorkspaces() {
   const response = (await platformFetch('/workspaces')) as { items?: WorkspaceItem[] }
-  return response.items ?? []
-}
-
-async function listDatasets() {
-  const response = (await platformFetch('/datasets')) as { items?: DatasetItem[] }
-  return response.items ?? []
-}
-
-async function getDataset(datasetId: string) {
-  return (await platformFetch(`/datasets/${datasetId}`)) as {
-    dataset_id: string
-    name: string
-    workspace_id: string
-    profile: string
-    versions: DatasetVersion[]
-  }
-}
-
-async function listDatasetVersions(datasetId: string) {
-  const response = (await platformFetch(`/datasets/${datasetId}/versions`)) as {
-    items?: DatasetVersion[]
-  }
   return response.items ?? []
 }
 
@@ -38,54 +23,4 @@ export async function queryWorkspaces(query: Query) {
     defaultSort: { field: 'name', order: 'asc' },
     searchableText: (item) => `${item.workspace_id} ${item.name}`,
   })
-}
-
-export async function queryDatasets(query: Query) {
-  const workspaceId = getString(query.workspaceId)
-  const profile = getString(query.profile)
-  const items = await listDatasets()
-
-  return applyCollectionQuery<DatasetItem>(items, {
-    query,
-    defaultSort: { field: 'name', order: 'asc' },
-    filter: (item) => {
-      if (workspaceId && item.workspace_id !== workspaceId) {
-        return false
-      }
-      if (profile && item.profile !== profile) {
-        return false
-      }
-      return true
-    },
-    searchableText: (item) => `${item.dataset_id} ${item.name} ${item.workspace_id} ${item.profile}`,
-  })
-}
-
-export async function findDataset(datasetId: string) {
-  const detail = await getDataset(datasetId)
-  return {
-    ...detail,
-    versionCount: detail.versions.length,
-  }
-}
-
-export async function queryDatasetVersions(datasetId: string, query: Query) {
-  const tableName = getString(query.tableName)
-  const items = await listDatasetVersions(datasetId)
-
-  return applyCollectionQuery<DatasetVersion>(items, {
-    query,
-    defaultSort: { field: 'version_id', order: 'desc' },
-    filter: (item) => {
-      if (tableName && item.table_name !== tableName) {
-        return false
-      }
-      return true
-    },
-    searchableText: (item) => `${item.version_id} ${item.table_name} ${item.dataset_id}`,
-  })
-}
-
-function getString(value: unknown) {
-  return typeof value === 'string' ? value : undefined
 }
