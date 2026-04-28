@@ -103,7 +103,7 @@ Streaming Pipeline 与 Kafka 对接，使它和 Batch（Dagster Console）形成
 
 | 模块 | 文件 | 作用 |
 | --- | --- | --- |
-| Infra | `docker-compose.yml`、`Makefile`、`.env.example` | 一键拉起 broker + console（`make kafka-up`），所有相关端口纳入 preflight 检查。 |
+| Infra | `docker-compose.yml`、`Makefile`、`.env.example` | 一键拉起 broker + console（`make up-deps`），所有相关端口纳入 preflight 检查。 |
 | Producer | `apps/api/src/scripts/streaming_demo.py` | 通过 `STREAMING_DEMO_TARGET={file,kafka}` 切换 sink；Kafka 模式下使用 `x_trace_id` 作为 partition key 并在 header 上透传 `x-trace-id` / `x-requirement-id`。 |
 | Consumer | `apps/orchestrator/src/streaming/kafka_trigger.py` | 长驻进程（`make stream-kafka-consumer`），SQLite 幂等账本 + 自动 DLQ + 周期 lag 快照。 |
 | Platform API | `apps/api/src/api/routes/streaming.py` | 新增 `GET /streaming/health`，合并 broker config + consumer 快照 + StreamingSummary。 |

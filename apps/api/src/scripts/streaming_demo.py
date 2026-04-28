@@ -98,7 +98,7 @@ class _KafkaSink:
         except NoBrokersAvailable as exc:
             raise SystemExit(
                 f'Kafka broker not reachable at {bootstrap}. '
-                'Run `make kafka-up && make kafka-topics-init` first.'
+                'Run `make up-deps && make kafka-topics-init` first.'
             ) from exc
         self._topic = topic
         self._bootstrap = bootstrap

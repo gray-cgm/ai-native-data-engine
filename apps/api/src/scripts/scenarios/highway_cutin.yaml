@@ -1,0 +1,67 @@
+name: highway-cutin
+title: 雨天高速切入 Corner Case 闭环
+description: |
+  雨天高速场景下其他车辆突然切入引发的 AEB 误触发，需要补采高频 cut-in 样本，
+  打通流水线 + 标注审核 + 发版闭环。
+
+scene_tags: ["雨天", "高速", "切入"]
+vehicle_tags: ["L2+", "L4"]
+priority: high
+source: algorithm
+estimated_data_volume: 8000
+
+data_tasks:
+  - task_type: collection
+    title: 沪宁/京沪高速雨天路采 1200 km
+    description: 雨天高速场景下 cut-in 高发路段补采，含动态变道事件触发录制
+    target_count: 1200
+    target_unit: 公里
+    actual_ratio: 0.55
+    assigned_to: data-collection-lead@example.com
+  - task_type: annotation
+    title: cut-in 事件帧标注 + 时序对齐
+    description: 切入车辆 BBox + 关键帧时序对齐，含 cut-in 起止时间戳
+    target_count: 5000
+    target_unit: 事件帧
+    actual_ratio: 0.6
+    assigned_to: anno-pm@example.com
+  - task_type: quality_check
+    title: AEB 误触发率回归 ≤ 2%
+    description: 在 AEB 误触发回归集上验证误触发率，2% 以下方可签核
+    target_count: 2
+    target_unit: '%误触发率'
+    actual_ratio: 0.95
+    assigned_to: safety-qa-lead@example.com
+  - task_type: pipeline
+    title: cut-in 训练集 v1.2 发版
+    description: 在 v1.0 基础上叠加雨天/夜间增强样本，发版 v1.2 提交规控训练
+    target_count: 1
+    target_unit: 训练集版本
+    actual_ratio: 1.0
+    assigned_to: training-pm@example.com
+
+clip_filter:
+  scenarios: ["highway", "xminer-pipeline-video"]
+  any_tags: ["rain", "highway", "cutin", "lane_change"]
+  fallback_take: 2
+
+stage_sequence:
+  - raw_ingest
+  - clip_extraction
+  - feature_extraction
+  - structured_dataset
+
+cost_template:
+  cpu_seconds_range: [180, 800]
+  gpu_seconds_range: [30, 320]
+  storage_gb_range: [1.0, 12.0]
+
+quality_gate:
+  pass_rate: 0.78
+  waiver_reasons:
+    - downstream_tolerance
+  block_reasons:
+    - schema_mismatch
+    - duplicate_keys
+
+streaming_topic: streaming.events.raw

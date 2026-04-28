@@ -161,7 +161,7 @@ make compose-analytics
 #### 仅启动全部容器依赖
 
 ```bash
-make compose-deps
+make up-deps
 ```
 
 ## 常见问题

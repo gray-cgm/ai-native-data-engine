@@ -151,7 +151,7 @@ JSONL 模式适合快速跑通最小语义。要把 streaming pipeline 提升到
 ### 一键启动
 
 ```bash
-make kafka-up                 # broker(9092) + kafka-ui(8085)
+make up-deps                 # broker(9092) + kafka-ui(8085)
 make kafka-topics-init        # 预创建 streaming.events.{raw,dlq}
 make stream-demo-kafka        # producer → streaming.events.raw（x_trace_id 作 partition key）
 make stream-kafka-consumer    # 幂等消费者（另开终端，写 Bronze + DLQ + lag 快照）

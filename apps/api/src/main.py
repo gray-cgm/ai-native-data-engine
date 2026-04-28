@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.middleware.x_trace import XTraceMiddleware
 from src.api.routes.catalog import router as catalog_router
 from src.api.routes.clips import router as clips_router
 from src.api.routes.data_tasks import router as data_tasks_router
@@ -13,6 +14,7 @@ from src.api.routes.ops_modules import router as ops_modules_router
 from src.api.routes.pipelines import router as pipelines_router
 from src.api.routes.requirements import router as requirements_router
 from src.api.routes.samples import router as samples_router
+from src.api.routes.snapshots import router as snapshots_router
 from src.api.routes.streaming import router as streaming_router
 from src.api.routes.tools import router as tools_router
 from src.core.database import init_db
@@ -25,7 +27,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
+    expose_headers=['X-Trace-Id'],
 )
+app.add_middleware(XTraceMiddleware)
 
 app.include_router(health_router)
 app.include_router(samples_router)
@@ -41,6 +45,7 @@ app.include_router(tools_router)
 app.include_router(requirements_router)
 app.include_router(data_tasks_router)
 app.include_router(pipelines_router)
+app.include_router(snapshots_router)
 
 
 @app.on_event('startup')

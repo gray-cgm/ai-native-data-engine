@@ -6,7 +6,7 @@ COMPOSE_SERVICES := postgres dagster-user-code dagster-webserver dagster-daemon 
 APP_PORTS := $(WEB_PORT) $(BFF_PORT) $(API_PORT) $(DAGSTER_PORT) $(POSTGRES_PORT) $(JUPYTER_PORT) $(SUPERSET_PORT) $(KAFKA_PORT) $(KAFKA_UI_PORT)
 COLIMA_MOUNT_EXISTS := $(shell colima ssh -- test -d "$(HOST_WORKSPACE_DIR)" >/dev/null 2>&1 && echo yes || echo no)
 
-.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics compose-deps compose-kafka kafka-up kafka-down kafka-logs kafka-topics-init stream-kafka-consumer ingest query lance stream-demo stream-demo-kafka export-parquet export-csv export-jsonl sdk-demo req-demo req-list req-stats req-sign-off seed-trace-demo seed-trace-demo-reset db-upgrade db-downgrade db-stamp-head db-revision db-current db-history clean clean-dev-data
+.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics kafka-down kafka-logs kafka-topics-init stream-kafka-consumer ingest query lance stream-demo stream-demo-kafka export-parquet export-csv export-jsonl sdk-demo req-demo req-list req-stats req-sign-off seed-trace-demo seed-trace-demo-reset e2e-demo e2e-demo-reset e2e-demo-random db-upgrade db-downgrade db-stamp-head db-revision db-current db-history clean clean-dev-data
 
 setup: check-tools check-docker
 	@if [ ! -f .env ]; then \
@@ -127,15 +127,7 @@ compose-analytics:
 	docker compose up --build jupyter superset postgres
 
 
-# Start all containerized dependencies so apps can be developed locally against them.
-compose-deps:
-	docker compose up --build postgres dagster-user-code dagster-webserver dagster-daemon jupyter superset kafka kafka-ui
-
-
-# ── Kafka one-click lifecycle ────────────────────────────────────────────
-compose-kafka kafka-up:
-	docker compose up -d --build kafka kafka-ui
-
+# ── Kafka 运维（启动统一走 `make up-deps`） ──────────────────────────────
 kafka-down:
 	docker compose stop kafka kafka-ui
 
@@ -167,11 +159,11 @@ lance:
 stream-demo:
 	uv run --package api python -m src.scripts.streaming_demo
 
-# Publishes the streaming demo events to Kafka. Requires `make kafka-up`.
+# Publishes the streaming demo events to Kafka. Requires `make up-deps`.
 stream-demo-kafka:
 	STREAMING_DEMO_TARGET=kafka uv run --package api python -m src.scripts.streaming_demo
 
-# Run the Kafka consumer (idempotent, with DLQ). Requires `make kafka-up`.
+# Run the Kafka consumer (idempotent, with DLQ). Requires `make up-deps`.
 # We cd into apps/orchestrator so `src.streaming.kafka_trigger` resolves from the
 # repo's source tree directly (matches how Dagster loads `src/definitions.py` via -f).
 stream-kafka-consumer:
@@ -219,6 +211,29 @@ seed-trace-demo:
 # 清空后重新生成：make seed-trace-demo-reset ARGS="--requirements 3 --seed 42"
 seed-trace-demo-reset:
 	uv run --package api python -m src.scripts.seed_trace_demo --reset $(ARGS)
+
+
+# ── 端到端自驾 demo（8 步贯穿 + 链路 receipt） ─────────────────────────────
+# 一键贯穿 Requirement → DataTask → Mining → Pipeline(batch+streaming) →
+# Labeling/Tagging/Checking → Explorer → Release → Catalog → Export，
+# 输出 trace_id + receipt JSON + Web/API 验证 URL。
+#
+# 推荐用法：
+#   make e2e-demo                                 # 随机场景
+#   make e2e-demo SCENARIO=night-vru SEED=42      # 指定场景 + 复现
+#   make e2e-demo INCLUDE_STREAMING=0             # 跳过 streaming 步骤
+#   make e2e-demo-reset                           # 跑前清空 e2e 旧数据
+#   make e2e-demo-random ARGS="--format jsonl"    # 透传额外参数
+#
+# 软依赖：Kafka broker 不可达时 streaming 自动降级到 file-mode（不阻断）。
+e2e-demo:
+	uv run --package api python -m src.scripts.e2e_demo $(ARGS)
+
+e2e-demo-reset:
+	uv run --package api python -m src.scripts.e2e_demo --reset $(ARGS)
+
+e2e-demo-random:
+	SCENARIO=random uv run --package api python -m src.scripts.e2e_demo $(ARGS)
 
 
 # ── Alembic 数据库迁移 ──────────────────────────────────────────────────────

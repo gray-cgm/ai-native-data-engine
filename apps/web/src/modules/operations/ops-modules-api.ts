@@ -22,6 +22,8 @@ export type OpsItem = {
   scenario: string | null
   requirement_id: string | null
   data_task_id: string | null
+  operations_task_id: string | null
+  x_trace_id: string | null
   payload: Record<string, unknown>
   created_at: string
   updated_at: string
@@ -62,6 +64,8 @@ export type OpsItemCreateInput = {
   scenario?: string
   requirement_id?: string
   data_task_id?: string
+  operations_task_id?: string
+  x_trace_id?: string
   payload?: Record<string, unknown>
 }
 

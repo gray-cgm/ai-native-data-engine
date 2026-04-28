@@ -11,9 +11,12 @@ from src.models.requirement import (  # noqa: F401
     CollectionJob,
     DataTask,
     DigitalReconstruction,
+    OperationsTask,
     PipelineRun,
     Requirement,
 )
+from src.models.ops_item import OpsItem  # noqa: F401
+from src.models.dataset_snapshot import DatasetSnapshotManifest  # noqa: F401
 
 __all__ = [
     "Base",
@@ -22,5 +25,8 @@ __all__ = [
     "DigitalReconstruction",
     "CollectionJob",
     "AnnotationTask",
+    "OperationsTask",
     "PipelineRun",
+    "OpsItem",
+    "DatasetSnapshotManifest",
 ]

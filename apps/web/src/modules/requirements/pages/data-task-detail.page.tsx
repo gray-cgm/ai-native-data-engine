@@ -84,6 +84,24 @@ export default function DataTaskDetailPage() {
       render: (s: string) => <StatusBadge status={s} /> },
     { key: 'assignee', title: 'Assignee', dataIndex: 'assignee', width: 140,
       render: (v?: string | null) => v || '—' },
+    {
+      key: 'open_ops',
+      title: 'Open',
+      width: 140,
+      render: (_: unknown, row: OperationsTask) => {
+        // 让 PM 一键跳到对应 ops 子模块，并把 dataTask 过滤预填好。
+        const m = row.module?.toLowerCase()
+        if (!m) return <Text type="secondary">—</Text>
+        const params = new URLSearchParams()
+        if (row.requirement_id) params.set('requirement', row.requirement_id)
+        params.set('dataTask', row.data_task_id)
+        return (
+          <Link to={`/ops/${m}?${params.toString()}`}>
+            Open {m} →
+          </Link>
+        )
+      },
+    },
     { key: 'id', title: 'Ops Task ID', dataIndex: 'id', width: 200,
       render: (v: string) => <TableCellText value={v} maxWidth={200} code /> },
   ]

@@ -1,0 +1,71 @@
+name: night-vru
+title: 夜间路口 VRU Hard-Case 闭环
+description: |
+  夜间无信号灯路口的 Vulnerable Road User（行人/骑行）检测召回不达标，
+  Dre 提交 Hard-Case 补采需求，跑完整批流水线 + Kafka 重放 + 审核 + 发版。
+
+scene_tags: ["夜间", "十字路口", "VRU"]
+vehicle_tags: ["L4", "乘用车"]
+priority: high
+source: dre
+estimated_data_volume: 5000
+
+# DataTask = 项目经理在工单里能写出来的"业务级里程碑"，
+# 不写 Bronze/Silver/Gold、2D/3D 等工程实现，那些归 OperationsTask / PipelineRun
+data_tasks:
+  - task_type: collection
+    title: 夜间路口路采 800 km / 80 h
+    description: 北京/上海三环内 19:00–02:00 时段路采，覆盖无信号灯路口与人行横道
+    target_count: 80          # 单位见 target_unit
+    target_unit: 小时
+    actual_ratio: 0.7
+    assigned_to: data-collection-lead@example.com
+  - task_type: annotation
+    title: VRU 优先标注（5000 帧 + 夜间挑战集）
+    description: 行人/骑行 BBox + 朝向 + 遮挡等级标注，夜间样本独立挑战集
+    target_count: 5000
+    target_unit: 帧
+    actual_ratio: 0.6
+    assigned_to: anno-pm@example.com
+  - task_type: quality_check
+    title: 夜间 VRU 召回率验收 ≥ 95%
+    description: 在保留集上回归 VRU 召回率指标，95% 为 sign-off 通过门槛
+    target_count: 95
+    target_unit: '%召回率'
+    actual_ratio: 0.95
+    assigned_to: model-qa-lead@example.com
+  - task_type: pipeline
+    title: 训练集 v1 发版（夜间挑战集合并）
+    description: 合并历史训练集 v0.9 与本次新增样本，发版 v1 提交感知训练流水线
+    target_count: 1
+    target_unit: 训练集版本
+    actual_ratio: 1.0
+    assigned_to: training-pm@example.com
+
+# clip_filter：用 OR 关系匹配 data/lance/<clip>/meta 里的 scenario / tags / da_tags
+clip_filter:
+  scenarios: ["urban-night", "xminer-pipeline-video"]
+  any_tags: ["nighttime", "intersection", "vru", "pedestrian"]
+  fallback_take: 3   # 匹配不到时随机取前 N 条 clip，保证 demo 不会断
+
+stage_sequence:
+  - raw_ingest
+  - clip_extraction
+  - feature_extraction
+  - structured_dataset
+
+cost_template:
+  cpu_seconds_range: [120, 600]
+  gpu_seconds_range: [20, 240]
+  storage_gb_range: [0.5, 8]
+
+quality_gate:
+  pass_rate: 0.85           # 85% 通过、其余 waiver / block 用于演示分布
+  waiver_reasons:
+    - manual_override
+    - policy_bypass_approved
+  block_reasons:
+    - missing_sensor
+    - anno_quality_low
+
+streaming_topic: streaming.events.raw

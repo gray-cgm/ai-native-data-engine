@@ -197,14 +197,14 @@
 - [x] **Action P-5 - Kafka Streaming 对接 + Streaming Console 可观测（已落地，2026-04-26）**
   **输入：** `apps/orchestrator/src/streaming/`（新增）、`apps/api/src/scripts/streaming_demo.py`（改造）、`docker-compose.yml`、`Makefile`
   **输出：**
-    - `apache/kafka:3.7.0`（KRaft 单节点）+ `provectuslabs/kafka-ui`（端口 `KAFKA_UI_PORT=8085`）通过 `make kafka-up` / `make compose-deps` 一键拉起
+    - `apache/kafka:3.7.0`（KRaft 单节点）+ `provectuslabs/kafka-ui`（端口 `KAFKA_UI_PORT=8085`）通过 `make up-deps` / `make up-deps` 一键拉起
     - `KafkaStreamingTrigger`（`apps/orchestrator/src/streaming/kafka_trigger.py`）：SQLite 幂等账本（`event_id` × `x_trace_id`）+ DLQ + 周期性 lag 快照
     - Producer：`make stream-demo-kafka` 用 `STREAMING_DEMO_TARGET=kafka` 把 clip-stream 事件发到 `streaming.events.raw`，`x_trace_id` 同时作为 partition key 与 `x-trace-id` header
     - 平台 API `GET /streaming/health` + BFF `GET /api/pipelines/streaming-health`（合并 kafka-ui `/actuator/health` + 消费者快照 + StreamingSummary）
     - kafka-ui 进入 Tools 注册中心（API/BFF/Web 三端 registry 全部更新，`/tools/kafka-ui` 工作台路由可用）
     - Pipelines Overview 增加 "Open Kafka UI console" 按钮（与 "Open Dagster console" 对称），新增 Lag/DLQ 顶部 stat、按 partition 显示 lag 进度条、idle/down 状态有引导提示
   **验收标准：**
-    - `make kafka-up && make kafka-topics-init && make stream-demo-kafka && make stream-kafka-consumer` 在 30s 内能在 Pipelines Overview 看到非零 accepted、partition lag 归零、kafka-ui 可访问
+    - `make up-deps && make kafka-topics-init && make stream-demo-kafka && make stream-kafka-consumer` 在 30s 内能在 Pipelines Overview 看到非零 accepted、partition lag 归零、kafka-ui 可访问
     - 手工往 `streaming.events.raw` 投递格式错误的消息后，DLQ topic 出现错误信封，Overview 顶部 DLQ 计数 +1
     - 重复投递相同 `event_id` × `x_trace_id` 的消息不会增加 accepted 计数（duplicate counter +1）
 

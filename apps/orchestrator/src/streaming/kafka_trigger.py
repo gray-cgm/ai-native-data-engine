@@ -269,7 +269,7 @@ class KafkaStreamingTrigger:
         except NoBrokersAvailable as exc:
             raise SystemExit(
                 f"Kafka broker not reachable at {self.bootstrap_servers}. "
-                "Run `make kafka-up` first."
+                "Run `make up-deps` first."
             ) from exc
 
     # ── core loop ─────────────────────────────────────────────────────────

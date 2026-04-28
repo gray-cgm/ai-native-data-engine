@@ -585,7 +585,7 @@ make compose-dagster
 如果你准备专项开发 `apps/*`，推荐先一键启动所有容器化依赖：
 
 ```bash
-make compose-deps
+make up-deps
 ```
 
 该命令会统一启动：
@@ -918,7 +918,7 @@ make seed-trace-demo-reset      # 清库重灌
 `make stream-demo` 是最轻量的本地 streaming demo（写 JSONL、micro-batch 处理），细节见 [Local-First Streaming Demo](./local-first-streaming-demo.md)。要把 streaming pipeline 提升到与 Batch（Dagster Console）同等的可观测层级，可走 **Kafka 模式**：
 
 ```bash
-make kafka-up                 # broker(9092) + kafka-ui(8085)
+make up-deps                 # broker(9092) + kafka-ui(8085)
 make kafka-topics-init        # 预创建 streaming.events.{raw,dlq}
 make stream-demo-kafka        # producer → streaming.events.raw（x_trace_id 作 partition key）
 make stream-kafka-consumer    # 幂等消费者（另开终端，写 Bronze + DLQ + lag 快照）

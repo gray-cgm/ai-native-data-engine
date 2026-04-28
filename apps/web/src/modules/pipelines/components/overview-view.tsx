@@ -189,7 +189,7 @@ function StreamingHealthBlock({ health }: { health: StreamingHealth | null | und
           message="Streaming consumer is not running"
           description={(
             <span>
-              Run <Text code>make kafka-up</Text> then <Text code>make stream-kafka-consumer</Text> to start consuming
+              Run <Text code>make up-deps</Text> then <Text code>make stream-kafka-consumer</Text> to start consuming
               <Text code style={{ marginLeft: 4 }}>{broker?.topic_events ?? 'streaming.events.raw'}</Text>.
             </span>
           )}

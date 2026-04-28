@@ -106,6 +106,8 @@ export type OpsItem = {
   scenario: string | null
   requirement_id: string | null
   data_task_id: string | null
+  operations_task_id: string | null
+  x_trace_id: string | null
   payload: Record<string, unknown>
   created_at: string
   updated_at: string
@@ -121,6 +123,8 @@ export type OpsItemCreateInput = {
   scenario?: string
   requirement_id?: string
   data_task_id?: string
+  operations_task_id?: string
+  x_trace_id?: string
   payload?: Record<string, unknown>
 }
 
@@ -225,6 +229,13 @@ export async function queryOpsItems(
       stringOrUndefined(query.requirementId) ?? stringOrUndefined(query.requirement_id),
     data_task_id:
       stringOrUndefined(query.dataTaskId) ?? stringOrUndefined(query.data_task_id),
+    operations_task_id:
+      stringOrUndefined(query.operationsTaskId)
+      ?? stringOrUndefined(query.operations_task_id),
+    x_trace_id:
+      stringOrUndefined(query.xTraceId)
+      ?? stringOrUndefined(query.traceId)
+      ?? stringOrUndefined(query.x_trace_id),
   }
   const response = await platformList(module, platformQuery)
   return applyCollectionQuery<OpsItem>(response.items ?? [], {
@@ -241,6 +252,7 @@ export async function queryOpsItems(
         item.dataset_id ?? '',
         item.requirement_id ?? '',
         item.data_task_id ?? '',
+        item.x_trace_id ?? '',
         (item.clip_ids ?? []).join(' '),
       ].join(' '),
   })

@@ -1,0 +1,66 @@
+name: urban-intersection
+title: 城区无保护左转专项
+description: |
+  城区无保护左转场景的预测时序错误率偏高，运营团队拉通采集+标注+复核闭环，
+  追踪到具体的 hard case clip 集合并发版。
+
+scene_tags: ["路口", "左转", "无保护"]
+vehicle_tags: ["L4", "乘用车"]
+priority: medium
+source: product
+estimated_data_volume: 3000
+
+data_tasks:
+  - task_type: collection
+    title: 成都/广州 CBD 无保护左转 600 km
+    description: CBD 早晚高峰无保护左转路口路采，含对手车辆抢行/避让事件
+    target_count: 600
+    target_unit: 公里
+    actual_ratio: 0.65
+    assigned_to: data-collection-lead@example.com
+  - task_type: annotation
+    title: 对手车辆轨迹标注（3000 帧）
+    description: 对手车辆 BBox + 运动轨迹 + 优先级判定标签
+    target_count: 3000
+    target_unit: 帧
+    actual_ratio: 0.7
+    assigned_to: anno-pm@example.com
+  - task_type: quality_check
+    title: 预测时序错误率回归 ≤ 5%
+    description: 在城区左转回归集上验证预测时序，5% 错误率以下可签核
+    target_count: 5
+    target_unit: '%错误率'
+    actual_ratio: 0.92
+    assigned_to: planning-qa-lead@example.com
+  - task_type: pipeline
+    title: 训练集 v1.5 发版（左转专项增强）
+    description: 在 v1.4 基础上叠加左转专项样本，发版 v1.5 提交预测/规控训练
+    target_count: 1
+    target_unit: 训练集版本
+    actual_ratio: 1.0
+    assigned_to: training-pm@example.com
+
+clip_filter:
+  scenarios: ["xminer-pipeline-video", "urban"]
+  any_tags: ["intersection", "left_turn", "unprotected", "city"]
+  fallback_take: 2
+
+stage_sequence:
+  - raw_ingest
+  - clip_extraction
+  - feature_extraction
+  - structured_dataset
+
+cost_template:
+  cpu_seconds_range: [80, 500]
+  gpu_seconds_range: [10, 180]
+  storage_gb_range: [0.3, 6.0]
+
+quality_gate:
+  pass_rate: 0.9
+  waiver_reasons:
+    - policy_bypass_approved
+  block_reasons:
+    - coverage_insufficient
+
+streaming_topic: streaming.events.raw

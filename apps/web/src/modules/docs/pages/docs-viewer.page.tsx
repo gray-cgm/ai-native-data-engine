@@ -171,6 +171,23 @@ function collectGroupKeys(group: CuratedGroup): string[] {
   return keys
 }
 
+function stripDuplicateH1(content: string, title: string): string {
+  const lines = content.split('\n')
+  let i = 0
+  if (lines[0]?.trim() === '---') {
+    let j = 1
+    while (j < lines.length && lines[j].trim() !== '---') j++
+    if (j < lines.length) i = j + 1
+  }
+  while (i < lines.length && lines[i].trim() === '') i++
+  const m = /^#\s+(.+?)\s*$/.exec(lines[i] ?? '')
+  if (!m) return content
+  if (m[1].trim() !== title.trim()) return content
+  lines.splice(i, 1)
+  while (i < lines.length && lines[i].trim() === '') lines.splice(i, 1)
+  return lines.join('\n')
+}
+
 const markdownComponents: Components = {
   code({ className, children, ...rest }) {
     const content = String(children ?? '').replace(/\n$/, '')
@@ -374,7 +391,7 @@ export default function DocsViewerPage() {
                   rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
                   components={markdownComponents}
                 >
-                  {fileData.content}
+                  {stripDuplicateH1(fileData.content, fileData.title)}
                 </ReactMarkdown>
               </article>
             </>

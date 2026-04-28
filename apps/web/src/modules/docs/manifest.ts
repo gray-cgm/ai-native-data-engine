@@ -151,6 +151,11 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     items: [
       { path: 'dev-logs/README.md', title: '开发日志说明' },
       {
+        path: 'dev-logs/2026-04-28-e2e-demo-and-snapshot-manifest.md',
+        title: '2026-04-28 · E2E Demo and Snapshot Manifest',
+        hint: 'Requirement / Ops / Pipeline / Docs Center',
+      },
+      {
         path: 'dev-logs/2026-04-23-experience-layer-upgrades.md',
         title: '2026-04-23 · 体验层升级',
         hint: 'Requirement / Ops / Pipeline / Docs Center',

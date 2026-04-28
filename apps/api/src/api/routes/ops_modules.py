@@ -1,73 +1,67 @@
-"""Lightweight Ops-module routers (Labeling / Tagging / Checking / Mining /
-Privacy / Release).
+"""Ops 子模块 REST 路由（labeling / tagging / checking / mining / privacy / release）
 
-This file exposes a uniform REST surface for six operational modules that
-backstop the Web Operations module. Each module shares the same ``OpsItem``
-shape and persists to an in-memory store — enough to unblock end-to-end UI
-and BFF flows without locking us into a concrete schema.
+历史背景：原先 `_InMemoryStore` 进程内存版本（重启全丢）。本次升级到 SQLAlchemy
+持久化（`OpsItem` 表），HTTP 契约保持不变；同时新增 `x_trace_id` / `operations_task_id`
+等链路字段，让 demo 跑完后刷新页面也看得见。
 
-Routes (per module, prefix ``/api/v1/ops/<module>``)::
-
-    GET    /              — list items (with optional filters)
-    POST   /              — create new item
-    GET    /{item_id}     — get detail
-    PATCH  /{item_id}     — partial update (status, assignee, payload)
-    DELETE /{item_id}     — soft delete
-    GET    /stats         — simple counters per status
-
-When a proper persistence layer lands, swap ``_InMemoryStore`` for a SQLite /
-SQLAlchemy backed adapter without changing the HTTP contract.
+每个子模块共享同一张 `ops_items` 表 + 一组开放词表。模块间逻辑差异（status 词、kind 词）
+仍由本文件维护，让前端继续用 `/vocab` 自我描述。
 """
 
 from __future__ import annotations
 
-import threading
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.orm import Session
+
+from src.core.database import get_db
+from src.models.base import OperationsModule
+from src.models.ops_item import OpsItem
 
 
 ModuleKey = Literal[
-    'labeling',
-    'tagging',
-    'checking',
-    'mining',
-    'privacy',
-    'release',
+    "labeling", "tagging", "checking", "mining", "privacy", "release",
 ]
 
 
-# Default status vocabularies per module. Kept permissive — the UI uses these
-# purely for filter chips and colouring.
 _STATUS_BY_MODULE: dict[ModuleKey, list[str]] = {
-    'labeling': ['draft', 'assigned', 'in_progress', 'review', 'done', 'blocked'],
-    'tagging': ['draft', 'applied', 'rolled_back'],
-    'checking': ['draft', 'running', 'passed', 'failed', 'waived'],
-    'mining': ['queued', 'running', 'candidates_ready', 'cancelled', 'failed'],
-    'privacy': ['queued', 'processing', 'processed', 'failed'],
-    'release': ['drafted', 'gated', 'approved', 'published', 'archived'],
+    "labeling": ["draft", "assigned", "in_progress", "review", "done", "blocked"],
+    "tagging": ["draft", "applied", "rolled_back"],
+    "checking": ["draft", "running", "passed", "failed", "waived"],
+    "mining": ["queued", "running", "candidates_ready", "cancelled", "failed"],
+    "privacy": ["queued", "processing", "processed", "failed"],
+    "release": ["drafted", "gated", "approved", "published", "archived"],
 }
 
-# Default "kind" enumerations shown as a secondary dimension in the UI.
+
 _KIND_BY_MODULE: dict[ModuleKey, list[str]] = {
-    'labeling': ['human', 'auto', 'hybrid'],
-    'tagging': ['manual', 'rule', 'model'],
-    'checking': ['gating', 'qc_human', 'qc_auto', 'calibration'],
-    'mining': ['hard_case', 'active_learning', 'similarity'],
-    'privacy': ['face', 'plate', 'audio', 'multi'],
-    'release': ['internal', 'training', 'external'],
+    "labeling": ["human", "auto", "hybrid"],
+    "tagging": ["manual", "rule", "model"],
+    "checking": ["gating", "qc_human", "qc_auto", "calibration"],
+    "mining": ["hard_case", "active_learning", "similarity"],
+    "privacy": ["face", "plate", "audio", "multi"],
+    "release": ["internal", "training", "external"],
 }
 
 
-# ── Schemas ─────────────────────────────────────────────────────────────────
+_MODULE_TO_ENUM: dict[ModuleKey, OperationsModule] = {
+    "labeling": OperationsModule.LABELING,
+    "tagging": OperationsModule.TAGGING,
+    "checking": OperationsModule.CHECKING,
+    "mining": OperationsModule.MINING,
+    "privacy": OperationsModule.PRIVACY,
+    "release": OperationsModule.RELEASE,
+}
 
-class OpsItem(BaseModel):
-    """Unified shape for every ops-module item."""
 
-    model_config = ConfigDict(extra='allow')
+# ── Pydantic schemas（HTTP 契约保持向后兼容） ─────────────────────────────
+
+
+class OpsItemDTO(BaseModel):
+    model_config = ConfigDict(extra="allow", from_attributes=True)
 
     id: str
     module: ModuleKey
@@ -80,6 +74,8 @@ class OpsItem(BaseModel):
     scenario: str | None = None
     requirement_id: str | None = None
     data_task_id: str | None = None
+    operations_task_id: str | None = None
+    x_trace_id: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     created_at: str
     updated_at: str
@@ -95,6 +91,8 @@ class OpsItemCreate(BaseModel):
     scenario: str | None = None
     requirement_id: str | None = None
     data_task_id: str | None = None
+    operations_task_id: str | None = None
+    x_trace_id: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -108,129 +106,114 @@ class OpsItemPatch(BaseModel):
     scenario: str | None = None
     requirement_id: str | None = None
     data_task_id: str | None = None
+    operations_task_id: str | None = None
+    x_trace_id: str | None = None
     payload: dict[str, Any] | None = None
 
 
-# ── Store ───────────────────────────────────────────────────────────────────
+def _to_dto(row: OpsItem) -> OpsItemDTO:
+    return OpsItemDTO(
+        id=row.id,
+        module=row.module.lower() if isinstance(row.module, str) else row.module.value,
+        title=row.title,
+        status=row.status,
+        kind=row.kind,
+        owner=row.owner,
+        clip_ids=list(row.clip_ids or []),
+        dataset_id=row.dataset_id,
+        scenario=row.scenario,
+        requirement_id=row.requirement_id,
+        data_task_id=row.data_task_id,
+        operations_task_id=row.operations_task_id,
+        x_trace_id=row.x_trace_id,
+        payload=dict(row.payload or {}),
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        updated_at=row.updated_at.isoformat() if row.updated_at else "",
+    )
 
-class _InMemoryStore:
-    """Per-process in-memory store keyed by (module, id)."""
 
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._items: dict[ModuleKey, dict[str, OpsItem]] = {
-            key: {} for key in _STATUS_BY_MODULE
-        }
+# ── 查询 / 修改的核心实现 ─────────────────────────────────────────────
 
-    def list(
-        self,
-        module: ModuleKey,
-        *,
-        status: str | None = None,
-        kind: str | None = None,
-        dataset_id: str | None = None,
-        scenario: str | None = None,
-        requirement_id: str | None = None,
-        data_task_id: str | None = None,
-        keyword: str | None = None,
-    ) -> list[OpsItem]:
-        rows = list(self._items[module].values())
-        if status:
-            rows = [r for r in rows if r.status == status]
-        if kind:
-            rows = [r for r in rows if r.kind == kind]
-        if dataset_id:
-            rows = [r for r in rows if r.dataset_id == dataset_id]
-        if scenario:
-            rows = [r for r in rows if r.scenario == scenario]
-        if requirement_id:
-            rows = [r for r in rows if r.requirement_id == requirement_id]
-        if data_task_id:
-            rows = [r for r in rows if r.data_task_id == data_task_id]
-        if keyword:
-            k = keyword.lower()
-            rows = [
-                r for r in rows
-                if k in r.id.lower()
-                or k in r.title.lower()
-                or k in (r.owner or '').lower()
-                or k in (r.kind or '').lower()
-            ]
-        rows.sort(key=lambda r: r.updated_at, reverse=True)
-        return rows
 
-    def get(self, module: ModuleKey, item_id: str) -> OpsItem | None:
-        return self._items[module].get(item_id)
-
-    def create(self, module: ModuleKey, payload: OpsItemCreate) -> OpsItem:
-        now = datetime.now(timezone.utc).isoformat()
-        default_status = _STATUS_BY_MODULE[module][0]
-        item = OpsItem(
-            id=f'{module[:3]}-{uuid.uuid4().hex[:10]}',
-            module=module,
-            title=payload.title,
-            status=payload.status or default_status,
-            kind=payload.kind,
-            owner=payload.owner,
-            clip_ids=list(payload.clip_ids),
-            dataset_id=payload.dataset_id,
-            scenario=payload.scenario,
-            requirement_id=payload.requirement_id,
-            data_task_id=payload.data_task_id,
-            payload=dict(payload.payload),
-            created_at=now,
-            updated_at=now,
+def _query_items(
+    db: Session,
+    module: ModuleKey,
+    *,
+    status: str | None = None,
+    kind: str | None = None,
+    dataset_id: str | None = None,
+    scenario: str | None = None,
+    requirement_id: str | None = None,
+    data_task_id: str | None = None,
+    operations_task_id: str | None = None,
+    x_trace_id: str | None = None,
+    keyword: str | None = None,
+):
+    enum_val = _MODULE_TO_ENUM[module]
+    q = db.query(OpsItem).filter(
+        OpsItem.module == enum_val,
+        OpsItem.deleted_at.is_(None),
+    )
+    if status:
+        q = q.filter(OpsItem.status == status)
+    if kind:
+        q = q.filter(OpsItem.kind == kind)
+    if dataset_id:
+        q = q.filter(OpsItem.dataset_id == dataset_id)
+    if scenario:
+        q = q.filter(OpsItem.scenario == scenario)
+    if requirement_id:
+        q = q.filter(OpsItem.requirement_id == requirement_id)
+    if data_task_id:
+        q = q.filter(OpsItem.data_task_id == data_task_id)
+    if operations_task_id:
+        q = q.filter(OpsItem.operations_task_id == operations_task_id)
+    if x_trace_id:
+        q = q.filter(OpsItem.x_trace_id == x_trace_id)
+    if keyword:
+        like = f"%{keyword}%"
+        q = q.filter(
+            (OpsItem.id.ilike(like))
+            | (OpsItem.title.ilike(like))
+            | (OpsItem.owner.ilike(like))
+            | (OpsItem.kind.ilike(like))
         )
-        with self._lock:
-            self._items[module][item.id] = item
-        return item
-
-    def patch(
-        self, module: ModuleKey, item_id: str, payload: OpsItemPatch
-    ) -> OpsItem | None:
-        with self._lock:
-            current = self._items[module].get(item_id)
-            if current is None:
-                return None
-            updates = payload.model_dump(exclude_unset=True)
-            updates['updated_at'] = datetime.now(timezone.utc).isoformat()
-            merged = current.model_copy(update=updates)
-            self._items[module][item_id] = merged
-            return merged
-
-    def delete(self, module: ModuleKey, item_id: str) -> bool:
-        with self._lock:
-            return self._items[module].pop(item_id, None) is not None
-
-    def stats(self, module: ModuleKey) -> dict[str, int]:
-        counts: dict[str, int] = {s: 0 for s in _STATUS_BY_MODULE[module]}
-        for item in self._items[module].values():
-            counts[item.status] = counts.get(item.status, 0) + 1
-        counts['total'] = sum(counts.values())
-        return counts
+    return q.order_by(OpsItem.updated_at.desc())
 
 
-_STORE = _InMemoryStore()
+def _stats(db: Session, module: ModuleKey) -> dict[str, int]:
+    counts: dict[str, int] = {s: 0 for s in _STATUS_BY_MODULE[module]}
+    rows = (
+        db.query(OpsItem.status, OpsItem)
+        .filter(OpsItem.module == _MODULE_TO_ENUM[module], OpsItem.deleted_at.is_(None))
+    )
+    total = 0
+    for status, _ in rows:
+        counts[status] = counts.get(status, 0) + 1
+        total += 1
+    counts["total"] = total
+    return counts
 
 
-# ── Router factory ──────────────────────────────────────────────────────────
+# ── Router factory ──────────────────────────────────────────────────────
+
 
 def _build_router(module: ModuleKey) -> APIRouter:
-    router = APIRouter(prefix=f'/api/v1/ops/{module}', tags=[f'ops:{module}'])
+    r = APIRouter(prefix=f"/api/v1/ops/{module}", tags=[f"ops:{module}"])
 
-    @router.get('/vocab')
+    @r.get("/vocab")
     def vocab() -> dict:
         return {
-            'module': module,
-            'status_options': _STATUS_BY_MODULE[module],
-            'kind_options': _KIND_BY_MODULE[module],
+            "module": module,
+            "status_options": _STATUS_BY_MODULE[module],
+            "kind_options": _KIND_BY_MODULE[module],
         }
 
-    @router.get('/stats')
-    def stats() -> dict:
-        return {'module': module, 'counts': _STORE.stats(module)}
+    @r.get("/stats")
+    def stats(db: Session = Depends(get_db)) -> dict:
+        return {"module": module, "counts": _stats(db, module)}
 
-    @router.get('')
+    @r.get("")
     def list_items(
         status: str | None = Query(default=None),
         kind: str | None = Query(default=None),
@@ -238,77 +221,114 @@ def _build_router(module: ModuleKey) -> APIRouter:
         scenario: str | None = Query(default=None),
         requirement_id: str | None = Query(default=None),
         data_task_id: str | None = Query(default=None),
+        operations_task_id: str | None = Query(default=None),
+        x_trace_id: str | None = Query(default=None),
         keyword: str | None = Query(default=None),
         limit: int = Query(default=50, ge=1, le=500),
         offset: int = Query(default=0, ge=0),
+        db: Session = Depends(get_db),
     ) -> dict:
-        rows = _STORE.list(
-            module,
-            status=status,
-            kind=kind,
-            dataset_id=dataset_id,
-            scenario=scenario,
-            requirement_id=requirement_id,
-            data_task_id=data_task_id,
+        q = _query_items(
+            db, module,
+            status=status, kind=kind, dataset_id=dataset_id, scenario=scenario,
+            requirement_id=requirement_id, data_task_id=data_task_id,
+            operations_task_id=operations_task_id, x_trace_id=x_trace_id,
             keyword=keyword,
         )
-        page = rows[offset : offset + limit]
+        total = q.count()
+        page = q.offset(offset).limit(limit).all()
         return {
-            'items': [r.model_dump() for r in page],
-            'total': len(rows),
-            'limit': limit,
-            'offset': offset,
+            "items": [_to_dto(r).model_dump() for r in page],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
         }
 
-    @router.post('')
-    def create_item(body: OpsItemCreate) -> dict:
-        item = _STORE.create(module, body)
-        return item.model_dump()
+    @r.post("")
+    def create_item(body: OpsItemCreate, db: Session = Depends(get_db)) -> dict:
+        default_status = _STATUS_BY_MODULE[module][0]
+        item = OpsItem(
+            module=_MODULE_TO_ENUM[module],
+            title=body.title,
+            status=body.status or default_status,
+            kind=body.kind,
+            owner=body.owner,
+            clip_ids=list(body.clip_ids),
+            dataset_id=body.dataset_id,
+            scenario=body.scenario,
+            requirement_id=body.requirement_id,
+            data_task_id=body.data_task_id,
+            operations_task_id=body.operations_task_id,
+            x_trace_id=body.x_trace_id,
+            payload=dict(body.payload),
+        )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        return _to_dto(item).model_dump()
 
-    @router.get('/{item_id}')
-    def get_item(item_id: str) -> dict:
-        item = _STORE.get(module, item_id)
+    @r.get("/{item_id}")
+    def get_item(item_id: str, db: Session = Depends(get_db)) -> dict:
+        item = db.query(OpsItem).filter(
+            OpsItem.id == item_id,
+            OpsItem.module == _MODULE_TO_ENUM[module],
+            OpsItem.deleted_at.is_(None),
+        ).first()
         if item is None:
-            raise HTTPException(status_code=404, detail=f'{module}:{item_id} not found')
-        return item.model_dump()
+            raise HTTPException(404, detail=f"{module}:{item_id} not found")
+        return _to_dto(item).model_dump()
 
-    @router.patch('/{item_id}')
-    def patch_item(item_id: str, body: OpsItemPatch) -> dict:
-        item = _STORE.patch(module, item_id, body)
+    @r.patch("/{item_id}")
+    def patch_item(
+        item_id: str, body: OpsItemPatch, db: Session = Depends(get_db)
+    ) -> dict:
+        item = db.query(OpsItem).filter(
+            OpsItem.id == item_id,
+            OpsItem.module == _MODULE_TO_ENUM[module],
+            OpsItem.deleted_at.is_(None),
+        ).first()
         if item is None:
-            raise HTTPException(status_code=404, detail=f'{module}:{item_id} not found')
-        return item.model_dump()
+            raise HTTPException(404, detail=f"{module}:{item_id} not found")
+        for field, value in body.model_dump(exclude_unset=True).items():
+            setattr(item, field, value)
+        db.commit()
+        db.refresh(item)
+        return _to_dto(item).model_dump()
 
-    @router.delete('/{item_id}')
-    def delete_item(item_id: str) -> dict:
-        ok = _STORE.delete(module, item_id)
-        if not ok:
-            raise HTTPException(status_code=404, detail=f'{module}:{item_id} not found')
-        return {'ok': True}
+    @r.delete("/{item_id}")
+    def delete_item(item_id: str, db: Session = Depends(get_db)) -> dict:
+        item = db.query(OpsItem).filter(
+            OpsItem.id == item_id,
+            OpsItem.module == _MODULE_TO_ENUM[module],
+            OpsItem.deleted_at.is_(None),
+        ).first()
+        if item is None:
+            raise HTTPException(404, detail=f"{module}:{item_id} not found")
+        item.deleted_at = datetime.now(timezone.utc)
+        db.commit()
+        return {"ok": True}
 
-    return router
+    return r
 
-
-# ── Aggregate router (single include_router target) ─────────────────────────
 
 router = APIRouter()
-for _module in ('labeling', 'tagging', 'checking', 'mining', 'privacy', 'release'):
-    router.include_router(_build_router(_module))  # type: ignore[arg-type]
+for _m in ("labeling", "tagging", "checking", "mining", "privacy", "release"):
+    router.include_router(_build_router(_m))  # type: ignore[arg-type]
 
 
-# Aggregate stats across every module — consumed by the Overview page.
-_OVERVIEW_ROUTER = APIRouter(prefix='/api/v1/ops', tags=['ops'])
+# ── Aggregate Overview ──────────────────────────────────────────────────
+
+_OVERVIEW = APIRouter(prefix="/api/v1/ops", tags=["ops"])
 
 
-@_OVERVIEW_ROUTER.get('/overview')
-def ops_overview() -> dict:
-    """Return per-module counters for the Overview page."""
+@_OVERVIEW.get("/overview")
+def ops_overview(db: Session = Depends(get_db)) -> dict:
     return {
-        'modules': [
-            {'module': m, 'counts': _STORE.stats(m)}
+        "modules": [
+            {"module": m, "counts": _stats(db, m)}  # type: ignore[arg-type]
             for m in _STATUS_BY_MODULE
         ]
     }
 
 
-router.include_router(_OVERVIEW_ROUTER)
+router.include_router(_OVERVIEW)
