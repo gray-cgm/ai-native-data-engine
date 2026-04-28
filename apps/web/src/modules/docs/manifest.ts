@@ -106,6 +106,11 @@ export const DOC_SECTIONS: DocManifestSection[] = [
         label: '数据与集成',
         items: [
           { path: 'architecture/clip-lance-data-model.md', title: 'Clip + Lance 数据模型' },
+          {
+            path: 'architecture/tech-selection-datafusion-opendal.md',
+            title: '技术选型：DataFusion / OpenDAL',
+            hint: '查询引擎 + 存储抽象层升级评审（草案，待转 ADR）',
+          },
           { path: 'architecture/fdl-integration.md', title: 'FDL 集成' },
           { path: 'architecture/monorepo-modules.md', title: 'Monorepo 模块划分' },
         ],
