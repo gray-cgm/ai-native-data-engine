@@ -1,5 +1,102 @@
 # AI Data Loop Infra PRD
 
+> 本文为整体产品 PRD。模块级需求请见同目录下 `module-*.md` 系列子文档。
+
+## 0. 产品全景图
+
+### 0.1 产品定位（一图秒懂）
+
+```mermaid
+flowchart TB
+    subgraph Verticals["垂直场景（可迁移）"]
+        V1[自动驾驶]
+        V2[机器人]
+        V3[座舱多模态]
+        V4[视觉/语音]
+    end
+
+    subgraph Core["AI Data Loop Infra · 通用底座"]
+        direction TB
+        Apps["📱 应用层<br/>Catalog · Requirement · Explorer · Operations · Pipelines · Tools"]
+        Domain["🧩 领域层<br/>Dataset / Sample / Asset / LineageEvent / Snowflake"]
+        Engine["⚙️ 引擎层<br/>Lance · DuckDB/DataFusion · Dagster · Kafka · DuckLake"]
+        Storage["🗄 基础设施<br/>本地 fs / S3 / OSS / Postgres / SQLite"]
+        Apps --> Domain --> Engine --> Storage
+    end
+
+    Verticals -.通过 schema/workflow/profile 适配.-> Core
+    Core -.对外交付.-> Algo["🧪 算法工程师<br/>Train / Eval / Iterate"]
+```
+
+### 0.2 数据闭环：四层对象 + x_trace_id 串通
+
+```mermaid
+flowchart LR
+    REQ["Requirement<br/>业务承诺"] -->|拆解| DT["DataTask<br/>collection / annotation /<br/>quality_check / pipeline"]
+    DT -->|协调| OPS["OperationsTask<br/>Mining / Labeling / Tagging /<br/>Checking / Release"]
+    OPS -->|执行| RUN["PipelineRun<br/>collect → clip-extract →<br/>feature-compute → release"]
+    RUN -->|产出| DS["★ Dataset<br/>customized → Promote → official"]
+    DS -->|交付| ART["Artifact + Asset<br/>data/exports/*.jsonl"]
+
+    classDef trace fill:#fff7e6,stroke:#fa8c16,stroke-width:1px;
+    class REQ,DT,OPS,RUN,DS,ART trace;
+
+    note["一条 x_trace_id 贯穿全链路<br/>📍 任意视图都能按 trace 反查"]
+    note -.-> REQ
+    note -.-> ART
+```
+
+### 0.3 演进路线：个人 → 团队 → SaaS
+
+```mermaid
+flowchart LR
+    subgraph P["阶段 1 · Personal（当前）"]
+        direction TB
+        P1[本地 SQLite + Lance]
+        P2[单进程 FastAPI + Dagster]
+        P3[macOS / Linux 笔记本]
+    end
+    subgraph T["阶段 2 · Team"]
+        direction TB
+        T1[Postgres + S3/MinIO]
+        T2[多进程 + ACL]
+        T3[Kafka 流式 + 多人协作]
+    end
+    subgraph S["阶段 3 · SaaS"]
+        direction TB
+        S1[多租户 + Iceberg/Paimon]
+        S2[StarRocks / DataFusion 分布式]
+        S3[OpenDAL 多云存储]
+    end
+    P -->|profile 切换| T -->|不重写代码| S
+```
+
+### 0.4 六大功能模块（应用层入口）
+
+```mermaid
+flowchart TB
+    subgraph Apps["六大模块（按用户旅程组织）"]
+        direction LR
+        REQ[📋 Requirement<br/>需求管理]
+        CAT[📦 Catalog<br/>数据集目录]
+        EXP[🔍 Explorer<br/>Clip 检索/切割]
+        OPS[⚙️ Operations<br/>5 子域]
+        PIPE[🔁 Pipelines<br/>运行/血缘/质量/成本]
+        TOOL[🧰 Tools<br/>微前端工具平台]
+    end
+    REQ ---|提需求| OPS ---|挑数据| EXP ---|查 clip| CAT ---|消费数据集| PIPE ---|看质量| TOOL
+```
+
+详见模块级 PRD：
+- [模块 PRD · Catalog](./module-catalog.md)
+- [模块 PRD · Requirement](./module-requirement.md)
+- [模块 PRD · Explorer](./module-explorer.md)
+- [模块 PRD · Operations](./module-operations.md)
+- [模块 PRD · Pipelines](./module-pipelines.md)
+- [模块 PRD · Tools](./module-tools.md)
+
+---
+
 ## 目的
 
 这份文档定义 `ai-data-loop-engine` 的**产品定位层**，用于回答一个比“当前仓库有哪些模块”更上层的问题：

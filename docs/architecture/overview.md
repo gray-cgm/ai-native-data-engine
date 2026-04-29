@@ -1,6 +1,66 @@
-# 总体架构说明
+# 架构总览
 
-`AI Native Data Engine` 是一个面向自动驾驶 / 机器人数据闭环的平台型 monorepo。它从“本地优先”的个人开发版 MVP 起步，通过稳定的抽象层逐步演进到团队版和企业版，而不是中途再拆出第二套系统。
+`AI Native Data Engine` 是一个面向自动驾驶 / 机器人数据闭环的平台型 monorepo。它从「本地优先」的个人开发版 MVP 起步，通过稳定的抽象层逐步演进到团队版和企业版，而不是中途再拆出第二套系统。
+
+> **导航**：本文是架构章节的入口。深入阅读路径：
+> ① [**领域模型**](./glossary-dataset-scenario-cornercase-tag-label.md)：理解 5 个核心名词与对象关系
+> ② [**业务流程**](./business-flows.md)：把横向闭环（Requirement → Dataset）拆成可观测段
+> ③ [**系统分层**](./system-layers.md)：六层模型每层用了什么技术、当前状态如何
+
+---
+
+## 0. 三视角看清架构
+
+### 0.1 核心抽象一图打通
+
+```mermaid
+flowchart TB
+    subgraph Domain["🧩 领域抽象（业务语言）"]
+        REQ[Requirement] --> DT[DataTask] --> OPS[OperationsTask] --> RUN[PipelineRun]
+        RUN --> SAMPLE[DatasetSample] --> DS[★ Dataset<br/>customized → official]
+        ASSET[Asset<br/>raw / derived]
+        EVT[LineageEvent<br/>Snowflake 中心]
+        OPS -. emit .-> EVT
+        RUN -. produce .-> ASSET
+        SAMPLE --> ASSET
+    end
+
+    subgraph Eng["⚙️ 引擎实现（技术实现）"]
+        L[Lance<br/>主存格式] --- D[DuckDB / DataFusion<br/>查询引擎]
+        DAG[Dagster<br/>编排] --- KAF[Kafka<br/>流式]
+        SQL[SQLite/PG<br/>元数据]
+    end
+
+    subgraph App["📱 应用层（六大模块）"]
+        CAT[Catalog] -. 浏览/管理 .-> DS
+        REQM[Requirements] -. 提需求 .-> REQ
+        EXP[Explorer] -. 切片/检索 .-> SAMPLE
+        OPSM[Operations] -. 协调 .-> OPS
+        PIPE[Pipelines] -. 观测 .-> RUN
+        TOOL[Tools] -. 嵌入 .-> CAT
+    end
+
+    Domain --> Eng
+    App --> Domain
+```
+
+### 0.2 业务流程一句话总结
+
+```
+Requirement → 4 个 DataTask（业务里程碑）→ 5 个 OperationsTask（人机协同）
+            → N 条 PipelineRun（机器执行）→ 1 个 customized Dataset
+            → Promote 到 1 个 official Dataset → 算法工程师消费
+```
+
+横向 9 步全景见 [E2E Demo 教程](../tutorials/e2e-demo.md)；每段细节见 [业务流程总览](./business-flows.md)。
+
+### 0.3 系统分层一句话总结
+
+**六层底座 + 一层正交**：文件格式 / 存储 / 湖表格式 / 计算 / 查询 / 应用 + 元数据&事务控制。
+
+每层"当前用什么 / 未来切什么 / 切换的代价"详见 [系统分层总览](./system-layers.md)。
+
+---
 
 整体上需要分成两种视角来理解：
 

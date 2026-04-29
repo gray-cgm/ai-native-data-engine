@@ -52,7 +52,7 @@ export const routes: RouteObject[] = [
       { path: '/tools', element: <ToolsHomePage /> },
       { path: '/tools/:toolId', element: <ToolWorkspacePage /> },
       { path: '/settings', element: <SettingsPage /> },
-      { path: '/docs', element: <DocsViewerPage /> },
+      // 用单一带 splat 的 route，避免 /docs ↔ /docs/<file> 切换时组件被 remount，丢失展开态
       { path: '/docs/*', element: <DocsViewerPage /> },
     ],
   },

@@ -3,8 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Empty, Input, Spin, Tag, Tree, Typography } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import {
-  FolderOutlined,
-  FolderOpenOutlined,
   FileTextOutlined,
   BookOutlined,
   RocketOutlined,
@@ -15,6 +13,8 @@ import {
   ReadOutlined,
   HistoryOutlined,
   EllipsisOutlined,
+  RightOutlined,
+  DownOutlined,
 } from '@ant-design/icons'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -38,6 +38,8 @@ import '../docs-viewer.css'
 
 const { Title, Text } = Typography
 
+const EXPANDED_KEYS_STORAGE = 'docs-viewer:expanded-keys:v1'
+
 const SECTION_ICONS: Record<CuratedSection['icon'], React.ReactNode> = {
   rocket: <RocketOutlined />,
   product: <AppstoreOutlined />,
@@ -50,18 +52,30 @@ const SECTION_ICONS: Record<CuratedSection['icon'], React.ReactNode> = {
 }
 
 function itemNode(item: CuratedItem): DataNode {
+  const hasChildren = (item.children?.length ?? 0) > 0
   return {
     key: `file:${item.path}`,
     title: (
-      <span className={item.present ? '' : 'docs-viewer__missing'}>
-        <FileTextOutlined style={{ marginRight: 6, color: '#6c7a89' }} />
-        {item.title}
-        {!item.present && <Tag style={{ marginLeft: 8 }} color="warning">缺失</Tag>}
-        {item.hint && <span className="docs-viewer__hint">· {item.hint}</span>}
+      <span className={`docs-viewer__item ${item.present ? '' : 'docs-viewer__item--missing'}`}>
+        <FileTextOutlined className="docs-viewer__item-icon" />
+        <span className="docs-viewer__item-text">
+          <span className="docs-viewer__item-title" title={item.title}>
+            {item.title}
+            {!item.present && <Tag style={{ marginLeft: 6 }} color="warning">缺失</Tag>}
+          </span>
+          {item.hint && (
+            <span className="docs-viewer__item-hint" title={item.hint}>
+              {item.hint}
+            </span>
+          )}
+        </span>
       </span>
     ),
-    isLeaf: true,
+    // 有 children → 非 leaf 可折叠；自身仍 selectable 以便点击打开父文档
+    isLeaf: !hasChildren,
     disabled: !item.present,
+    selectable: true,
+    children: hasChildren ? item.children!.map(itemNode) : undefined,
   }
 }
 
@@ -73,9 +87,8 @@ function groupNode(group: CuratedGroup): DataNode {
   return {
     key: `group:${group.id}`,
     title: (
-      <span>
-        <FolderOutlined style={{ marginRight: 6, color: '#b08b58' }} />
-        {group.label}
+      <span className="docs-viewer__group">
+        <span className="docs-viewer__group-label">{group.label}</span>
       </span>
     ),
     selectable: false,
@@ -119,13 +132,25 @@ function orphanSectionNode(files: DocFileNode[]): DataNode {
   }
 }
 
-function filterItems(items: CuratedItem[], kw: string): CuratedItem[] {
-  return items.filter(
-    (it) =>
-      it.title.toLowerCase().includes(kw) ||
-      it.path.toLowerCase().includes(kw) ||
-      (it.hint?.toLowerCase().includes(kw) ?? false),
+function itemMatches(it: CuratedItem, kw: string): boolean {
+  return (
+    it.title.toLowerCase().includes(kw) ||
+    it.path.toLowerCase().includes(kw) ||
+    (it.hint?.toLowerCase().includes(kw) ?? false)
   )
+}
+
+function filterItems(items: CuratedItem[], kw: string): CuratedItem[] {
+  const out: CuratedItem[] = []
+  for (const it of items) {
+    const childMatches = (it.children ?? []).flatMap((c) =>
+      itemMatches(c, kw) ? [c] : filterItems([c], kw),
+    )
+    if (itemMatches(it, kw) || childMatches.length > 0) {
+      out.push({ ...it, children: childMatches.length > 0 ? childMatches : it.children })
+    }
+  }
+  return out
 }
 
 function filterGroup(group: CuratedGroup, kw: string): CuratedGroup | null {
@@ -221,8 +246,33 @@ export default function DocsViewerPage() {
   const activePath = splat ? decodeURIComponent(splat) : ''
 
   const [keyword, setKeyword] = useState('')
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([])
-  const [defaultExpanded, setDefaultExpanded] = useState(false)
+
+  // 展开态持久化到 sessionStorage：跨路由切换 / 浏览器刷新都不丢
+  const [expandedKeys, setExpandedKeysState] = useState<React.Key[]>(() => {
+    try {
+      const raw = sessionStorage.getItem(EXPANDED_KEYS_STORAGE)
+      return raw ? (JSON.parse(raw) as React.Key[]) : []
+    } catch {
+      return []
+    }
+  })
+  const setExpandedKeys = useCallback((keys: React.Key[]) => {
+    setExpandedKeysState(keys)
+    try {
+      sessionStorage.setItem(EXPANDED_KEYS_STORAGE, JSON.stringify(keys))
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [])
+  // 已经从 sessionStorage 恢复过 → 不再触发 default expand 覆盖用户偏好
+  const [defaultExpanded, setDefaultExpanded] = useState<boolean>(() => {
+    try {
+      const raw = sessionStorage.getItem(EXPANDED_KEYS_STORAGE)
+      return !!raw && (JSON.parse(raw) as React.Key[]).length > 0
+    } catch {
+      return false
+    }
+  })
 
   const treeFetcher = useCallback(() => fetchDocTree(), [])
   const {
@@ -352,9 +402,12 @@ export default function DocsViewerPage() {
               <Tree
                 treeData={antdTreeData}
                 showIcon={false}
-                switcherIcon={({ expanded }) => (expanded ? <FolderOpenOutlined /> : <FolderOutlined />)}
+                switcherIcon={({ expanded }) =>
+                  expanded ? <DownOutlined /> : <RightOutlined />
+                }
+                expandAction="click"
                 expandedKeys={expandedKeys}
-                onExpand={setExpandedKeys}
+                onExpand={(keys) => setExpandedKeys(keys)}
                 selectedKeys={activePath ? [`file:${activePath}`] : []}
                 onSelect={handleSelect}
                 blockNode

@@ -1,31 +1,25 @@
-# 数据集与 Snowflake 事件模型重构（v2，2026-04-28）
+# 数据集与 Snowflake 事件模型设计
 
-> 本文是对 `dataset-domain-model.md` 的迭代版本。基于公司现行新一代数据集设计（PDF 版本，2026-04），把 Dataset / Sample / Event / Asset 四件套对齐到工业实践。
+> Dataset / DatasetSample / LineageEvent / EventResult / Asset 五件套的完整设计：模型字段、状态机、切割策略、提级工作流、参考实现路径。
 >
-> 本次范围：
-> 1. **Dataset 只有 `customized` 与 `official` 两类**：customized 是用户操作堆出来的"工作集"，official 是经过审批的"可训练集"。**没有第三种 dataset**。
-> 2. **Asset** 概念替代旧的 ingest/curate/publish 阶段：原始采集数据与流水线派生产物都登记为 Asset 行（`asset_kind: raw | derived`）。
-> 3. 灵活视频切割：web/bff/api 全栈实现。
-> 4. Snowflake LineageEvent 中心 + 维度（Tagging/Labeling/Checking/Mining）。
+> 与术语含义相关的解释见 [术语澄清](./glossary-dataset-scenario-cornercase-tag-label.md)；横向业务流程见 [业务流程总览](./business-flows.md)；底层引擎见 [系统分层总览](./system-layers.md)。
 
-显式不做：CSVImportRowTable（按要求忽略）。
+## 一、核心设计原则
 
----
-
-## 一、为什么要重构
-
-| 现状痛点 | 重构后 |
+| 原则 | 说明 |
 |---|---|
-| Dataset 概念双重含义（catalog 登记 + 前端 scenario 聚合），无标准训练事实表 | 统一 Dataset 主表 + DatasetSample 事实表，训练 loader 直接消费 |
-| 没有切割语义，clip 是不可分的 | 引入 `slice_strategy`（official 1切4 / flexible / random_sample），ts + range 描述切片窗口 |
-| 6 模块（labeling/tagging/checking/mining/privacy/release）各自维护半结构数据，互相抄字段 | LineageEvent 中心事件 + 维度衍生表，每次操作 = 一条 event，统一可追溯 |
-| Bronze/Silver/Gold（曾短暂改名 ingest/curate/publish）三段标签语义混乱 — 既像 dataset 类型又像 pipeline 阶段 | **彻底删掉三段概念**：dataset 只有 customized/official；原始/派生数据登记为 Asset；pipeline run 的 step 名只是字符串标签 |
+| **Dataset 只有 `customized` 与 `official` 两类** | customized 是用户操作堆出来的"工作集"；official 是经过审批的"可训练集"。**没有第三种 dataset** |
+| **样本即事实** | DatasetSample 是训练消费的唯一事实表；粒度 `(dataset_id, clip_id, ts)` 唯一约束保证幂等 |
+| **Asset 统一登记原始 + 派生数据** | `asset_kind: raw \| derived`；血缘走 `producer_pipeline_run_id` / `producer_event_id` |
+| **Snowflake 中心 LineageEvent + 维度** | 每次操作 = 一条 event；4 维度（Tagging / Labeling / Checking / Mining）通过 query filter 暴露，无独立物理表 |
+| **PipelineRun.stage 是自由文本 step 名** | 不做阶段枚举约束；血缘走 Asset 而不是 stage 字段 |
+| **CSVImportRowTable 不实现** | customized 数据集的可追溯靠 `EventResult.extra` + `DatasetSample.extra_meta` + `Asset.payload` 承载 |
 
 ---
 
 ## 二、Dataset 模型（顶层主表）—— 只有 customized 与 official
 
-新增 SQLAlchemy 模型 `apps/api/src/models/dataset.py::Dataset`，物理表 `datasets_v2`（与旧 catalog adapter 中的 `datasets` 区分；旧表保留只读用于演进期回滚）。
+SQLAlchemy 模型 `apps/api/src/models/dataset.py::Dataset`，物理表 `datasets_v2`。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
@@ -102,7 +96,7 @@
 
 ## 三、Asset 模型（取代 ingest/curate/publish 三段）
 
-新增 SQLAlchemy 模型 `apps/api/src/models/asset.py::Asset`，物理表 `assets`。
+SQLAlchemy 模型 `apps/api/src/models/asset.py::Asset`，物理表 `assets`。
 
 > **核心思想**：把原始采集数据与流水线加工产物登记到同一张表，用 `asset_kind` 区分 raw / derived；用 FK 把 Asset 串到 PipelineRun / LineageEvent / Requirement。这样 PipelineRun 不再背 stage 枚举，只负责声明"我用了哪些 input Asset，产出了哪些 output Asset"。
 
@@ -184,7 +178,7 @@ POST   /api/v1/datasets/{id}/cut             # 灵活切割快捷入口（Explor
 
 `apps/web/src/modules/explorer/pages/clip-detail.page.tsx::VideoPlayer` 内置：
 
-> **时间戳来源（v3，2026-04-28 三次修订）**：sensor 视频的 in / out **不再用秒数二次转换**；
+> **时间戳来源**：sensor 视频的 in / out 不用秒数二次转换；
 > 直接复用 Lance `meta.lance` 的 `start_time` / `end_time`（纳秒）作为时间轴 single source
 > of truth：
 >
@@ -272,7 +266,7 @@ GET /api/v1/events/dimensions/mining
 
 ---
 
-## 七、Catalog 与 Operations Release 工作流（2026-04-28 三次修订补丁）
+## 七、Catalog 与 Operations Release 工作流
 
 ### 7.1 Catalog：双视图
 
@@ -340,48 +334,34 @@ drafted ──▶ gated ──▶ approved ──▶ published   (Promote 动作
 
 ---
 
-## 八、迁移 / 实施顺序
-
-1. **DB 迁移**：在 `d2f4a5b6c7d8` 之后增 `e3a5b6c7d8e9_add_assets_and_drop_stage_enum.py`：
-   - `CREATE TABLE assets(...)`
-   - `PipelineRun.stage` 由 enum constraint 转 free-text（SQLite 下 ALTER 受限，依赖 `native_enum=False` ⇒ 实际就是 VARCHAR，不需要真的 ALTER）
-2. **Models + services**：新增 `apps/api/src/models/asset.py`；`PipelineStage` 与 `normalize_stage` 从 `base.py` 移除。
-3. **API 路由**：新增 `/api/v1/assets`（列表 / 创建 / 详情）。
-4. **Orchestrator**：data_pipeline.py 把 `data/ingest/`、`data/curate/`、`data/publish/` 统一改为 `data/raw/`、`data/assets/`、`data/exports/`。
-5. **Web / BFF**：删除 STAGE_OPTIONS 中的 ingest/curate/publish；StreamingSummary 字段重命名（`ingest_log_path` → `raw_log_path` 等），Pipelines Runs 表的 stage 列展示原始字符串。
-6. **文档 / dev-log / manifest**：本设计文档替换前一版同名 v2，dev-log 追加"二次修订"。
-
----
-
-## 九、设计权衡
+## 八、设计权衡
 
 | 决策 | 取舍 |
 |---|---|
-| **Dataset 只有 official + customized** | 抹掉"中间产物算第三种 dataset"的歧义；中间产物归 Asset。 |
-| **Asset 单表覆盖 raw + derived** | 一张表 + `asset_kind` 列扛下所有"非 dataset 的数据资产"；后续如出现"特征列族"等强子类型，再切维度表。 |
-| **PipelineRun.stage 降级为自由文本** | 工业 stage 模型不再绑死，只留人类可读 step 名做展示。 |
-| **CSVImportRowTable 不实现** | 符合需求；customized 数据集的可追溯靠 EventResult.extra + DatasetSample.extra_meta + Asset.payload 承载。 |
-| **保留 `gold_pipeline_run_id` 字段名** | 保护 alembic 历史，注释重写比 column rename 风险小。 |
+| **Dataset 只有 official + customized** | 抹掉"中间产物算第三种 dataset"的歧义；中间产物归 Asset |
+| **Asset 单表覆盖 raw + derived** | 一张表 + `asset_kind` 列扛下所有"非 dataset 的数据资产"；后续若出现强子类型再切维度表 |
+| **PipelineRun.stage 是自由文本** | 不绑死工业 stage 模型，只留人类可读 step 名做展示；血缘走 Asset |
+| **CSVImportRowTable 不建表** | customized 数据集可追溯靠 EventResult.extra + DatasetSample.extra_meta + Asset.payload 承载 |
+| **`gold_pipeline_run_id` 字段名保留** | 保护 alembic 历史，注释解释为"终态 release PipelineRun"，比 column rename 风险小 |
 
 ---
 
-## 十、参考文件索引
+## 九、参考文件索引
 
 | 路径 | 作用 |
 |---|---|
-| `apps/api/src/models/dataset.py`（新） | Dataset / DatasetSample（仅 customized + official） |
-| `apps/api/src/models/asset.py`（新） | Asset 模型（raw + derived 两类资产） |
-| `apps/api/src/models/lineage_event.py`（新） | LineageEvent / EventResult |
-| `apps/api/src/services/dataset_slice_service.py`（新） | 切割策略 + sample 写入 |
-| `apps/api/src/services/event_service.py`（新） | 事件 + 维度结果写入 |
-| `apps/api/src/api/routes/datasets.py`（新） | Dataset REST |
-| `apps/api/src/api/routes/events.py`（新） | LineageEvent REST + 4 维度视图 |
-| `apps/api/src/api/routes/assets.py`（新） | Asset REST（列表 / 创建 / 详情） |
-| `apps/api/alembic/versions/d2f4a5b6c7d8_dataset_v2_and_events.py` | dataset / event 迁移 |
-| `apps/api/alembic/versions/e3a5b6c7d8e9_assets_table.py`（新） | Asset 表迁移 |
+| `apps/api/src/models/dataset.py` | Dataset / DatasetSample（仅 customized + official） |
+| `apps/api/src/models/asset.py` | Asset 模型（raw + derived 两类资产） |
+| `apps/api/src/models/lineage_event.py` | LineageEvent / EventResult |
+| `apps/api/src/services/dataset_slice_service.py` | 切割策略 + sample 写入 + promote_to_official |
+| `apps/api/src/services/event_service.py` | 事件 + 维度结果写入 |
+| `apps/api/src/api/routes/datasets.py` | Dataset REST（含 /cut / /promote） |
+| `apps/api/src/api/routes/events.py` | LineageEvent REST + 4 维度视图 |
+| `apps/api/src/api/routes/assets.py` | Asset REST（列表 / 创建 / 详情） |
+| `apps/api/alembic/versions/d2f4a5b6c7d8_dataset_v2_and_events.py` | datasets_v2 + lineage_events 迁移 |
+| `apps/api/alembic/versions/e3a5b6c7d8e9_assets_table.py` | assets 表迁移 |
 | `apps/bff/src/routes/datasets.ts` / `events.ts` / `assets.ts` | BFF 透传 |
-| `apps/web/src/modules/datasets/`（新） | 数据集前端模块 |
-| `apps/web/src/modules/explorer/components/video-timeline.tsx`（新） | 时间进度条 + 关键帧 tick |
-| `apps/web/src/modules/explorer/components/save-cut-modal.tsx`（新） | 保存切片弹窗 |
-| `apps/api/src/models/base.py` | **删除 PipelineStage 枚举** |
-| `docs/architecture/dataset-domain-model.md` | v1 历史快照，仍保留 |
+| `apps/web/src/modules/datasets/` | 数据集前端模块（list / detail / picker / new modal） |
+| `apps/web/src/modules/explorer/components/video-timeline.tsx` | 时间进度条 + 关键帧 tick |
+| `apps/web/src/modules/explorer/components/save-cut-modal.tsx` | 保存切片弹窗 |
+| `apps/api/src/models/base.py` | 公共枚举（PipelineStatus / TriggerSource / RunPurpose / OperationsModule …） |
