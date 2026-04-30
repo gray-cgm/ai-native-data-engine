@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import rehypeHighlight from 'rehype-highlight'
 import 'highlight.js/styles/github-dark.css'
 
@@ -441,7 +442,7 @@ export default function DocsViewerPage() {
               <article className="markdown-body">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
+                  rehypePlugins={[rehypeRaw, [rehypeHighlight, { ignoreMissing: true }]]}
                   components={markdownComponents}
                 >
                   {stripDuplicateH1(fileData.content, fileData.title)}

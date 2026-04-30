@@ -87,5 +87,5 @@ def run_query(lance_root: Path = DEFAULT_LANCE_ROOT, clip_id: str | None = None,
 
 
 if __name__ == '__main__':
-    clip_id = sys.argv[1] if len(sys.argv) > 1 else None
+    clip_id = sys.argv[1] if len(sys.argv) > 1 else 'c-36e79cfe-7b6e-39c6-ac80-ae34dc04e8f0'
     pprint(run_query(clip_id=clip_id))

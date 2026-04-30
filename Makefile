@@ -6,7 +6,7 @@ COMPOSE_SERVICES := postgres dagster-user-code dagster-webserver dagster-daemon 
 APP_PORTS := $(WEB_PORT) $(BFF_PORT) $(API_PORT) $(DAGSTER_PORT) $(POSTGRES_PORT) $(JUPYTER_PORT) $(SUPERSET_PORT) $(KAFKA_PORT) $(KAFKA_UI_PORT)
 COLIMA_MOUNT_EXISTS := $(shell colima ssh -- test -d "$(HOST_WORKSPACE_DIR)" >/dev/null 2>&1 && echo yes || echo no)
 
-.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics kafka-down kafka-logs kafka-topics-init stream-kafka-consumer ingest query lance stream-demo stream-demo-kafka export-parquet export-csv export-jsonl sdk-demo req-demo req-list req-stats req-sign-off seed-trace-demo seed-trace-demo-reset e2e-demo e2e-demo-reset e2e-demo-random db-upgrade db-downgrade db-stamp-head db-revision db-current db-history clean clean-dev-data
+.PHONY: setup preflight doctor check-env check-tools check-docker check-ports check-mount install install-web install-py up up-deps up-apps down logs status dev dev-web dev-bff dev-api dev-dagster compose-dagster restart-dagster compose-analytics kafka-down kafka-logs kafka-topics-init stream-kafka-consumer ingest query lance stream-demo stream-demo-kafka export-parquet export-csv export-jsonl sdk-demo req-demo req-list req-stats req-sign-off seed-trace-demo seed-trace-demo-reset e2e-demo e2e-demo-reset e2e-demo-random onboarding-01 onboarding-02 onboarding-03 onboarding-04 onboarding-05 onboarding-06 onboarding-07 onboarding-all db-upgrade db-downgrade db-stamp-head db-revision db-current db-history clean clean-dev-data
 
 setup: check-tools check-docker
 	@if [ ! -f .env ]; then \
@@ -234,6 +234,35 @@ e2e-demo-reset:
 
 e2e-demo-random:
 	SCENARIO=random uv run --package api python -m src.scripts.e2e_demo $(ARGS)
+
+
+# ── Onboarding：新人入职 7 个分层 demo ─────────────────────────────────────
+# 详见 apps/api/src/scripts/onboarding/README.md
+ONB = uv run --package api python -m src.scripts.onboarding
+
+onboarding-01:
+	$(ONB).s01_lance_format $(ARGS)
+
+onboarding-02:
+	$(ONB).s02_storage_adapter $(ARGS)
+
+onboarding-03:
+	$(ONB).s03_duckdb_query $(ARGS)
+
+onboarding-04:
+	$(ONB).s04_business_flow --reset $(ARGS)
+
+onboarding-05:
+	$(ONB).s05_dataset_sample --reset $(ARGS)
+
+onboarding-06:
+	$(ONB).s06_snowflake_lineage --reset $(ARGS)
+
+onboarding-07:
+	$(ONB).s07_promote_export --reset $(ARGS)
+
+onboarding-all: onboarding-01 onboarding-02 onboarding-03 onboarding-04 onboarding-05 onboarding-06 onboarding-07
+	@echo "✅ Onboarding 7 个 demo 全部跑完"
 
 
 # ── Alembic 数据库迁移 ──────────────────────────────────────────────────────

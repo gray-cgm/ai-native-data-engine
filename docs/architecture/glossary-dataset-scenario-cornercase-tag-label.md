@@ -23,8 +23,7 @@
        │                                                                                       │
        │   meta.tags     = "rain,intersection,vru,cutin_v1_12"   ← Tag = 系统/规则/模型产出      │
        │                                                                                       │
-       │   meta.da_tags  = "Good_behavior_v1"                    ← Label = 人工标注（da = data │
-       │                                                                                          annotation）│
+       │   meta.da_tags  = "Good_behavior_v1"                    ← Label = 人工标注（annotation）│
        │                                                                                       │
        │   payload.cornercase = {                                ← Cornercase = 这段 clip 暴露了│
        │     "kind": "disengagement",                              模型/系统能力边界——是状态 + │

@@ -47,6 +47,11 @@ export const DOC_SECTIONS: DocManifestSection[] = [
       { path: 'README.md', title: '项目总览', hint: '所有文档的入口索引' },
       { path: 'tutorials/beginner-guide.md', title: '入门教程', hint: '1 小时跑通本地环境' },
       {
+        path: 'tutorials/onboarding.md',
+        title: '新手指南',
+        hint: '7步demo，按系统分层从下到上，每步独立可跑、注释密集、便于调试',
+      },
+      {
         path: 'tutorials/e2e-demo.md',
         title: 'E2E Demo 演示',
         hint: '从 Requirement 到 official Dataset 的 9 步全链路',

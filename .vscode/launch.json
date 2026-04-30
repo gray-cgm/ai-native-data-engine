@@ -17,6 +17,20 @@
       "console": "integratedTerminal"
     },
     {
+      "name": "API: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/apps/api"
+      },
+      "justMyCode": false,
+      "console": "integratedTerminal"
+    },
+    {
       "name": "API: ingest demo script",
       "type": "debugpy",
       "request": "launch",

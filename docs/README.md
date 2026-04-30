@@ -12,6 +12,7 @@
 | 文档 | 适用读者 |
 |---|---|
 | [入门教程](./tutorials/beginner-guide.md) | 第一次接触本项目的所有读者：1 小时跑通本地环境 |
+| [新人 Onboarding · 7 步分层 Demo](./tutorials/onboarding.md) | 入职第一周想系统理解项目分层的工程师 / 算法 |
 | [E2E Demo 演示](./tutorials/e2e-demo.md) | 想看完整数据闭环的读者：从 Requirement → 落地 official Dataset 的 9 步流程 |
 
 ---
@@ -28,7 +29,7 @@
 | [模块 PRD · Pipelines](./prd/module-pipelines.md) | 流水线运行 / 血缘 / 质量 / 成本 |
 | [模块 PRD · Tools](./prd/module-tools.md) | 工具平台与微前端集成 |
 | [产品使用说明](./prd/user-guide.md) | 端到端工作流：算法工程师 / DRE / 标注供应商 / 运维各自怎么用 |
-| [UI / UX 设计](./prd/ui-ux-design.md) | 信息架构、页面状态机、交互细节（前端工程师向） |
+| [UI / UX 设计](./prd/ui-ux-design.md) | 信息架构、页面状态机、交互细节 |
 
 ---
 
@@ -39,9 +40,9 @@
 | [架构总览](./architecture/overview.md) | 核心抽象 + 业务流程 + 系统分层一图打通 |
 | [Mermaid 架构图](./architecture/mermaid-diagrams.md) | BFF / Platform API / Dagster 调用拓扑 |
 | [MVP 范围](./architecture/mvp-scope.md) ｜ [个人版 vs 企业版](./architecture/personal-vs-enterprise.md) ｜ [能力 Gap Map](./architecture/ai-data-platform-gap-map.md) | 边界与演进 |
-| **领域模型（一组）** | [术语澄清](./architecture/glossary-dataset-scenario-cornercase-tag-label.md) ｜ [领域模型与语义](./architecture/domain-model.md) ｜ [Dataset + Snowflake 设计](./architecture/dataset-design.md) ｜ [Core / Adapters / Profiles / Workflows 分层](./architecture/core-adapters-profiles-workflows.md) ｜ [系统目录与领域设计](./architecture/system-directory-and-domain-design.md) |
-| **业务流程（一组）** | [业务流程总览](./architecture/business-flows.md) ｜ [分层与编排边界](./architecture/layering-and-orchestrator-boundaries.md) ｜ [Local-First 流式演进](./architecture/local-first-streaming-evolution.md) ｜ [物理数据集管理系统](./architecture/build-phisical-dataset-manager-system.md) |
-| **系统分层（一组）** | [系统分层总览（六层）](./architecture/system-layers.md) ｜ [Clip + Lance 数据模型](./architecture/clip-lance-data-model.md) ｜ [FDL 集成](./architecture/fdl-integration.md) ｜ [Monorepo 模块划分](./architecture/monorepo-modules.md) ｜ [Web 访问层 / BFF 架构](./architecture/web-access-layer-bff-architecture.md) ｜ [微前端工具平台](./architecture/web-microfrontend-tools-platform.md) |
+| **领域模型** | [术语澄清](./architecture/glossary-dataset-scenario-cornercase-tag-label.md) ｜ [领域模型与语义](./architecture/domain-model.md) ｜ [Dataset + Snowflake 设计](./architecture/dataset-design.md) ｜ [Core / Adapters / Profiles / Workflows 分层](./architecture/core-adapters-profiles-workflows.md) ｜ [系统目录与领域设计](./architecture/system-directory-and-domain-design.md) |
+| **业务流程** | [业务流程总览](./architecture/business-flows.md) ｜ [分层与编排边界](./architecture/layering-and-orchestrator-boundaries.md) ｜ [Local-First 流式演进](./architecture/local-first-streaming-evolution.md) ｜ [物理数据集管理系统](./architecture/build-phisical-dataset-manager-system.md) |
+| **系统分层** | [系统分层总览（六层）](./architecture/system-layers.md) ｜ [Clip + Lance 数据模型](./architecture/clip-lance-data-model.md) ｜ [FDL 集成](./architecture/fdl-integration.md) ｜ [Monorepo 模块划分](./architecture/monorepo-modules.md) ｜ [Web 访问层 / BFF 架构](./architecture/web-access-layer-bff-architecture.md) ｜ [微前端工具平台](./architecture/web-microfrontend-tools-platform.md) |
 
 ---
 

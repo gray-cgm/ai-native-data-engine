@@ -1,5 +1,5 @@
 import { apiGet } from '@/shared/api/client'
-import { DOC_SECTIONS, type DocManifestGroup, type DocManifestSection } from './manifest'
+import { DOC_SECTIONS, type DocManifestGroup, type DocManifestItem, type DocManifestSection } from './manifest'
 
 export type DocFileNode = {
   type: 'file'
@@ -61,6 +61,8 @@ export type CuratedItem = {
   hint?: string
   /** True if the file exists on disk. */
   present: boolean
+  /** 可选的嵌套子项（如：详版 PRD 作为模块 PRD 的子项） */
+  children?: CuratedItem[]
 }
 
 export type CuratedGroup = {
@@ -93,14 +95,15 @@ export function buildCuratedView(tree: DocTree): CuratedView {
 
   const usedPaths = new Set<string>()
 
-  function mapItem(path: string, titleOverride?: string, hint?: string): CuratedItem {
-    const f = byPath.get(path)
-    if (f) usedPaths.add(path)
+  function mapItem(item: DocManifestItem): CuratedItem {
+    const f = byPath.get(item.path)
+    if (f) usedPaths.add(item.path)
     return {
-      path,
-      title: titleOverride || f?.title || path.split('/').pop() || path,
-      hint,
+      path: item.path,
+      title: item.title || f?.title || item.path.split('/').pop() || item.path,
+      hint: item.hint,
       present: Boolean(f),
+      children: item.children?.map(mapItem),
     }
   }
 
@@ -108,19 +111,26 @@ export function buildCuratedView(tree: DocTree): CuratedView {
     return {
       id: g.id,
       label: g.label,
-      items: (g.items ?? []).map((it) => mapItem(it.path, it.title, it.hint)),
+      items: (g.items ?? []).map(mapItem),
       groups: (g.groups ?? []).map(mapGroup),
     }
   }
 
+  function countItem(it: CuratedItem): number {
+    let n = it.present ? 1 : 0
+    for (const c of it.children ?? []) n += countItem(c)
+    return n
+  }
+
   function countFiles(group: { items: CuratedItem[]; groups: CuratedGroup[] }): number {
-    let n = group.items.filter((it) => it.present).length
+    let n = 0
+    for (const it of group.items) n += countItem(it)
     for (const g of group.groups) n += countFiles(g)
     return n
   }
 
   const sections: CuratedSection[] = DOC_SECTIONS.map((s) => {
-    const items = (s.items ?? []).map((it) => mapItem(it.path, it.title, it.hint))
+    const items = (s.items ?? []).map(mapItem)
     const groups = (s.groups ?? []).map(mapGroup)
     const base = { items, groups }
     return {
