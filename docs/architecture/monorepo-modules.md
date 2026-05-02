@@ -5,22 +5,21 @@
 ```text
 docs/
 apps/
-  api/
-  bff/
-  orchestrator/
-  scheduler/      # placeholder for future service
-  web/
+  api/             FastAPI Platform API
+  bff/             Node.js BFF
+  orchestrator/    Dagster code location
+  scheduler/       独立调度服务（按需引入）
+  web/             React 工作台
 packages/
-  config/
-  contracts/
-  profiles/
-  schemas/
+  config/          shared TS config
+  contracts/       TS 共享 contract（按能力域）
+  profiles/        runtime profile + capability model
+  schemas/         JSON / form schema
 python/
-  adapters/
-  core/
-  profiles/
-  services/       # placeholder for future service layer
-  workflows/
+  adapters/        provider 实现
+  core/            领域模型 + 接口契约
+  profiles/        RuntimeContainer 装配
+  workflows/       框架中立的流程库
 sdk/
   python/
 infra/
@@ -81,13 +80,12 @@ Python 侧领域、适配器、profile 与 workflow。
   - YAML profile 加载
   - runtime container 装配
 - `python/workflows`
-  - ingestion 逻辑
-  - 资产物化逻辑
-  - demo pipeline 工具
-  - 当前阶段也可承载部分 query/export/scheduler orchestration
-- `python/services`（目录已预留）
-  - 未来沉淀 query、export、scheduler 等应用服务层
-  - 当前只保留最小 package 骨架，不迁移现有 `python/workflows` 逻辑
+  - 框架中立的流程库（被 FastAPI / Dagster / CLI 复用）
+  - 子域：ingestion / catalog / versioning / scenarios / scheduler / query / quality / governance / exports / feedback / evaluation / layout / materialization / demo / streaming
+- `apps/<app>/src/services/`
+  - 进程内事务型服务（与 SQLAlchemy session / FastAPI 生命周期绑定）
+
+> 边界规则与判定测试见 [分层与编排边界](./layering-and-orchestrator-boundaries.md)。
 
 ### `sdk/`
 统一数据访问出口 SDK。
@@ -157,7 +155,7 @@ Python 侧领域、适配器、profile 与 workflow。
 - 产品入口放在 `apps/`
 - 浏览器相关的后端编排逻辑放在 `apps/bff`，而不是塞进 `apps/web`
 - 稳定的平台资源 API 放在 `apps/api`，避免与 BFF 混层
-- 查询协调、导出协调、调度推进等应用服务逻辑放在 `python/workflows` 或未来的 `python/services`，而不是直接堆在 route handler 里
+- 查询协调、导出协调、调度推进等应用服务逻辑放在 `python/workflows`（框架中立）或 `apps/<app>/src/services/`（进程内事务型），而不是直接堆在 route handler 里
 - `python/core` 保持为领域模型与接口边界，而不是承载 scheduler server 等常驻进程
 - 跨应用共享 TS contract 放在 `packages/`
 - 运行时与领域逻辑放在 `python/`

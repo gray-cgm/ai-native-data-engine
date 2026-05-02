@@ -13,7 +13,6 @@ members = [
   "python/adapters",
   "python/workflows",
   "python/profiles",
-  "python/services",
   "sdk/python"
 ]
 
@@ -22,4 +21,3 @@ ad-core = { workspace = true }
 ad-adapters = { workspace = true }
 ad-workflows = { workspace = true }
 ad-profiles = { workspace = true }
-ad-services = { workspace = true }

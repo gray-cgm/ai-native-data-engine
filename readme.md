@@ -342,9 +342,8 @@ curl -X POST "http://localhost:8000/exports/dataset/demo-dataset?format=jsonl"
 - `packages/config`: shared TS config
 - `python/core`: domain + interfaces
 - `python/adapters`: local adapters
-- `python/workflows`: ingestion/query/index workflows
+- `python/workflows`: ingestion / materialization / demo / streaming
 - `python/profiles`: adapter/provider/profile resolver
-- `python/services`: future Python application service layer placeholder
 - `packages/contracts`: TS-side adapter contracts
 - `packages/profiles`: TS-side runtime profile + capability model
 - `infra/profiles`: local-dev / team-dev / enterprise-saas 示例配置

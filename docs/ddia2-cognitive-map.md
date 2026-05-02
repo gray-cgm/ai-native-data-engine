@@ -557,7 +557,7 @@ BFF 不是简单转发层，它在做页面语义聚合。比如 dashboard 聚�
 - create export_job
 - append lineage event
 
-见 [python/services/src/services/__init__.py](python/services/src/services/__init__.py) 和 [python/workflows/src/workflows/demo/pipeline.py](python/workflows/src/workflows/demo/pipeline.py)
+见 [python/workflows/src/workflows/demo/scenario_triage.py](../python/workflows/src/workflows/demo/scenario_triage.py) 与 [python/workflows/src/workflows/demo/pipeline.py](../python/workflows/src/workflows/demo/pipeline.py)。
 
 这其实已经是一串跨多个子系统的多步写操作。
 
@@ -679,7 +679,7 @@ BFF 不是简单转发层，它在做页面语义聚合。比如 dashboard 聚�
 - 构建 Lance index
 - 生成导出文件
 
-在当前场景筛选主链路里，这条批式链路已经很清楚：[python/services/src/services/__init__.py](python/services/src/services/__init__.py) 和 [python/workflows/src/workflows/demo/pipeline.py](python/workflows/src/workflows/demo/pipeline.py)
+在当前场景筛选主链路里，这条批式链路已经很清楚：[python/workflows/src/workflows/demo/scenario_triage.py](../python/workflows/src/workflows/demo/scenario_triage.py) 与 [python/workflows/src/workflows/demo/pipeline.py](../python/workflows/src/workflows/demo/pipeline.py)。
 
 ### Dagster 为什么重要
 

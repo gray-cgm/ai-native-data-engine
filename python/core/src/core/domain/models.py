@@ -11,9 +11,42 @@ triage fixture (``examples/datasets/custom-local``) which pre-dates the
 clip-centric ingestion path.
 """
 
+from datetime import datetime
+from enum import Enum as PyEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+# ── Tags（结构化版，参见 docs/architecture/tags-design.md）──────────────────
+
+
+class TagSource(str, PyEnum):
+    """tag 来源 5 类。详见 docs/architecture/tags-design.md。"""
+
+    MANUAL = "manual"               # 人工添加（标注员 / 运营 / 算法工程师）
+    AUTO_TAGGING = "auto_tagging"   # auto_tagging pipeline 系统打标
+    AUTO_LABELING = "auto_labeling" # auto_labeling pipeline 副产 tag
+    RULE = "rule"                   # 规则引擎匹配
+    IMPORT = "import"               # 外部 vendor / 上游系统导入
+
+
+class Tag(BaseModel):
+    """结构化 tag。同一 (clip, name) 在不同 source × source_version 下并存。"""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str = Field(description="snake_case / kebab-case；建议带前缀 scene-/attr-/event-")
+    source: TagSource
+    source_version: str = Field(
+        description="auto: '<tagger_id>@<semver>'；manual: 'user:<email>'；rule: 'rule:<id>@<semver>'"
+    )
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0,
+        description="auto 类必填 [0,1]；manual 一般为 None",
+    )
+    applied_at: datetime
+    notes: str | None = None
 
 
 # ── Clip domain: on-disk / wire shapes ───────────────────────────────────────

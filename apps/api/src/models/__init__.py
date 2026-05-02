@@ -20,6 +20,7 @@ from src.models.dataset_snapshot import DatasetSnapshotManifest  # noqa: F401
 from src.models.dataset import Dataset, DatasetSample  # noqa: F401
 from src.models.lineage_event import EventResult, LineageEvent  # noqa: F401
 from src.models.asset import Asset, AssetKind  # noqa: F401
+from src.models.clip_tag import ClipTag, TagSource  # noqa: F401
 
 __all__ = [
     "Base",
@@ -38,4 +39,6 @@ __all__ = [
     "EventResult",
     "Asset",
     "AssetKind",
+    "ClipTag",
+    "TagSource",
 ]

@@ -99,14 +99,14 @@ DATA_TASKS_SEED = [
         },
         {
             "title": "夜间 VRU 2D Bbox 标注",
-            "task_type": "annotation",
+            "task_type": "labeling",
             "assigned_to": "annotation-vendor@example.com",
             "target_count": 5000,
         },
         {
-            "title": "夜间 VRU 特征提取流水线",
-            "task_type": "pipeline",
-            "assigned_to": "pipeline-team@example.com",
+            "title": "夜间 VRU Dataset v1 发版",
+            "task_type": "release",
+            "assigned_to": "release-team@example.com",
             "target_count": 10000,
         },
     ],
@@ -120,7 +120,7 @@ DATA_TASKS_SEED = [
         },
         {
             "title": "隧道场景像素级分割标注",
-            "task_type": "annotation",
+            "task_type": "labeling",
             "assigned_to": "annotation-vendor@example.com",
             "target_count": 2000,
         },
@@ -135,7 +135,7 @@ DATA_TASKS_SEED = [
         },
         {
             "title": "雨天 3D 点云融合标注",
-            "task_type": "annotation",
+            "task_type": "labeling",
             "assigned_to": "annotation-vendor@example.com",
             "target_count": 1500,
         },

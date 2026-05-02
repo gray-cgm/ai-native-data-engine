@@ -8,8 +8,7 @@ dependencies = [
   "dagster-postgres>=0.24.9",
   "kafka-python>=2.0.2",
   "ad-workflows",
-  "ad-profiles",
-  "ad-services"
+  "ad-profiles"
 ]
 
 [build-system]

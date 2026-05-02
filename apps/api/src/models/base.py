@@ -87,12 +87,19 @@ class RequirementStatus(str, PyEnum):
 
 
 class TaskType(str, PyEnum):
-    """数据任务类型：由功能需求拆解出的四类数据工作"""
+    """数据任务类型：由功能需求拆解出的业务里程碑（6 类）。
 
-    COLLECTION = "collection"       # 数据采集
-    ANNOTATION = "annotation"       # 数据标注
-    PIPELINE = "pipeline"           # 流水线加工
-    QUALITY_CHECK = "quality_check" # 质量校验
+    对齐 Tesla / Waymo / Cruise 等头部自动驾驶团队的数据闭环术语：
+    tagging（场景级，自动化覆盖率高）与 labeling（对象级，强人工）分立——
+    成本结构、SLA、人机配比完全不同，合并到一个 annotation 会让运营错配。
+    """
+
+    COLLECTION = "collection"   # 数据采集（路测 / 影子模式回流原始 clip）
+    MINING = "mining"           # 数据挖掘（已有池子挖候选 clip，与 collection 平行）
+    TAGGING = "tagging"         # 场景级打标（夜间 / 路口 / 切入；auto-tagger + 人工抽检）
+    LABELING = "labeling"       # 对象级精细标注（2D/3D bbox / seg / track / lane）
+    CHECKING = "checking"       # 质量校验（QA gate / review）
+    RELEASE = "release"         # 发版（dataset 提级与交付）
 
 
 class SignOffStatus(str, PyEnum):

@@ -214,6 +214,27 @@ function stripDuplicateH1(content: string, title: string): string {
   return lines.join('\n')
 }
 
+/**
+ * 把 markdown 里的相对图片路径修正成 docs viewer 能加载的 URL。
+ *
+ * 文档源里的图片通常写成相对路径（如 `../../apps/web/public/logo.png`），
+ * 这样在 GitHub / IDE 预览里能直接点开；但在 Web 端打开的是 SPA route
+ * （如 `/docs/prd/logo-design`），浏览器把相对路径解析成
+ * `/apps/web/public/logo.png`，Vite dev server 不在那个路径上服务。
+ *
+ * 规则：
+ * - `apps/web/public/<x>` → `/<x>`（Vite 把 public/ 暴露在根）
+ * - `data/<x>` → `/data/<x>`（保留绝对路径）
+ * - 已是 http(s) 或根路径 `/...` 直接返回
+ */
+function rewriteImageSrc(src: string | undefined): string | undefined {
+  if (!src) return src
+  if (/^(https?:)?\/\//.test(src) || src.startsWith('data:')) return src
+  const publicMatch = src.match(/(?:^|\/)apps\/web\/public\/(.+)$/)
+  if (publicMatch) return '/' + publicMatch[1]
+  return src
+}
+
 const markdownComponents: Components = {
   code({ className, children, ...rest }) {
     const content = String(children ?? '').replace(/\n$/, '')
@@ -237,6 +258,10 @@ const markdownComponents: Components = {
         {children}
       </code>
     )
+  },
+  img({ src, alt, ...rest }) {
+    const resolved = rewriteImageSrc(typeof src === 'string' ? src : undefined)
+    return <img src={resolved} alt={alt ?? ''} {...rest} />
   },
 }
 

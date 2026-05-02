@@ -53,8 +53,7 @@ clip (c-UUID)
 | `vehicle_info`        | `map<string, double>`             | Body dimensions in mm: `length, width, front_edge_to_center, …`.            |
 | `scenario`            | `string`                          | Producing pipeline, e.g. `xminer-pipeline-video`.                           |
 | `calibration_version` | `int32`                           | Calibration revision.                                                       |
-| `tags`                | `string`                          | Freeform processing tags (`masked,maskModelDesensitizer…`).                |
-| `da_tags`             | `string`                          | Data-annotation tags (`goodCase_gt`).                                       |
+| `tags`                | `string`                          | Freeform processing tags (CSV, legacy). 新结构化 tag 走 `clip_tags` 表，详见 [Tags 设计](./tags-design.md)。 |
 | `jira_id`             | `string` (nullable)               | Linked issue.                                                               |
 | `mp4_resize_path`     | `map<string, list<string>>`       | Downscaled MP4 variants per camera; list order = quality ladder.            |
 | `mp4_path`            | `map<string, string>`             | Original per-camera MP4 URI, typically `oss://…`.                           |

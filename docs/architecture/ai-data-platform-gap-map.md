@@ -146,7 +146,7 @@ AI 数据中台必须能够回答：
 #### 当前已有
 - `ComputeAdapter` 抽象
 - `JobRun` / `Task` 概念
-- `apps/scheduler` 与 `python/services` 占位
+- `apps/scheduler` 占位（独立进程） + `python/workflows`（框架中立流程库）
 
 #### 当前缺失
 - 真正的 scheduler service
@@ -171,9 +171,9 @@ AI 数据中台必须能够回答：
 如果没有独立调度系统，FastAPI route handler 和 workflow 很快会承担过多生命周期职责。
 
 #### 建议目录落位
-- `apps/scheduler`
-- `python/services/scheduler`
-- `python/workflows/scheduler`
+- `apps/scheduler`（独立进程入口）
+- `python/workflows/scheduler`（框架中立流程库）
+- `apps/api/src/services/scheduler`（如有 FastAPI 路由侧的事务型协调）
 - `python/core/interfaces/contracts.py` 中补 scheduler / task orchestration contract
 
 ---
@@ -265,7 +265,7 @@ AI 数据中台至少要能表达：
 
 #### 建议目录落位
 - `apps/api`：query endpoints
-- `python/services/query`
+- `python/workflows/query`（框架中立查询编排）
 - `apps/web`：query console / analysis page
 - 后续可加 `notebooks/` 或 `examples/notebooks/`
 
@@ -298,9 +298,9 @@ AI 数据中台里的数据问题，常常不是“有没有数据”，而是�
 
 #### 建议目录落位
 - `python/core/domain/quality.py`
-- `python/services/quality`
-- `python/workflows/quality`
+- `python/workflows/quality`（框架中立质量规则评估）
 - `apps/api` 暴露 check/report endpoints
+- `apps/api/src/services/quality`（如有事务型质检状态推进）
 
 ---
 
@@ -324,8 +324,9 @@ AI 数据通常涉及图像、视频、位置、人员、车牌、人脸等敏�
 
 #### 建议目录落位
 - `python/core/domain/governance.py`
-- `python/services/governance`
+- `python/workflows/governance`（框架中立审批/审计流程）
 - `apps/api` 暴露 audit / approval endpoints
+- `apps/api/src/services/governance`（事务型审批状态机）
 - `apps/bff` 增加治理视图聚合
 
 ---
@@ -348,7 +349,7 @@ AI 数据通常涉及图像、视频、位置、人员、车牌、人脸等敏�
 
 #### 建议目录落位
 - `python/core/interfaces`
-- `python/services/layout`
+- `python/workflows/layout`（路径布局规则的统一抽象）
 - `python/adapters/storage/*`
 
 ---
@@ -372,7 +373,7 @@ AI 数据通常涉及图像、视频、位置、人员、车牌、人脸等敏�
 
 #### 建议目录落位
 - `python/core/domain/authz.py`
-- `python/services/authz`
+- `apps/api/src/services/authz`（authz 与 FastAPI session / tenant context 强绑定，归进程内服务）
 - `apps/bff` 承接 session / tenant context
 - `apps/api` 保持平台资源语义稳定
 
@@ -402,8 +403,8 @@ AI 数据通常涉及图像、视频、位置、人员、车牌、人脸等敏�
 - `python/adapters/table/*`
 - `python/adapters/query/*`
 - `python/adapters/compute/*`
-- `python/services/query`
-- `python/services/scheduler`
+- `python/workflows/query`
+- `python/workflows/scheduler`
 
 ---
 
@@ -425,9 +426,9 @@ AI 数据通常涉及图像、视频、位置、人员、车牌、人脸等敏�
 
 #### 建议目录落位
 - `python/core/domain/mlops.py`
-- `python/services/evaluation`
-- `python/services/feedback`
 - `python/workflows/evaluation`
+- `python/workflows/feedback`
+- `apps/api/src/services/evaluation`（如需 FastAPI 暴露 experiment run 状态机）
 
 ---
 

@@ -4,7 +4,7 @@
  * 按读者画像组织（不是按目录结构）。维护时遵循 MECE 原则：
  * - 快速开始 → 入门教程 + E2E Demo
  * - 产品与需求 → 整体 PRD + 6 模块子 PRD + 用户指南 + UI/UX
- * - 系统架构 → 总览 / 领域模型 / 业务流程 / 系统分层（四组互斥穷尽）
+ * - 系统架构 → 总览 / 领域模型 / 业务流程 / 系统分层与代码组织（四组互斥穷尽）
  * - 决策 & 路线图 → ADR + tech selection
  * - API 参考 → 总览 + 内部 + 外部
  * - 扩展阅读 / 开发日志（保持原状）
@@ -73,6 +73,11 @@ export const DOC_SECTIONS: DocManifestSection[] = [
             title: '整体产品 PRD',
             hint: '产品全景图 / 定位 / 路线图',
           },
+          {
+            path: 'architecture/mvp-scope.md',
+            title: 'MVP 范围',
+            hint: '当前阶段做 / 不做的边界',
+          },
         ],
       },
       {
@@ -105,6 +110,11 @@ export const DOC_SECTIONS: DocManifestSection[] = [
           { path: 'prd/user-guide.md', title: '产品使用说明', hint: '按角色（算法 / DRE / 标注 / 运维 / 管理员）的操作路径' },
           { path: 'prd/ui-ux-design.md', title: 'UI / UX 设计', hint: '信息架构 / 状态机 / 设计 token / 复用组件' },
           {
+            path: 'prd/logo-design.md',
+            title: 'Logo 设计',
+            hint: '铲子 + 飞轮 + AI 节点：数据闭环的视觉叙事',
+          },
+          {
             path: 'prd/ui-page-flows-and-platform-interactions.md',
             title: 'UI 页面流与平台交互（历史详版）',
             hint: '字段级 item 设计 + 时序图，与 UI/UX 互补',
@@ -117,17 +127,14 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     id: 'architecture',
     label: '🏛 系统架构',
     icon: 'architecture',
-    description: 'MECE 四组：总览 / 领域模型 / 业务流程 / 系统分层',
+    description: 'MECE 四组：总览 / 领域模型 / 业务流程 / 系统分层与代码组织',
     groups: [
       {
         id: 'arch-overview',
         label: '① 架构总览',
         items: [
           { path: 'architecture/overview.md', title: '架构总览', hint: '核心抽象 + 业务流程 + 系统分层入口' },
-          { path: 'architecture/mermaid-diagrams.md', title: 'Mermaid 架构图' },
-          { path: 'architecture/mvp-scope.md', title: 'MVP 范围' },
-          { path: 'architecture/personal-vs-enterprise.md', title: '个人版 vs 企业版' },
-          { path: 'architecture/ai-data-platform-gap-map.md', title: '能力 Gap Map' },
+          { path: 'architecture/mermaid-diagrams.md', title: 'Mermaid 架构图', hint: '关键拓扑可视化' },
         ],
       },
       {
@@ -137,46 +144,91 @@ export const DOC_SECTIONS: DocManifestSection[] = [
           {
             path: 'architecture/glossary-dataset-scenario-cornercase-tag-label.md',
             title: '术语澄清',
-            hint: 'Dataset / Scenario / Cornercase / Tag / Label 五个易混名词',
+            hint: 'Dataset / Scenario / Cornercase / Tag / Label 五个易混名词 + 全部域对象索引',
           },
-          { path: 'architecture/domain-model.md', title: '领域模型与语义' },
+          { path: 'architecture/domain-model.md', title: '领域模型与语义', hint: '对象 / 字段 / 关系矩阵' },
           {
             path: 'architecture/dataset-design.md',
             title: 'Dataset + Snowflake 设计',
             hint: 'customized / official 提级 / Asset / LineageEvent',
           },
-          { path: 'architecture/core-adapters-profiles-workflows.md', title: 'Core / Adapters / Profiles / Workflows 分层' },
-          { path: 'architecture/system-directory-and-domain-design.md', title: '系统目录与领域设计' },
+          {
+            path: 'architecture/tags-design.md',
+            title: 'Tags 设计',
+            hint: '人工 + 自动 + 算法版本；clip_tags 关系表',
+          },
         ],
       },
       {
         id: 'arch-flows',
-        label: '③ 业务流程（水平分段）',
+        label: '③ 业务流程',
         items: [
           {
             path: 'architecture/business-flows.md',
             title: '业务流程总览',
             hint: '5 阶段：需求 / 数据筹备 / 加工 / 数据集生产 / 交付与回流',
           },
-          { path: 'architecture/layering-and-orchestrator-boundaries.md', title: '分层与编排边界' },
-          { path: 'architecture/local-first-streaming-evolution.md', title: 'Local-First 流式演进' },
-          { path: 'architecture/build-phisical-dataset-manager-system.md', title: '物理数据集管理系统' },
+          {
+            path: 'architecture/local-first-streaming-evolution.md',
+            title: 'Local-First 流式演进',
+            hint: '本地 demo → 团队 → 企业三阶段',
+          },
+          {
+            path: 'architecture/build-phisical-dataset-manager-system.md',
+            title: '物理数据集管理系统',
+            hint: '物理资产生命周期',
+          },
         ],
       },
       {
         id: 'arch-layers',
-        label: '④ 系统分层（六层 + 一正交）',
+        label: '④ 系统分层与代码组织',
         items: [
           {
             path: 'architecture/system-layers.md',
             title: '系统分层总览',
-            hint: '文件 / 存储 / 湖表 / 计算 / 查询 / 应用 + 元数据',
+            hint: '六层模型：文件 / 存储 / 湖表 / 计算 / 查询 / 应用 + 元数据正交',
           },
-          { path: 'architecture/clip-lance-data-model.md', title: 'Clip + Lance 数据模型', hint: '① 文件格式层' },
-          { path: 'architecture/fdl-integration.md', title: 'FDL 集成', hint: '③ 湖表格式层' },
-          { path: 'architecture/monorepo-modules.md', title: 'Monorepo 模块划分', hint: '⑥ 应用层' },
-          { path: 'architecture/web-access-layer-bff-architecture.md', title: 'Web 访问层 / BFF 架构', hint: '⑥ 应用层' },
-          { path: 'architecture/web-microfrontend-tools-platform.md', title: '微前端工具平台', hint: '⑥ 应用层' },
+          {
+            path: 'architecture/clip-lance-data-model.md',
+            title: 'Clip + Lance 数据模型',
+            hint: '① 文件格式层落位',
+          },
+          {
+            path: 'architecture/fdl-integration.md',
+            title: 'FDL 集成',
+            hint: '③ 湖表格式层与服务分解的对照',
+          },
+          {
+            path: 'architecture/core-adapters-profiles-workflows.md',
+            title: 'Core / Adapters / Profiles / Workflows',
+            hint: 'python/ 四层职责与判定标准',
+          },
+          {
+            path: 'architecture/layering-and-orchestrator-boundaries.md',
+            title: '分层与编排边界',
+            hint: 'python/workflows ⇄ apps/orchestrator 边界 + PR checklist',
+          },
+          {
+            path: 'architecture/system-directory-and-domain-design.md',
+            title: '系统目录与代码蓝图',
+            hint: 'monorepo 目录树 + 领域对象建议落位',
+          },
+          {
+            path: 'architecture/monorepo-modules.md',
+            title: 'Monorepo 模块划分',
+            hint: 'apps / packages / python / sdk / infra 模块清单',
+          },
+          {
+            path: 'architecture/web-access-layer-bff-architecture.md',
+            title: 'Web 访问层 / BFF 架构',
+            hint: '⑥ 应用层：浏览器接入与 ViewModel 聚合',
+          },
+          {
+            path: 'architecture/web-microfrontend-tools-platform.md',
+            title: '微前端工具平台',
+            hint: '⑥ 应用层：iframe 网关 + 工具子应用',
+          },
         ],
       },
     ],
@@ -185,9 +237,19 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     id: 'adr',
     label: '🧭 决策 & 路线图',
     icon: 'adr',
-    description: '架构决策、技术选型、实施 backlog',
+    description: '架构决策、能力差距、技术选型、实施 backlog',
     items: [
-      { path: 'adr/ai-data-platform-roadmap.md', title: 'AI 数据平台路线图' },
+      { path: 'adr/ai-data-platform-roadmap.md', title: 'AI 数据平台路线图', hint: '阶段目标 / 优先级 / 演进策略' },
+      {
+        path: 'architecture/ai-data-platform-gap-map.md',
+        title: '能力 Gap Map',
+        hint: 'P0 / P1 / P2 能力清单与缺口（与路线图配套）',
+      },
+      {
+        path: 'architecture/personal-vs-enterprise.md',
+        title: '个人版 vs 企业版',
+        hint: '从本地 MVP 演进到团队 / 企业版的路径',
+      },
       {
         path: 'adr/tech-selection-datafusion-opendal.md',
         title: '技术选型：DataFusion / OpenDAL',
@@ -243,6 +305,11 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     description: '按日期记录每次迭代的改造内容与待办项',
     items: [
       { path: 'dev-logs/README.md', title: '开发日志说明' },
+      {
+        path: 'dev-logs/2026-05-02-tasktype-and-layering-cleanup.md',
+        title: '2026-05-02 · TaskType 重构 + 分层边界落地 + Mermaid 升级',
+        hint: 'TaskType 加 MINING / 删 PIPELINE → RELEASE；删除 python/services；Mermaid pan-zoom',
+      },
       {
         path: 'dev-logs/2026-04-29-docs-reorganization.md',
         title: '2026-04-29 · 文档与 Web Docs Center 整体梳理',

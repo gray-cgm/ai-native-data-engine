@@ -20,21 +20,35 @@ data_tasks:
     target_unit: 小时
     actual_ratio: 0.7
     assigned_to: data-collection-lead@example.com
-  - task_type: annotation
-    title: VRU 优先标注（5000 帧 + 夜间挑战集）
-    description: 行人/骑行 BBox + 朝向 + 遮挡等级标注，夜间样本独立挑战集
+  - task_type: mining
+    title: 历史夜间 VRU 难例挖掘
+    description: 用 active learning + similarity 在历史 clip 池中挖出夜间 VRU 召回低的难例
+    target_count: 1500
+    target_unit: clip
+    actual_ratio: 0.7
+    assigned_to: mining-lead@example.com
+  - task_type: tagging
+    title: 夜间 VRU 场景 tag 覆盖（auto-tagger + 人工抽检）
+    description: auto-tagger 在 5000 clip 上打 scene-night / scene-intersection / attr-vru 等 tag，人工抽 5% 校验
+    target_count: 5000
+    target_unit: clip
+    actual_ratio: 0.85
+    assigned_to: tagging-lead@example.com
+  - task_type: labeling
+    title: VRU 精细标注（5000 帧 + 夜间挑战集）
+    description: 行人 / 骑行 BBox + 朝向 + 遮挡等级标注，夜间样本独立挑战集
     target_count: 5000
     target_unit: 帧
     actual_ratio: 0.6
-    assigned_to: anno-pm@example.com
-  - task_type: quality_check
+    assigned_to: labeling-pm@example.com
+  - task_type: checking
     title: 夜间 VRU 召回率验收 ≥ 95%
     description: 在保留集上回归 VRU 召回率指标，95% 为 sign-off 通过门槛
     target_count: 95
     target_unit: '%召回率'
     actual_ratio: 0.95
     assigned_to: model-qa-lead@example.com
-  - task_type: pipeline
+  - task_type: release
     title: 训练集 v1 发版（夜间挑战集合并）
     description: 合并历史训练集 v0.9 与本次新增样本，发版 v1 提交感知训练流水线
     target_count: 1

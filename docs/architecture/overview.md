@@ -1,17 +1,17 @@
 # 架构总览
 
-`AI Native Data Engine` 是一个面向自动驾驶 / 机器人数据闭环的平台型 monorepo。它从「本地优先」的个人开发版 MVP 起步，通过稳定的抽象层逐步演进到团队版和企业版，而不是中途再拆出第二套系统。
+`AI Native Data Engine` 是面向自动驾驶 / 机器人数据闭环的平台型 monorepo。从「本地优先」的个人开发版起步，通过稳定的抽象层演进到团队版与企业版，不需要中途重写。
 
-> **导航**：本文是架构章节的入口。深入阅读路径：
-> ① [**领域模型**](./glossary-dataset-scenario-cornercase-tag-label.md)：理解 5 个核心名词与对象关系
-> ② [**业务流程**](./business-flows.md)：把横向闭环（Requirement → Dataset）拆成可观测段
-> ③ [**系统分层**](./system-layers.md)：六层模型每层用了什么技术、当前状态如何
+> **导航**：本文是架构章节入口。深入阅读路径：
+> ① [**领域模型**](./glossary-dataset-scenario-cornercase-tag-label.md)：5 个核心名词与对象关系
+> ② [**业务流程**](./business-flows.md)：横向闭环（Requirement → Dataset）的可观测段
+> ③ [**系统分层**](./system-layers.md)：六层模型每层的技术与状态
 
 ---
 
-## 0. 三视角看清架构
+## 一、三视角看清架构
 
-### 0.1 核心抽象一图打通
+### 1.1 核心抽象一图打通
 
 ```mermaid
 flowchart TB
@@ -25,14 +25,14 @@ flowchart TB
         SAMPLE --> ASSET
     end
 
-    subgraph Eng["⚙️ 引擎实现（技术实现）"]
-        L[Lance<br/>主存格式] --- D[DuckDB / DataFusion<br/>查询引擎]
+    subgraph Eng["⚙️ 引擎实现（技术）"]
+        L[Lance<br/>主存格式] --- D[DuckDB / DataFusion<br/>查询]
         DAG[Dagster<br/>编排] --- KAF[Kafka<br/>流式]
         SQL[SQLite/PG<br/>元数据]
     end
 
     subgraph App["📱 应用层（六大模块）"]
-        CAT[Catalog] -. 浏览/管理 .-> DS
+        CAT[Catalog] -. 浏览 .-> DS
         REQM[Requirements] -. 提需求 .-> REQ
         EXP[Explorer] -. 切片/检索 .-> SAMPLE
         OPSM[Operations] -. 协调 .-> OPS
@@ -44,171 +44,94 @@ flowchart TB
     App --> Domain
 ```
 
-### 0.2 业务流程一句话总结
+### 1.2 业务流程一句话
 
 ```
-Requirement → 4 个 DataTask（业务里程碑）→ 5 个 OperationsTask（人机协同）
-            → N 条 PipelineRun（机器执行）→ 1 个 customized Dataset
-            → Promote 到 1 个 official Dataset → 算法工程师消费
+Requirement → 5 个 DataTask（业务里程碑）→ N 个 OperationsTask（人机协同）
+            → N 条 PipelineRun（机器执行）→ customized Dataset
+            → Promote 为 official Dataset → 算法工程师消费
 ```
 
-横向 9 步全景见 [E2E Demo 教程](../tutorials/e2e-demo.md)；每段细节见 [业务流程总览](./business-flows.md)。
+横向 9 步全景见 [E2E Demo 教程](../tutorials/e2e-demo.md)；阶段细节见 [业务流程总览](./business-flows.md)。
 
-### 0.3 系统分层一句话总结
+### 1.3 系统分层一句话
 
 **六层底座 + 一层正交**：文件格式 / 存储 / 湖表格式 / 计算 / 查询 / 应用 + 元数据&事务控制。
 
-每层"当前用什么 / 未来切什么 / 切换的代价"详见 [系统分层总览](./system-layers.md)。
+每层的技术选型与切换代价见 [系统分层总览](./system-layers.md)。
 
 ---
 
-整体上需要分成两种视角来理解：
+## 二、统一架构表
 
-1. **业务流程视角**
-   - Ingestion：接入本地或远端原始数据资产，例如图像、JSON metadata、点云、轨迹、日志等。
-   - Pipeline：使用 Dagster 等编排能力表达数据物化、转换、索引、导出和血缘。
-   - Application：把数据能力组织成工作台、BI、挖掘检索、标注、需求管理等面向角色的产品能力。
-
-2. **系统分层视角**
-   - **文件格式层**：Parquet / Lance / Mcap / Lerobot，属于同类文件格式组件；当前主格式为 Lance。
-   - **存储层**：local fs / S3 / MinIO / OSS / HDFS，决定文件和对象存放位置。
-   - **湖表格式层**：Iceberg / Paimon / Hudi，决定表快照、schema 演进、分区和事务语义。
-   - **计算层**：local Python / Dagster / Spark / Flink / Fluss，决定 ingestion、物化、批流处理与编排如何执行。
-   - **查询层**：DuckDB / Trino / StarRocks，决定聚合、过滤、分析查询如何读取数据。
-   - **应用层**：BI、挖掘检索、标注、需求管理、工作台等，决定最终用户怎样消费平台能力。
-
-## 统一架构表
-
-| 层级 | 核心职责 | 代表技术 | 当前 local-first MVP |
+| 层级 | 核心职责 | 代表技术 | local-first MVP |
 |---|---|---|---|
-| 文件格式层 | 定义数据如何编码、落盘与索引表达 | Parquet / Lance / Mcap / Lerobot  | 当前主格式 Lance |
-| 存储层 | 保存原始文件、导出文件与对象数据 | local fs / S3 / MinIO / OSS / HDFS | local fs |
-| 湖表格式层 | 管理表快照、schema 演进、分区与事务语义 | Iceberg / Paimon / Hudi | 预留演进方向，当前仍是裸文件集 |
-| 计算层 | 执行 ingestion、物化、编排、批流处理 | local Python / Dagster / Spark / Flink / Fluss | local Python + Dagster |
-| 查询层 | 提供 SQL 查询、聚合、交互式分析读取能力 | DuckDB / Trino / StarRocks | DuckDB |
-| 应用层 | 组织面向角色的产品入口与工作流体验 | BI / 挖掘检索 / 标注 / 需求管理 / 工作台 | Web + BFF + FastAPI + SDK |
+| 文件格式层 | 编码 / 落盘 / 索引表达 | Parquet / Lance / Mcap / Lerobot | Lance |
+| 存储层 | 文件与对象保存 | local fs / S3 / MinIO / OSS / HDFS | local fs |
+| 湖表格式层 | 表快照 / schema 演进 / 分区 / 事务 | Iceberg / Paimon / Hudi | 裸文件集（演进位） |
+| 计算层 | ingestion / 物化 / 编排 / 批流 | local Python / Dagster / Spark / Flink / Fluss | local Python + Dagster |
+| 查询层 | SQL 聚合 / 交互式分析 | DuckDB / Trino / StarRocks | DuckDB |
+| 应用层 | 角色化产品入口 | Web / BFF / FastAPI / SDK / BI | Web + BFF + FastAPI + SDK |
 
-当前 local-first MVP 的现实组合是：**local fs 存储 + Lance 主文件格式 + local Python/Dagster 计算 + DuckDB 查询 + Web/BFF/API 应用访问 + SQLite 元数据与事务控制层**。
+SQLite / Postgres 作为正交的 **元数据与事务控制层**，承载 dataset / 版本 / 任务 / 导出 / 血缘 / 权限 / 审计等控制状态。
 
-SQLite 不属于上述六层中的 lakehouse 主层，更接近独立的元数据与事务控制层。未来切换到底层对象存储、湖表格式、计算引擎、查询引擎时，应通过 adapter 和 profile 边界完成，而不是通过产品重写完成。
+---
 
-### 技术归属速查表
+## 三、核心设计原则
 
-| 技术 / 组件 | 所属层 | 说明 |
-|---|---|---|
-| local fs / S3 / MinIO / OSS / HDFS | 存储层 | 保存原始文件、导出文件与对象数据 |
-| Iceberg / Paimon / Hudi | 湖表格式层 | 存算分离，提供统一、廉价、可靠的数据存储，并通过表格式提供ACID和元数据管理能力 |
-| Parquet | 文件格式层 | 与 Lance 同类的列式文件格式，可作为兼容/历史格式理解 |
-| Lance | 文件格式层 | 当前主结构化与检索文件格式 |
-| local Python / Dagster / Spark / Flink / Fluss | 计算层 | 执行 ingestion、物化、编排与批流处理 |
-| DuckDB / Trino / StarRocks | 查询层 | 提供 SQL 查询、聚合和分析读取能力 |
-| SQLite / Postgres | 元数据与事务控制层 | 记录数据集、版本、任务、导出、血缘、权限、审计等状态 |
-| Web / BFF / FastAPI / SDK / BI / 标注工作台 | 应用层 | 面向角色提供工作流入口与产品体验 |
+1. **数据模型优先**。围绕数据资产组织，而非围绕文件路径或基础设施产品。资产主线：`Raw → RawRecord → Clip → Scenario → Dataset → DatasetVersion → JobRun → ExportJob → LineageEvent`。
+2. **按访问模式分层**。每种访问模式对应一个 adapter：`Metadata` / `Query` / `Search` / `Table` / `Storage` / `Compute` / `Auth`。底层 provider 切换走 adapter + profile，不需要重写产品。
+3. **资产导向编排**。Dagster 用于建模 dataset / distribution / export / lineage 资产及其依赖，而非纯脚本调度。
+4. **本地优先、可演进**。从「一台笔记本可启动」的配置起步，通过 profile 逐步切换 provider。
 
-## 核心设计原则
+---
 
-### 1. 数据模型优先
-系统围绕数据资产组织，而不是围绕文件路径，更不是围绕某个基础设施产品组织。
+## 四、Platform 层内部边界
 
-核心资产主线（主数据单元是 Clip（Sample））：
+访问路径：
 
 ```text
-Raw Data
--> RawRecord
--> Clip
--> Scenario
--> Dataset
--> DatasetVersion
--> JobRun
--> ExportJob
--> LineageEvent
+Web → BFF → Platform API → RuntimeContainer / adapters
 ```
 
-### 2. 按访问模式分层
-不同访问模式由不同 adapter 负责：
+跨语言共享的不是 Python 代码，而是 Platform API 暴露的稳定 HTTP / JSON contract——Node.js BFF 与 Python 平台层共享同一套资源语义、字段结构与状态约定。
 
-- `MetadataAdapter`
-- `QueryAdapter`
-- `SearchAdapter`
-- `TableAdapter`
-- `StorageAdapter`
-- `ComputeAdapter`
-- `AuthAdapter`
+| 模块 | 职责 |
+|---|---|
+| `apps/web` | UI 呈现 |
+| `apps/bff` | 浏览器接入 / 会话 / 页面聚合 / ViewModel |
+| `apps/api` | 平台资源语义、Platform API contract、SDK / 自动化访问 |
+| `python/core` | 领域模型、接口定义、capability contracts |
+| `python/adapters` | DuckDB / Lance / SQLite / filesystem 等具体实现 |
+| `python/workflows` | 查询 / 导出 / 调度 / 编排等框架中立的应用服务逻辑 |
+| `apps/<app>/src/services/` | 进程内事务型服务（与 SQLAlchemy session / FastAPI 生命周期绑定） |
 
-这样既能保持本地 MVP 足够轻量，也能保留未来企业版的演进路径。
+BFF 不拥有底层数据资产事实，不直接持有 runtime provider。详细的目录边界与判定规则见 [分层与编排边界](./layering-and-orchestrator-boundaries.md)。
 
-### 3. 资产导向编排
-Dagster 在这里用于建模 dataset、distribution、export、lineage 等资产及其依赖关系，而不是只作为“脚本调度器”。
-
-### 4. 本地优先、可演进实现
-项目明确从“一台笔记本可启动”的配置开始：
-
-- local filesystem 负责底层存储
-- Parquet / Lance 属于同类文件格式组件；当前主格式是 Lance
-- local Python / Dagster 负责本地计算与编排
-- DuckDB 负责本地分析与查询加速
-- SQLite 负责元数据与事务控制层
-- Web / BFF / Platform API 负责应用访问层
-
-这样既保证首版真正可运行，也保证未来升级时系统边界不被推翻。
-
-## Platform 层内部边界
-
-当前推荐的访问路径是：
+工作台关键产品链路是 clip-centric：
 
 ```text
-Web
--> BFF
--> Platform API
--> RuntimeContainer / adapters
+Requirement → Explorer/Search → Clip Detail → 上卷回 Requirement / Catalog
+Catalog（按 scenario 聚合 dataset）→ Explorer/Clips → Clip Detail → 上卷回 Dataset
 ```
 
-其中跨语言共享的核心不是直接复用 Python 代码，而是通过 Platform API 暴露稳定的 HTTP / JSON contract，让 Node.js BFF 与 Python 平台层共享同一套资源语义、字段结构与状态约定。
+---
 
-其中：
+## 五、运行时装配
 
-- `apps/web` 负责 UI 呈现
-- `apps/bff` 负责浏览器请求接入、页面聚合、会话与权限上下文，以及把平台 contract 编排成前端友好的 ViewModel
-- `apps/api` 负责稳定的平台资源语义、Platform API contract，以及 Python SDK / 自动化集成访问
-- 未来如查询协调或批任务调度演进为独立常驻服务，应作为独立 app/service 部署，而不是继续挤进 BFF 或 route handler
+`RuntimeContainer` + `infra/profiles/<env>.yaml` + `python/profiles` resolver 决定运行时能力：
 
-BFF 不拥有底层数据资产事实，也不直接持有 runtime provider；平台 domain 事实、workflow 触发、query/search/export 等能力仍由 Platform API 与其背后的 Python runtime 负责。
+- Platform API / workflow / Dagster definitions 依赖的是 capability，不直接依赖 DuckDB / SQLite / Lance / local fs；
+- BFF 通过 Platform API 间接消费，不直接与底层 provider 耦合。
 
-当前工作台的关键产品链路是 clip-centric：
+切换 provider 只需换 profile，不动产品代码。
 
-```text
-Requirement
--> Explorer/Search（自然语言占位 + 标量过滤）
--> Clip Detail（metadata/topic/video 对齐）
--> 上卷回 Requirement 或 Catalog
+---
 
-Catalog（按 scenario 聚合 dataset）
--> Explorer/Clips
--> Clip Detail
--> 上卷回 Dataset
-```
+## 六、参考
 
-其中 Search 的语义检索入口已在交互层就位，向量索引后端属于后续可插拔能力，当前由标量过滤保证结果可用性。
-
-这里的关键边界是：
-
-- `apps/api` 是 Platform API / query-control plane 的外部入口层
-- `python/core` 负责领域模型、接口定义、capability contracts，不负责常驻服务生命周期
-- `python/adapters` 负责 DuckDB、Lance、SQLite、filesystem 等具体实现
-- `python/workflows` 与未来可新增的 `python/services` 负责查询编排、导出编排、调度编排等应用服务逻辑
-
-因此，批任务调度服务不应放在 `python/core`；如果后续需要独立调度服务，更合理的方向是 `apps/scheduler` + `python/services/scheduler`（或 `python/workflows/scheduler`）的组合。
-
-## 当前运行时机制
-
-当前代码通过以下机制装配运行时：
-
-- `RuntimeContainer`
-- `infra/profiles/local-dev.yaml` 等 YAML profile
-- `python/adapters` 中的具体 provider 实现
-- `python/profiles` 中的 profile resolver
-
-这使得 Platform API、workflow、Dagster definitions 依赖的是运行时能力，而不是 DuckDB / SQLite / Lance / local fs 这些具体实现。BFF 通过调用 Platform API 间接使用这些能力，而不直接与底层 provider 耦合。
-
-
-这一轮开发的完整日志记录在 `docs/dev-logs/2026-04-23-experience-layer-upgrades.md`。
+- [系统分层总览](./system-layers.md)
+- [分层与编排边界](./layering-and-orchestrator-boundaries.md)
+- [业务流程总览](./business-flows.md)
+- [Dataset + Snowflake 设计](./dataset-design.md)
+- [PipelineRun 统一事实模型 ADR](../adr/adr-pipelinerun-unified-fact-model.md)

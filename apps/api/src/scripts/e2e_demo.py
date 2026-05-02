@@ -145,40 +145,39 @@ class DemoContext:
 
     # ── 帮助：按业务语义把对象挂到对的 DataTask 上 ───────────────────
     def data_task_for(self, key: str) -> str:
-        """缺省返回 release（PIPELINE）DataTask；找不到时退到任意一个。"""
+        """缺省返回 release（发版）DataTask；找不到时退到任意一个。"""
         return self.data_tasks.get(key) or self.pipeline_data_task_id
 
 
 # ── stage（step 名） → 业务上归属的 DataTask 类型 ─────────────────────
-# 这里 step 名按 v3 的简单字符串建表；老 yaml 名也兼容。
+# step 名按简单字符串建表；老 yaml 名也兼容。
 _STAGE_TO_TASK_TYPE: dict[str, str] = {
     "collect": "collection",
-    "clip-extract": "annotation",
-    "feature-compute": "quality_check",
-    "process": "quality_check",
-    "release": "pipeline",
+    "mine": "mining",
+    "tag": "tagging",
+    "label": "labeling",
+    "clip-extract": "labeling",
+    "feature-compute": "checking",
+    "process": "checking",
+    "check": "checking",
+    "release": "release",
     # 兼容旧 yaml / 旧 enum 字符串
     "ingest": "collection",
-    "curate": "quality_check",
-    "publish": "pipeline",
+    "curate": "checking",
+    "publish": "release",
     "raw_ingest": "collection",
-    "clip_extraction": "annotation",
-    "feature_extraction": "quality_check",
-    "structured_dataset": "pipeline",
+    "clip_extraction": "labeling",
+    "feature_extraction": "checking",
+    "structured_dataset": "release",
 }
 
-# 各 ops 模块归属哪条 DataTask
-# mining   → 标注（挖出来的候选送去标注）
-# labeling → 标注
-# tagging  → 标注
-# checking → 质检
-# release  → 发版
+# 各 ops 模块归属哪条 DataTask（一一对应）
 _OPS_TO_TASK_TYPE: dict[str, str] = {
-    "mining": "annotation",
-    "labeling": "annotation",
-    "tagging": "annotation",
-    "checking": "quality_check",
-    "release": "pipeline",
+    "mining": "mining",
+    "tagging": "tagging",
+    "labeling": "labeling",
+    "checking": "checking",
+    "release": "release",
 }
 
 
@@ -277,39 +276,53 @@ def step_requirement(db, ctx: DemoContext) -> None:
     _section_done(f"requirement {req.id} created")
 
 
-# ── Step 2 : DataTasks (业务级 4 条里程碑) ──────────────────────────
+# ── Step 2 : DataTasks (业务级 6 条里程碑) ──────────────────────────
 
 
 _TASK_TYPE_MAP = {
     "collection": TaskType.COLLECTION,
-    "annotation": TaskType.ANNOTATION,
-    "quality_check": TaskType.QUALITY_CHECK,
-    "pipeline": TaskType.PIPELINE,
+    "mining": TaskType.MINING,
+    "tagging": TaskType.TAGGING,
+    "labeling": TaskType.LABELING,
+    "checking": TaskType.CHECKING,
+    "release": TaskType.RELEASE,
+    # 历史兼容：老 yaml 把 tagging+labeling 合在 annotation；checking 旧叫 quality_check
+    "annotation": TaskType.LABELING,
+    "quality_check": TaskType.CHECKING,
+    "pipeline": TaskType.RELEASE,
 }
 
-# scenario YAML 没配 data_tasks 时的兜底业务模板（仍是业务语言、非工程细节）。
+# scenario YAML 没配 data_tasks 时的兜底业务模板（业务语言，非工程细节）。
 _DEFAULT_DATA_TASKS: list[dict[str, Any]] = [
-    {"task_type": "collection", "title": "目标场景路采（里程/时长达标）",
+    {"task_type": "collection", "title": "目标场景路采（里程 / 时长达标）",
      "target_count": 500, "target_unit": "公里",
      "actual_ratio": 0.6, "assigned_to": "data-collection-lead@example.com",
      "description": "按场景标签覆盖路采里程目标，路线由数据团队选址"},
-    {"task_type": "annotation", "title": "供应商标注（覆盖目标帧数）",
+    {"task_type": "mining", "title": "已有数据池中挖掘候选（disengagement / shadow / active learning）",
+     "target_count": 200, "target_unit": "clip",
+     "actual_ratio": 0.7, "assigned_to": "mining-lead@example.com",
+     "description": "用 auto-tagger 在历史 clip 池挖出场景匹配候选"},
+    {"task_type": "tagging", "title": "场景级 tag 覆盖（auto-tagger + 人工抽检）",
+     "target_count": 5000, "target_unit": "clip",
+     "actual_ratio": 0.85, "assigned_to": "tagging-lead@example.com",
+     "description": "auto-tagger 推理打 scene / attr / event 三类 tag，人工抽 5% 校验"},
+    {"task_type": "labeling", "title": "供应商精细标注（覆盖目标帧数）",
      "target_count": 3000, "target_unit": "帧",
-     "actual_ratio": 0.6, "assigned_to": "anno-pm@example.com",
-     "description": "向标注供应商派单，按 SLA 完成关键帧标注"},
-    {"task_type": "quality_check", "title": "回归集指标验收",
+     "actual_ratio": 0.6, "assigned_to": "labeling-pm@example.com",
+     "description": "向标注供应商派单：auto-pre-label 预填 + 人工校对 2D/3D bbox / track"},
+    {"task_type": "checking", "title": "回归集指标验收",
      "target_count": 95, "target_unit": "%",
      "actual_ratio": 0.95, "assigned_to": "model-qa-lead@example.com",
-     "description": "在保留回归集上验证关键模型指标，达成验收门槛"},
-    {"task_type": "pipeline", "title": "训练集版本发版",
+     "description": "在保留回归集上验证关键模型指标，达成 QA gate"},
+    {"task_type": "release", "title": "训练集版本发版",
      "target_count": 1, "target_unit": "训练集版本",
      "actual_ratio": 1.0, "assigned_to": "training-pm@example.com",
-     "description": "汇总采集 + 标注 + 校验产物，发版交付训练流水线"},
+     "description": "汇总采集 / 挖掘 / 打标 / 校验产物，提级 official Dataset 并交付"},
 ]
 
 
 def step_data_tasks(db, ctx: DemoContext) -> None:
-    _section("Step 2/9 — Data Tasks (项目经理视角的 4 条业务里程碑，自动 sign-off)")
+    _section("Step 2/9 — Data Tasks (项目经理视角的 6 条业务里程碑：collection / mining / tagging / labeling / checking / release，自动 sign-off)")
     plan = ctx.scenario.data_tasks or _DEFAULT_DATA_TASKS
     now = datetime.now(timezone.utc)
 
@@ -359,7 +372,7 @@ def step_data_tasks(db, ctx: DemoContext) -> None:
                 raw_data_uri=f"data/raw/{ctx.x_trace_id}/{dt.id[:8]}.bag",
                 total_frames=target_count * 30 if target_unit == "公里" else target_count,
             ))
-        elif task_type == TaskType.ANNOTATION:
+        elif task_type == TaskType.LABELING:
             db.add(AnnotationTask(
                 data_task_id=dt.id,
                 clip_uri=f"data/assets/clips/{ctx.x_trace_id}/clips.lance",
@@ -371,11 +384,11 @@ def step_data_tasks(db, ctx: DemoContext) -> None:
             ))
         print(f"  • {task_type.value:<14} {dt.title}")
 
-    pipeline_id = ctx.data_tasks.get(TaskType.PIPELINE.value)
-    if not pipeline_id:
-        # PipelineRun 模型必须 FK 到一条 DataTask，缺则用任一已建的。
-        pipeline_id = next(iter(ctx.data_tasks.values()), None)
-    ctx.pipeline_data_task_id = pipeline_id  # type: ignore[assignment]
+    # release DataTask 是发版总枢纽；PipelineRun 默认归到它，统一审计 cost / lineage
+    release_id = ctx.data_tasks.get(TaskType.RELEASE.value)
+    if not release_id:
+        release_id = next(iter(ctx.data_tasks.values()), None)
+    ctx.pipeline_data_task_id = release_id  # type: ignore[assignment]
     db.flush()
     _section_done(
         f"{len(ctx.data_tasks)} data tasks created (training-set release id={ctx.pipeline_data_task_id})"
@@ -498,7 +511,7 @@ def step_pipeline_batch(db, ctx: DemoContext) -> None:
         # 按业务语义把 PipelineRun 挂到对的 DataTask 上：collect→采集 /
         # clip-extract→标注 / feature-compute→质检 / release→发版。这样 PM 点开
         # 任一 DataTask 都能看到自己关心的运行。
-        run_dt_id = ctx.data_task_for(_STAGE_TO_TASK_TYPE.get(stage, "pipeline"))
+        run_dt_id = ctx.data_task_for(_STAGE_TO_TASK_TYPE.get(stage, "release"))
         run = PipelineRun(
             data_task_id=run_dt_id,
             x_trace_id=ctx.x_trace_id,
@@ -596,7 +609,7 @@ def _ops_task(
 ) -> OperationsTask:
     """创建 OperationsTask；默认按 _OPS_TO_TASK_TYPE 自动选 DataTask 归属。"""
     if data_task_id is None:
-        data_task_id = ctx.data_task_for(_OPS_TO_TASK_TYPE.get(module.value, "pipeline"))
+        data_task_id = ctx.data_task_for(_OPS_TO_TASK_TYPE.get(module.value, "release"))
     op = OperationsTask(
         requirement_id=ctx.requirement_id,
         data_task_id=data_task_id,
@@ -671,9 +684,10 @@ def step_labeling_tagging_checking(db, ctx: DemoContext) -> None:
             payload={"reason": None if chk_status == "passed" else "see scenario gate"},
         ))
     db.flush()
-    print(f"  • mining/labeling/tagging → annotation DataTask")
-    print(f"  • checking                → quality_check DataTask")
-    print(f"  • release (step 7)        → pipeline DataTask")
+    print(f"  • tagging  → tagging DataTask")
+    print(f"  • labeling → labeling DataTask")
+    print(f"  • checking → checking DataTask")
+    print(f"  • release  → release DataTask")
     _section_done(
         f"created label/tag/check items × {len(ctx.candidates)} candidates"
     )

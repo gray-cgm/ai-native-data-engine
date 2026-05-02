@@ -13,8 +13,7 @@ dependencies = [
   "ad-core",
   "ad-adapters",
   "ad-workflows",
-  "ad-profiles",
-  "ad-services"
+  "ad-profiles"
 ]
 
 [build-system]

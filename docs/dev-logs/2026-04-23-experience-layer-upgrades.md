@@ -100,7 +100,9 @@ Privacy/PII 脱敏属于 Pipeline workflow 的**自动化**步骤，不是人工
 
 ### 4.2 Python services
 
-`python/services/__init__.py` 的 scenario triage 在生成 run / task 时写入 linkage 和成本占位。`ScenarioTriageConfig` 增加 `requirement_id` / `requirement_title`，`infra/profiles/local-dev.yaml` 同步。
+scenario triage 在生成 run / task 时写入 linkage 和成本占位。`ScenarioTriageConfig` 增加 `requirement_id` / `requirement_title`，`infra/profiles/local-dev.yaml` 同步。
+
+> 入口位置与命名后续有调整，详见 [2026-05-02 dev-log](./2026-05-02-tasktype-and-layering-cleanup.md)。本节描述的字段写入逻辑保持不变。
 
 ### 4.3 BFF / Web
 

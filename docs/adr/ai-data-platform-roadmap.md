@@ -99,8 +99,8 @@ Proposed
 后续将明确区分：
 
 - `python/core`：定义任务/运行对象、状态模型、调度所需 contract
-- `python/workflows`：当前阶段承接编排逻辑
-- `python/services/scheduler`：未来沉淀长任务与调度应用服务
+- `python/workflows/scheduler`：框架中立的调度编排（被 FastAPI / Dagster / CLI 复用）
+- `apps/api/src/services/scheduler`：FastAPI 进程内 SQLAlchemy 事务型协调（如有）
 - `apps/scheduler`：独立 scheduler service 入口
 
 不将以下职责塞入 `python/core`：
@@ -152,7 +152,7 @@ Proposed
 - analysis dashboard / slice-and-dice 视图
 - 数据质量报告与运营报表
 
-这部分能力优先通过 `apps/api` + `python/services/query` 暴露，不要求一开始就引入完整外部 BI 产品，但要先建立中台级消费接口。
+这部分能力优先通过 `apps/api` + `python/workflows/query` 暴露，不要求一开始就引入完整外部 BI 产品，但要先建立中台级消费接口。
 
 从统一分层模型看，这一段实际上是在补齐**应用层**，让系统不再只有一个最小工作台，而是开始具备：
 
@@ -214,9 +214,9 @@ Proposed
 推荐边界：
 
 - `python/core/domain/mlops.py`：模型、评测、反馈对象
-- `python/services/evaluation`
-- `python/services/feedback`
-- `python/workflows/evaluation`
+- `python/workflows/evaluation`：评测流程编排（框架中立）
+- `python/workflows/feedback`：反馈聚合
+- `apps/api/src/services/evaluation`（如需 FastAPI 暴露 experiment run 状态机）
 
 这样既保留 AI Native 的演进方向，也不会过早让当前 MVP 失焦。
 

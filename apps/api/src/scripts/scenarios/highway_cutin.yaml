@@ -18,21 +18,35 @@ data_tasks:
     target_unit: 公里
     actual_ratio: 0.55
     assigned_to: data-collection-lead@example.com
-  - task_type: annotation
-    title: cut-in 事件帧标注 + 时序对齐
+  - task_type: mining
+    title: 历史 cut-in 候选挖掘（disengagement / shadow）
+    description: 用 auto_tagging 在历史路测池中挖出 rain+highway+cutin 高匹配候选 clip
+    target_count: 800
+    target_unit: clip
+    actual_ratio: 0.7
+    assigned_to: mining-lead@example.com
+  - task_type: tagging
+    title: cut-in 场景 tag 覆盖
+    description: auto-tagger 在候选 clip 上打 scene-rain / scene-highway / event-cut-in，人工抽 5% 校验
+    target_count: 5000
+    target_unit: clip
+    actual_ratio: 0.85
+    assigned_to: tagging-lead@example.com
+  - task_type: labeling
+    title: cut-in 事件帧精细标注 + 时序对齐
     description: 切入车辆 BBox + 关键帧时序对齐，含 cut-in 起止时间戳
     target_count: 5000
     target_unit: 事件帧
     actual_ratio: 0.6
-    assigned_to: anno-pm@example.com
-  - task_type: quality_check
+    assigned_to: labeling-pm@example.com
+  - task_type: checking
     title: AEB 误触发率回归 ≤ 2%
     description: 在 AEB 误触发回归集上验证误触发率，2% 以下方可签核
     target_count: 2
     target_unit: '%误触发率'
     actual_ratio: 0.95
     assigned_to: safety-qa-lead@example.com
-  - task_type: pipeline
+  - task_type: release
     title: cut-in 训练集 v1.2 发版
     description: 在 v1.0 基础上叠加雨天/夜间增强样本，发版 v1.2 提交规控训练
     target_count: 1

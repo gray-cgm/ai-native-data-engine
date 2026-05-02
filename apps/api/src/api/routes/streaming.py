@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
-from services import get_local_streaming_summary, run_local_streaming
+from workflows.streaming import get_local_streaming_summary, run_local_streaming
 from src.core.runtime import get_runtime_container
 
 router = APIRouter(prefix='/streaming', tags=['streaming'])

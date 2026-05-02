@@ -12,7 +12,7 @@
 ```
 Requirement                  ← 业务承诺：「夜间 VRU 召回率 88% → 95%」
    │
-   ├── DataTasks (4)         ← collection / annotation / quality_check / pipeline
+   ├── DataTasks (6)         ← collection / mining / tagging / labeling / checking / release
    │
    ├── Operations
    │     ├─ Mining           ← 找候选 clip
@@ -80,7 +80,7 @@ make e2e-demo
 | Step | 产出 | 你能看到什么 |
 |---|---|---|
 | **1/9 Requirement** | 1 行 `requirements`，状态 `IN_PROGRESS` | Web → Requirements 列表 |
-| **2/9 Data Tasks** | 4 行 `data_tasks`：collection / annotation / quality_check / pipeline，全部 sign-off | Web → Requirements/<id> 详情页"DataTasks" |
+| **2/9 Data Tasks** | 6 行 `data_tasks`：collection / mining / tagging / labeling / checking / release，全部 sign-off | Web → Requirements/<id> 详情页"DataTasks" |
 | **3/9 Mining** | 25 个 clip 候选，写入 `OperationsTask(module=mining)` 与 25 条 `OpsItem` | Web → Operations · Mining |
 | **4/9 Pipeline Batch** | 4 条 `PipelineRun`（collect → clip-extract → feature-compute → release） | Web → Pipelines · Runs |
 | **4b/9 Pipeline Streaming** | 1 条 streaming-replay PipelineRun（可选，需 Kafka） | Web → Pipelines · Overview |

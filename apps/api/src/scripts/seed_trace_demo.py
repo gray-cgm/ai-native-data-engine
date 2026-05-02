@@ -64,15 +64,21 @@ TASK_TITLES = {
         "实车采集 - 北京四环", "实车采集 - 沪蓉段", "实车采集 - G2 京沪",
         "实车采集 - 深圳南环", "实车采集 - 杭州湾",
     ],
-    TaskType.ANNOTATION: [
+    TaskType.MINING: [
+        "难例挖掘 - 夜间 VRU", "相似度采样 - 切入场景", "Tag 召回 - 雨天高速",
+    ],
+    TaskType.TAGGING: [
+        "夜间 VRU 场景 tag 覆盖", "雨天高速属性 tag 复盘", "切入事件 tag 反查",
+    ],
+    TaskType.LABELING: [
         "2D Bbox 标注", "3D 点云融合标注", "语义分割标注",
         "车道线标注", "多目标追踪标注",
     ],
-    TaskType.PIPELINE: [
-        "特征提取流水线", "切片抽取流水线", "Dataset 发版流水线", "质检流水线",
-    ],
-    TaskType.QUALITY_CHECK: [
+    TaskType.CHECKING: [
         "交叉质检", "抽样复核", "自动校验",
+    ],
+    TaskType.RELEASE: [
+        "Dataset 发版 - v1", "Customized → Official 提级", "训练集冻结发布",
     ],
 }
 

@@ -92,14 +92,16 @@ def main(reset: bool) -> None:
         kv("requirement.title", req.title)
         kv("requirement.scene_tags", req.scene_tags)
 
-        # ─── Step 3：自动拆 4 条 DataTask ─────────────────────────
-        step(3, "拆 4 条 DataTask", "task_type 是固定 4 类，每条独立 sign-off")
+        # ─── Step 3：自动拆 6 条 DataTask ─────────────────────────
+        step(3, "拆 6 条 DataTask", "task_type 是固定 6 类（collection / mining / tagging / labeling / checking / release），每条独立 sign-off")
 
         task_specs = [
             (TaskType.COLLECTION, "夜间路口路采 800 km", 800),
-            (TaskType.ANNOTATION, "VRU 优先标注 5000 帧", 5000),
-            (TaskType.QUALITY_CHECK, "夜间 VRU 召回率验收 ≥ 95%", 1),
-            (TaskType.PIPELINE, "训练集 v1 发版", 1),
+            (TaskType.MINING, "夜间 VRU 难例挖掘 5000 clip", 5000),
+            (TaskType.TAGGING, "夜间 VRU 场景 tag 覆盖（auto-tagger + 人工抽检）", 5000),
+            (TaskType.LABELING, "VRU 优先标注 5000 帧（2D bbox + 朝向 + 遮挡）", 5000),
+            (TaskType.CHECKING, "夜间 VRU 召回率验收 ≥ 95%", 1),
+            (TaskType.RELEASE, "训练集 v1 发版", 1),
         ]
         data_tasks: list[DataTask] = []
         for task_type, title, target in task_specs:
@@ -135,11 +137,11 @@ def main(reset: bool) -> None:
 
         # ─── Step 5：写一个 Mining OperationsTask ────────────────
         step(5, "create OperationsTask(mining)", "运营协调单元：把 mining 工作派给某个团队")
-        # mining ops_task 通常挂在 annotation DataTask 下（见 e2e_demo._OPS_TO_TASK_TYPE）
-        annotation_dt = next(d for d in data_tasks if d.task_type == TaskType.ANNOTATION)
+        # mining ops_task 现在挂在 mining DataTask 下（与 collection 平行的"数据筹备"动作）
+        mining_dt = next(d for d in data_tasks if d.task_type == TaskType.MINING)
         ops = OperationsTask(
             requirement_id=req.id,
-            data_task_id=annotation_dt.id,
+            data_task_id=mining_dt.id,
             module=OperationsModule.MINING,
             title=f"挖掘候选 clip：{req.target_scene}",
             status=OperationsTaskStatus.RUNNING,
@@ -170,8 +172,9 @@ def main(reset: bool) -> None:
         # ─── 总结 ───────────────────────────────────────────────────
         hr()
         info("📐 关键概念：")
-        info("  - DataTask.task_type 是固定 4 类（business 维度）")
-        info("  - OperationsTask.module 是 5 类（labeling/tagging/checking/mining/release）")
+        info("  - DataTask.task_type 是固定 6 类（collection / mining / tagging / labeling / checking / release）")
+        info("  - tagging（场景级，自动化为主）与 labeling（对象级，强人工）分立，对齐 Tesla / Waymo / Cruise")
+        info("  - OperationsTask.module 是 6 类（labeling / tagging / checking / mining / privacy / release）")
         info("    Privacy 默认走 pipeline 自动化，不进 ops 任务池")
         info("  - 每张 DataTask / OperationsTask 表都有 x_trace_id 列")
 
@@ -180,7 +183,7 @@ def main(reset: bool) -> None:
         info(f"  curl 'http://localhost:8000/api/v1/pipeline-runs?x_trace_id={trace_id}'")
         info(f"  open http://localhost:5173/requirements/{req.id}")
 
-        done(f"requirement {req.id[:8]}… + 4 DataTask + 1 OpsTask · trace={trace_id}")
+        done(f"requirement {req.id[:8]}… + 6 DataTask + 1 OpsTask · trace={trace_id}")
         info("下一步：s05_dataset_sample.py 学切样本写 customized dataset")
         end_banner("Business Flow ✓")
 

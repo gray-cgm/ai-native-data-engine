@@ -22,10 +22,12 @@ const PRIORITY_TAG_COLORS: Record<string, string> = {
 
 function mapDataTaskToOpsModule(taskType: string): 'labeling' | 'tagging' | 'checking' | 'mining' | 'release' {
   const value = taskType.toLowerCase()
-  if (value.includes('label')) return 'labeling'
-  if (value.includes('tag')) return 'tagging'
-  if (value.includes('check') || value.includes('qc') || value.includes('gate')) return 'checking'
-  if (value.includes('release') || value.includes('publish')) return 'release'
+  // 6 类 task_type 与 ops module 一一对应；保留少量历史名兼容
+  if (value === 'tagging' || value.includes('tag')) return 'tagging'
+  if (value === 'labeling' || value === 'annotation' || value.includes('label')) return 'labeling'
+  if (value === 'checking' || value === 'quality_check' || value.includes('check') || value.includes('qc') || value.includes('gate')) return 'checking'
+  if (value === 'release' || value.includes('release') || value.includes('publish')) return 'release'
+  // mining / collection / 其它 → 跳到 mining 工作台（候选 clip 池）
   return 'mining'
 }
 

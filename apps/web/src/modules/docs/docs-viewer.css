@@ -129,32 +129,41 @@
   margin: 0.25em 0;
 }
 
-/* GitHub-style task lists：- [ ] / - [x]
- * remark-gfm 把 li 标成 .task-list-item，前面的 <input type=checkbox disabled> 会有
- * 默认 4px margin 加上 baseline 偏移，与文字错位。这里改 flex 对齐。 */
+/* GitHub-style task lists（- [ ] / - [x]）—— 最简渲染：
+   每条 li 一行，checkbox 内联在文字前，不用 flex / 不分块。
+   不靠 reset 影响 checkbox 形态：显式还原原生尺寸 + 清掉全局 input 的 padding/border。 */
 .markdown-body ul.contains-task-list {
   list-style: none;
   padding-left: 0.4em;
+  margin: 0 0 1em;
 }
 
 .markdown-body li.task-list-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 4px 0;
-  padding-left: 0;
+  margin: 0.15em 0;
+  padding: 0;
+  line-height: 1.6;
 }
 
 .markdown-body li.task-list-item > input[type='checkbox'] {
-  margin: 5px 0 0 0;
-  flex-shrink: 0;
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  padding: 0;
+  margin: 0 6px 0 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  vertical-align: -2px;
   cursor: default;
+  box-sizing: content-box;
 }
 
-/* 嵌套：task list 里又有 ul/ol */
+/* loose list 模式下 GFM 会把文字包在 <p> 里另起一行，强制内联与 checkbox 同行 */
 .markdown-body li.task-list-item > p {
+  display: inline;
   margin: 0;
-  flex: 1;
 }
 
 .markdown-body blockquote {
@@ -383,36 +392,118 @@
   margin: 0 0 1.5em;
 }
 
-/* viewport：限制可视高度 + 横向滚动；svg 自适应宽度并保持比例 */
+/* viewport：非全屏视图下让整张图自适应可视区域（无滚动条）。
+   - svg 同时受 max-width: 100% 和 max-height: 70vh 约束，浏览器按较小的
+     缩放因子等比缩小，保证无论横/纵大图都完整可见，不会出现滚动条。
+   - 真要看清字号 → 点右上角全屏按钮（modal 内仍按原尺寸展示）。 */
 .mermaid-block__viewport {
   width: 100%;
-  max-height: 70vh;
-  overflow: auto;
-  text-align: center;
-}
-
-.mermaid-block__viewport svg {
-  display: inline-block;
-  max-width: 100%;
-  height: auto;
-}
-
-/* 全屏 modal 内的 svg：尽量充满，超出滚动 */
-.mermaid-block__fullscreen {
-  width: 100%;
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.mermaid-block__fullscreen svg {
+.mermaid-block__viewport svg {
+  display: block;
   max-width: 100%;
-  max-height: 100%;
-  height: auto;
+  max-height: 70vh;
   width: auto;
+  height: auto;
+}
+
+/* 全屏 modal 内的 pan-zoom 容器：滚轮缩放（围绕光标）+ 拖拽平移 + 双击复位。 */
+.mermaid-panzoom {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.mermaid-panzoom__container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid-panzoom__container:active {
+  cursor: grabbing;
+}
+
+/* stage 是 transform 直接作用的元素：translate + scale。
+   transform-origin 取左上角，配合 zoomAt 的数学保证锚点稳定。 */
+.mermaid-panzoom__stage {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* 进入 modal 时让 SVG 先以"适配 modal"的尺寸为基准（再叠 transform）。 */
+.mermaid-panzoom__stage svg {
+  display: block;
+  max-width: 88vw;
+  max-height: 80vh;
+  width: auto;
+  height: auto;
+}
+
+.mermaid-panzoom__toolbar {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+}
+
+.mermaid-panzoom__toolbar button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: #555;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.mermaid-panzoom__toolbar button:hover {
+  background: #f0f5ff;
+  color: #1677ff;
+}
+
+.mermaid-panzoom__scale {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+}
+
+.mermaid-panzoom__hint {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  font-size: 11px;
+  color: #8c8c8c;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 3px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* 右上角放大按钮 */

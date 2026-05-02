@@ -28,7 +28,7 @@ Raw Data
 ### Clip
 平台内部最小的统一业务单元。一个 `c-<uuid>` 目录对应一次采集片段，内部包含：
 
-- `meta.lance`：单行元数据（vehicle、city、district、scenario、tags、da_tags、jira_id、start_time/end_time、calibration_info、mp4_path / mp4_resize_path 等）。
+- `meta.lance`：单行元数据（vehicle、city、district、scenario、tags（CSV，旧式）、jira_id、start_time/end_time、calibration_info、mp4_path / mp4_resize_path 等）；新结构化 tag 走 `clip_tags` 表，详见 [Tags 设计](./tags-design.md)。
 - `topic.lance`：以 keyframe 为行，相机列与 topic 列以 struct 形式并列。
 - `<TopicName>.lance`：粒度更细或频率更高的信号以兄弟目录形式独立存储。
 - （可选）`wm.lance`：水位线表。
@@ -37,7 +37,7 @@ Clip 在领域上关心：
 
 - clip ID（`c-<uuid>`）
 - 车辆 / 城市 / 区域 / scenario
-- tags / da_tags（CSV，后端在索引层拆分出标签条目）
+- tags（CSV，旧式扁平 tag）+ `clip_tags` 关系表（新式结构化 tag，含 source / source_version / confidence）
 - 关键帧数量、时长、起止时间
 - 相机目录、topic 目录、siblings 数量
 - 对应的原始 MP4 / 降采样 MP4 路径
@@ -298,20 +298,19 @@ Requirement 1 --- n RequirementReport
 
 这样 Requirement 管业务承诺，Case 管数据定义，MiningTask 管执行过程，职责清晰且可复用。
 
-## 字段与关系落地状态
+## 字段与关系的落地
 
-上面的模型已在本轮改造中真实落地到数据库 schema 与 API：
+| 维度 | 现状 |
+|---|---|
+| `job_runs` | 携带 `requirement_id` / `operation_task_id` / `trigger_source` / `reason_code` / 时长 / CPU/GPU/IO / `estimated_cost` / `derived_assets` |
+| `tasks`（OperationsTask） | 携带 `requirement_id` / `data_task_id` 与成本字段 |
+| scenario triage | `python/workflows/demo/scenario_triage.py` 写入 run / task 字段 |
+| BFF | resource schema 与 `operationsEngine` 支持 `requirementId` 过滤；Web 表格展示 `requirementId` / `dataTaskId` |
+| Requirement 详情页 | "Create / Open Ops Task" 一键 handoff，按 `task_type` 路由到 labeling / tagging / checking / release / mining 模块 |
+| Requirement Report | BFF `GET /requirements/:id/report` 提供需求方聚合视图 |
 
-- `job_runs` 表增列：`requirement_id` / `operation_task_id` / `trigger_source` / `reason_code` / `duration_seconds` / `cpu_seconds` / `gpu_seconds` / `input_bytes` / `output_bytes` / `estimated_cost` / `derived_assets`
-- `tasks`（OperationsTask）表增列：`requirement_id` / `data_task_id` / 同上的成本字段
-- 迁移通过 `SQLiteMetadataAdapter._ensure_column` 无感完成
-- `python/services/__init__.py` 的 scenario triage 在生成 run / task 时写入这些字段
-- BFF 资源 schema 与 `operationsEngine` 支持按 `requirementId` 过滤；Web 表格展示 `requirementId` / `dataTaskId`
-- Requirement 详情页提供 "Create / Open Ops Task" 一键 handoff，按 `task_type` 路由到 labeling / tagging / checking / release / mining 模块
-- 需求方视角新增 `Requirement Report` 聚合页（BFF `GET /requirements/:id/report`）
+后续待补：
 
-后续仍建议优先补齐三项能力：
-
-- 将 `CaseTemplate` / `RequirementCaseLink` 升级为独立 API 资源
-- 在 Pipeline Monitor 提供成本聚合视图
-- 将 Requirement Report 的 Superset auto-BI 与 LLM 分析从占位态升级为可执行流程
+- `CaseTemplate` / `RequirementCaseLink` 升级为独立 API 资源
+- Pipeline Monitor 提供成本聚合视图
+- Requirement Report 的 Superset auto-BI 与 LLM 分析升级为可执行流程

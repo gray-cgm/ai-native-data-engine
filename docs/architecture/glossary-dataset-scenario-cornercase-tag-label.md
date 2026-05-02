@@ -21,9 +21,12 @@
        │                                                                                       │
        │   meta.scenario = "night_intersection_vru"   ← Scenario 落到 clip 的字段              │
        │                                                                                       │
-       │   meta.tags     = "rain,intersection,vru,cutin_v1_12"   ← Tag = 系统/规则/模型产出      │
+       │   clip_tags 表 = [                                       ← Tag = 结构化（人工 + auto） │
+       │     {name="scene-night",  source=auto_tagging, source_version="auto-tagger@v3.2"},   │
+       │     {name="event-cut-in", source=manual,        source_version="user:alice@xx.com"},  │
+       │   ]   详见 docs/architecture/tags-design.md                                            │
        │                                                                                       │
-       │   meta.da_tags  = "Good_behavior_v1"                    ← Label = 人工标注（annotation）│
+       │   AnnotationTask + Lance 几何列  = 对象级 Label（labeling task type 产出）            │
        │                                                                                       │
        │   payload.cornercase = {                                ← Cornercase = 这段 clip 暴露了│
        │     "kind": "disengagement",                              模型/系统能力边界——是状态 + │
@@ -120,13 +123,13 @@
 
 | 项 | 内容 |
 |---|---|
-| **是什么** | **人工标注的真值（ground truth）**——bbox 2D/3D、polygon、semantic seg、tracking、属性（行为、车型等） |
-| **物理位置** | `AnnotationTask`（任务表）、`OpsItem(module=labeling)`（执行项）、`ClipMeta.da_tags`（da = data annotation）、`EventResult.da_tags` |
-| **谁产出** | **Labeling 模块**（人工标注 / auto-label / hybrid）+ Checking 模块（QC） |
+| **是什么** | **对象级精细标注（ground truth）**——bbox 2D/3D、polygon、semantic seg、tracking、属性（行为、车型等） |
+| **物理位置** | `AnnotationTask`（任务表）、`OpsItem(module=labeling)`（执行项）、Lance 几何列、`EventResult` |
+| **谁产出** | **Labeling 模块**（人工 + auto-pre-label）+ Checking 模块（QC） |
 | **谁消费** | 训练时作为 supervised target（y）；评估指标计算（IoU、precision、recall）；模型回归对比 |
-| **粒度** | 通常对应 clip + frame + object；也可是 clip-level 行为标注 |
+| **粒度** | clip + frame + object；也可是 clip-level 行为标注 |
 | **特点** | **Label 是训练目标本身**，与 Tag 的「描述性属性」根本不同 |
-| **典型例子** | `Good_behavior_v1`、`HardBraking_v2`、bbox `[x1,y1,x2,y2,class=pedestrian]` |
+| **典型例子** | bbox `[x1,y1,x2,y2,class=pedestrian]`、`HardBraking_v2`、轨迹序列 |
 
 **关键认知**：Label 必须经过 **sign-off / Checking** 才能进入 official dataset；Tag 不需要（系统产出可信度由模型版本/规则版本兜底）。
 
@@ -138,11 +141,11 @@
 |---|---|---|---|---|---|
 | **本质** | 样本容器 | 业务分类 | 长尾 / 失败模式 / 安全关键样本 | 系统属性标记 | 人工真值 |
 | **谁打** | Operations · Release | 采集/PM | Mining（disengagement / shadow / active learning / similarity） | Tagging / Migration | Labeling 人工 |
-| **是不是实体表** | ✅ `datasets_v2` | ❌ ClipMeta 字段 | ❌ Tag + Mining event + 可选 customized Dataset | ❌ ClipMeta 字段 + EventResult | ❌ AnnotationTask + OpsItem + EventResult.da_tags |
-| **是 result 还是 entity** | entity（带 ID） | entity（business） | result of mining 工作流 | **result of event** | **result of human work** |
+| **是不是实体表** | ✅ `datasets_v2` | ❌ ClipMeta 字段 | ❌ Tag + Mining event + 可选 customized Dataset | ✅ `clip_tags`（结构化关系表） | ❌ AnnotationTask + Lance 几何列 + EventResult |
+| **是 result 还是 entity** | entity（带 ID） | entity（business） | result of mining 工作流 | entity（结构化记录，含 source / version） | **result of human work** |
 | **训练里角色** | 容器 / 配方 | 切片维度 | **重训信号源** + 回归评估集 | 过滤 / 表达式 | y（target） |
-| **可不可组合** | 通过 promote 链组合 | 通常单选 | tag 表达；可单独成 customized dataset | 逻辑表达式（AND/OR） | 同 clip 可多 label |
-| **典型字段** | `dataset_type`, `tag_expr` | `meta.scenario` | `hard_case_v*` / `disengagement_*` tag、`payload.cornercase = {kind, trigger, severity}` | `meta.tags` (CSV) | `meta.da_tags`, bbox 列 |
+| **可不可组合** | 通过 promote 链组合 | 通常单选 | tag 表达；可单独成 customized dataset | 逻辑表达式（AND/OR），按 source/version 过滤 | 同 clip 可多 label |
+| **典型字段** | `dataset_type`, `tag_expr` | `meta.scenario` | `event-disengagement` / `attr-hard-case` tag + payload | `clip_tags(name, source, source_version, confidence, applied_at)` | Lance bbox 列、TPI 评分 |
 | **生命周期** | active / frozen / deprecated | 长期稳定 | **跟模型版本同步演进**（v1 cornercase 被 v3 攻克即贬值） | 跟 tagger 版本 | 跟标注供应商 |
 | **谁消费** | 算法工程师 | Mining + Catalog | 训练上采样 / 加权 + 回归集 + 场景库 | Mining + Dataset 表达 | 训练 + 评估 |
 
@@ -161,7 +164,7 @@
 | 训练角色 | 选样、过滤 | 监督信号 |
 | 可信度 | 取决于产出器版本 | 经 Checking sign-off |
 
-> 项目里 `tags` 字段（CSV）落 Tag；`da_tags`（**d**ata **a**nnotation tags）落 clip-level 的人工标注摘要；具体的 bbox/polygon 坐标走 AnnotationTask + Lance 列。
+> 项目里 Tag 落 `clip_tags` 关系表（结构化，区分 manual / auto / rule，自动类带模型版本，详见 [Tags 设计](./tags-design.md)）；Label 走 AnnotationTask + Lance 几何列。
 
 ### 3.2 "Scenario 和 Tag 怎么没分开？"
 
@@ -205,10 +208,10 @@ Scenario **是** Tag 的一个特例，但被单独提出来是因为：
 | 阶段 | 产出 | 名词体现 |
 |---|---|---|
 | 1. Requirement | `Requirement(target_scene="夜间路口 VRU")`、`scene_tags=["nighttime","intersection","vru"]` | **Scenario**（target_scene） + 期望的 **Tag** 集合 |
-| 2. DataTasks | 4 条业务里程碑：collection / annotation / quality_check / pipeline | — |
-| 3. Mining | 从 `data/lance/` 找 `meta.scenario = night_intersection_vru` 且 `tags ⊇ {nighttime,intersection,vru}` 的 25 个 clip；其中 12 条来自路测 disengagement 回流，8 条由影子模型预测 disagreement 触发，5 条 active-learning 低置信度——这 25 条都打上 `hard_case_night_vru_v1` tag，写 LineageEvent(event_type=mining, source_type=disengagement/shadow/active_learning) | **Scenario** 过滤 + **Tag** 过滤 → 形成本轮 **Cornercase** 候选；不同 source_type 区分来源 |
-| 4. Tagging | 模型/规则给候选 clip 打 `cutin_v1_12`、`pedestrian_present` 等 tag；写 LineageEvent(event_type=tagging) | **Tag** 落地（EventResult.tags） |
-| 5. Labeling | 人工标注 25 个 clip 的 bbox + 行为属性；写 LineageEvent(event_type=labeling, payload_type=label)；产出 `da_tags="Good_behavior_v1"` | **Label** 落地（da_tags + AnnotationTask） |
+| 2. DataTasks | 6 条业务里程碑：collection / mining / tagging / labeling / checking / release | — |
+| 3. Mining | 从 `data/lance/` 找 `meta.scenario = night_intersection_vru` 且 tag ⊇ {scene-night, scene-intersection, attr-vru} 的 25 个 clip；其中 12 条 disengagement 回流，8 条 shadow disagreement，5 条 active-learning；都打 `attr-hard-case-night-vru` tag，写 LineageEvent(event_type=mining, source_type=...) | **Scenario** 过滤 + **Tag** 过滤 → **Cornercase** 候选 |
+| 4. Tagging | auto-tagger 在候选 clip 上写 `clip_tags(name="event-cut-in", source=auto_tagging, source_version="auto-tagger@v3.2", confidence=0.92)`；人工抽 5% 校验，写 `source=manual` 行 | **Tag** 落地（`clip_tags`） |
+| 5. Labeling | 人工标注 25 个 clip 的 bbox + 行为属性，AnnotationTask + Lance 几何列；写 LineageEvent(event_type=labeling) | **Label** 落地（AnnotationTask + Lance 几何列） |
 | 6. Checking | 对 labeling 结果 QC，passed 20 / waived 3 / failed 2 | — |
 | 7. Build customized | 把 23 个通过 checking 的 clip 收成 `ds_night_vru_xxx_customized`，每个 clip 一条 DatasetSample（ts 来自 Lance start/end 中点） | **Dataset (customized)** 诞生，sample 引用 **clip + ts** |
 | 8. Release Promote | release OpsItem(approved) → `promote_to_official` → 复制 sample 到 `ds_night_vru_xxx_official`（allow_train=true） | **Dataset (official)** 交付物 |
@@ -223,9 +226,8 @@ Scenario **是** Tag 的一个特例，但被单独提出来是因为：
 | Dataset | `datasets_v2` (id, name, dataset_type, tag_expr, slice_strategy, allow_train, ...) | `apps/api/src/models/dataset.py::Dataset` |
 | DatasetSample | `dataset_samples_v2` (dataset_id, clip_id, ts, range_l, range_r, training_type) | `apps/api/src/models/dataset.py::DatasetSample` |
 | Scenario | `ClipMeta.scenario` (string) + `apps/api/src/scripts/scenarios/*.yaml` | `python/core/src/core/domain/models.py::ClipMeta` |
-| Tag | `ClipMeta.tags` (CSV) + `EventResult.tags` | `apps/api/src/models/lineage_event.py::EventResult` |
-| Label (clip-level) | `ClipMeta.da_tags` (CSV) + `EventResult.da_tags` + `AnnotationTask` | `apps/api/src/models/lineage_event.py`、`apps/api/src/models/requirement.py::AnnotationTask` |
-| Label (geometry) | Lance 列（bbox / polygon / track）+ AnnotationTask.annotation_type | `data/lance/c-<uuid>/<TopicName>.lance` |
+| Tag | `clip_tags`（结构化关系表，含 source / source_version / confidence） | `apps/api/src/models/clip_tag.py::ClipTag`，详见 [Tags 设计](./tags-design.md) |
+| Label (geometry) | Lance 列（bbox / polygon / track）+ AnnotationTask | `data/lance/c-<uuid>/<TopicName>.lance`、`apps/api/src/models/requirement.py::AnnotationTask` |
 | Cornercase | 带版本号 Tag（`hard_case_v*` / `disengagement_*` / `ood_*`）+ `LineageEvent(event_type=mining, source_type=...)` + `OpsItem(module=mining).payload.cornercase = {kind, trigger, severity}` + 可选 `Dataset(tag_expr="hard_case_v1 AND ...")` | `apps/api/src/models/lineage_event.py`、`apps/api/src/models/ops_item.py` |
 
 ---
@@ -260,13 +262,13 @@ Scenario **是** Tag 的一个特例，但被单独提出来是因为：
 
 | 项 | 内容 |
 |---|---|
-| 一句话 | Requirement 拆解出的**业务里程碑**，固定 4 类，每条独立 sign-off |
+| 一句话 | Requirement 拆解出的**业务里程碑**，固定 6 类，每条独立 sign-off |
 | 物理表 | `data_tasks` |
-| 关键字段 | `id` · `requirement_id`(FK) · `task_type ∈ {collection, annotation, quality_check, pipeline}` · `status` · `sign_off_status(pending/approved/rejected)` · `sign_off_by/at/comment` · `target_count` · `actual_count` · `assigned_to` · `due_date` · `x_trace_id` |
-| E2E 出现 | Step 2：4 行（4 类 task_type 各 1 条） |
+| 关键字段 | `id` · `requirement_id`(FK) · `task_type ∈ {collection, mining, tagging, labeling, checking, release}` · `status` · `sign_off_status(pending/approved/rejected)` · `sign_off_by/at/comment` · `target_count` · `actual_count` · `assigned_to` · `due_date` · `x_trace_id` |
+| E2E 出现 | Step 2：6 行（6 类 task_type 各 1 条） |
 | 关系 | N ↔ 1 `Requirement`；1 ↔ N `OperationsTask` / `PipelineRun` / `CollectionJob` / `AnnotationTask` / `DigitalReconstruction` |
 
-> 注：`task_type` 是固定枚举（4 类），与 `OperationsTask.module`（5 类 ops 子域）属于不同维度——前者是业务里程碑，后者是运营协调单元。
+> 注：`task_type` 是固定枚举（6 类，对齐 Tesla / Waymo / Cruise），与 `OperationsTask.module`（6 类 ops 子域）一一对应——前者是业务里程碑，后者是运营协调单元。tagging（场景级，自动化为主）与 labeling（对象级，强人工）分立。
 
 ### 7.2 协调与执行层（Step 3-6）
 
@@ -319,7 +321,7 @@ Scenario **是** Tag 的一个特例，但被单独提出来是因为：
 | 一句话 | 项目的**最小物理数据单元**——`data/lance/c-<uuid>/` 一个目录 = 一段时序采集 |
 | 物理位置 | Lance 目录：`meta.lance`（单行元数据）+ `topic.lance`（关键帧 + 多 topic struct）+ `<TopicName>.lance`（独立 topic）+ 可选 `wm.lance`（水位线） |
 | 索引 | `clip_catalog.sqlite`（SQLite 单表，按 mtime 增量刷新） |
-| ClipMeta 关键字段 | `clip_id` · `vehicle_name/model/info` · `city/district` · `scenario` · `tags`(CSV) · `da_tags`(CSV) · `start_time`/`end_time`(ns) · `calibration_version/info` · `mp4_path` / `mp4_resize_path` · `jira_id` |
+| ClipMeta 关键字段 | `clip_id` · `vehicle_name/model/info` · `city/district` · `scenario` · `tags`(CSV，旧式) · `start_time`/`end_time`(ns) · `calibration_version/info` · `mp4_path` / `mp4_resize_path` · `jira_id`。新结构化 tag 走 `clip_tags` 表（[Tags 设计](./tags-design.md)） |
 | E2E 出现 | Step 3 mining 候选；Step 7 写入 customized dataset 时取 start/end 算 ts |
 | 关系 | M ↔ N `DatasetSample`（dataset_id × ts × range_l/r）；M ↔ N `OpsItem.clip_ids` |
 
@@ -359,7 +361,7 @@ E2E 出现：Step 7（customized）→ Step 8（official）。
 |---|---|
 | 一句话 | LineageEvent 产出的**逐 clip 结果行**——一次 event 通常产出 N 行 EventResult |
 | 物理表 | `event_results` |
-| 关键字段 | `id` · `event_pk`(FK→lineage_events) · `clip_id` · `payload_type ∈ {tag, label, check, mining_candidate}` · `tags`（产出 tag）· `da_tags`（人工标注） · `trigger_event_tags`(TriggerName) · `ts`（部分有部分无）· `extra(JSON)` · `note` |
+| 关键字段 | `id` · `event_pk`(FK→lineage_events) · `clip_id` · `payload_type ∈ {tag, label, check, mining_candidate}` · `tags`（产出 tag CSV，会同步到 `clip_tags` 关系表）· `trigger_event_tags`(TriggerName) · `ts`（部分有部分无）· `extra(JSON)` · `note` |
 | E2E 出现 | Step 5 / Step 8 内部，每条 EventResult 对应一个 clip |
 | 维度视图 | 4 个 query view（不是物理表）：tagging / labeling / checking / mining，通过 `(event_type, payload_type)` 联合 filter |
 
@@ -437,7 +439,7 @@ E2E 出现：Step 7（customized）→ Step 8（official）。
 | Step | 写入对象 | 关键产出 |
 |---|---|---|
 | 1 Requirement | `Requirement` ×1 | 1 行需求 |
-| 2 DataTasks | `DataTask` ×4 + `CollectionJob` ×1 + `AnnotationTask` ×1 | 4 业务里程碑 |
+| 2 DataTasks | `DataTask` ×5（collection / mining / annotation / quality_check / release）+ `CollectionJob` ×1 + `AnnotationTask` ×1 | 5 业务里程碑 |
 | 3 Mining | `OperationsTask(module=mining)` ×1 + `OpsItem` ×N | 候选 clip 集 |
 | 4 Pipeline batch | `PipelineRun` ×4（按 step） | derived Asset 链 |
 | 4b Streaming（可选） | `PipelineRun(stage=streaming-replay)` ×1 | streaming asset |

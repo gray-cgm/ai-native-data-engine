@@ -18,21 +18,35 @@ data_tasks:
     target_unit: 公里
     actual_ratio: 0.65
     assigned_to: data-collection-lead@example.com
-  - task_type: annotation
-    title: 对手车辆轨迹标注（3000 帧）
-    description: 对手车辆 BBox + 运动轨迹 + 优先级判定标签
+  - task_type: mining
+    title: 历史无保护左转候选挖掘
+    description: 在历史 clip 池中召回 intersection+left_turn+unprotected 高匹配候选
+    target_count: 500
+    target_unit: clip
+    actual_ratio: 0.7
+    assigned_to: mining-lead@example.com
+  - task_type: tagging
+    title: 无保护左转场景 tag 覆盖
+    description: auto-tagger 打 scene-intersection / event-unprotected-left / attr-yield 等 tag，人工抽样校验
+    target_count: 3000
+    target_unit: clip
+    actual_ratio: 0.85
+    assigned_to: tagging-lead@example.com
+  - task_type: labeling
+    title: 对手车辆轨迹精细标注（3000 帧）
+    description: 对手车辆 BBox + 运动轨迹 + 优先级判定 label
     target_count: 3000
     target_unit: 帧
     actual_ratio: 0.7
-    assigned_to: anno-pm@example.com
-  - task_type: quality_check
+    assigned_to: labeling-pm@example.com
+  - task_type: checking
     title: 预测时序错误率回归 ≤ 5%
     description: 在城区左转回归集上验证预测时序，5% 错误率以下可签核
     target_count: 5
     target_unit: '%错误率'
     actual_ratio: 0.92
     assigned_to: planning-qa-lead@example.com
-  - task_type: pipeline
+  - task_type: release
     title: 训练集 v1.5 发版（左转专项增强）
     description: 在 v1.4 基础上叠加左转专项样本，发版 v1.5 提交预测/规控训练
     target_count: 1

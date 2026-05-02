@@ -13,7 +13,6 @@ members = [
     "ad-core",
     "ad-profiles",
     "ad-sdk",
-    "ad-services",
     "ad-workflows",
     "ai-native-data-engine",
     "api",
@@ -79,21 +78,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "httpx", specifier = ">=0.27.2" }]
-
-[[package]]
-name = "ad-services"
-version = "0.1.0"
-source = { editable = "python/services" }
-dependencies = [
-    { name = "ad-core" },
-    { name = "ad-workflows" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ad-core", editable = "python/core" },
-    { name = "ad-workflows", editable = "python/workflows" },
-]
 
 [[package]]
 name = "ad-workflows"
@@ -203,7 +187,6 @@ dependencies = [
     { name = "ad-adapters" },
     { name = "ad-core" },
     { name = "ad-profiles" },
-    { name = "ad-services" },
     { name = "ad-workflows" },
     { name = "alembic" },
     { name = "fastapi" },
@@ -219,7 +202,6 @@ requires-dist = [
     { name = "ad-adapters", editable = "python/adapters" },
     { name = "ad-core", editable = "python/core" },
     { name = "ad-profiles", editable = "python/profiles" },
-    { name = "ad-services", editable = "python/services" },
     { name = "ad-workflows", editable = "python/workflows" },
     { name = "alembic", specifier = ">=1.13.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
@@ -1322,7 +1304,6 @@ version = "0.1.0"
 source = { editable = "apps/orchestrator" }
 dependencies = [
     { name = "ad-profiles" },
-    { name = "ad-services" },
     { name = "ad-workflows" },
     { name = "dagster" },
     { name = "dagster-postgres" },
@@ -1333,7 +1314,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ad-profiles", editable = "python/profiles" },
-    { name = "ad-services", editable = "python/services" },
     { name = "ad-workflows", editable = "python/workflows" },
     { name = "dagster", specifier = ">=1.8.9" },
     { name = "dagster-postgres", specifier = ">=0.24.9" },

@@ -95,6 +95,20 @@ flowchart TB
 - [模块 PRD · Pipelines](./module-pipelines.md)
 - [模块 PRD · Tools](./module-tools.md)
 
+### 0.5 产品视觉标识（一图说完产品故事）
+
+![AI Native Data Engine Logo](../../apps/web/public/logo.png)
+
+logo 用三个动作压缩了产品的核心叙事：
+
+- **铲起**——左下方铲子铲入散落的数据块，象征从原始 raw data 中"挖出"有价值的 clip
+- **提纯**——中上的飞轮（齿轮）持续转动，象征 mining → tagging → labeling → checking 的闭环不断提纯数据
+- **注入**——右下流水线汇入"AI"节点，象征高质量数据通过 release 输送给 AI 模型训练
+
+构图采用左下 → 中上 → 右下的等腰三角形，视觉重心平衡；冷蓝主调传达基础设施的严谨与可信，暖橙点缀只用在"流动 / 通电 / 加工中"的关键动线上。
+
+一句话：**这个平台是 AI 模型背后的"铲子"与"飞轮"**——把杂乱的物理世界数据，铲起、提纯，再源源不断地输送给模型。详细的设计原则与使用规范见 [Logo 设计](./logo-design.md)。
+
 ---
 
 ## 目的
