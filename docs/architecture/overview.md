@@ -31,13 +31,18 @@ flowchart TB
         SQL[SQLite/PG<br/>元数据]
     end
 
-    subgraph App["📱 应用层（六大模块）"]
-        CAT[Catalog] -. 浏览 .-> DS
-        REQM[Requirements] -. 提需求 .-> REQ
-        EXP[Explorer] -. 切片/检索 .-> SAMPLE
-        OPSM[Operations] -. 协调 .-> OPS
-        PIPE[Pipelines] -. 观测 .-> RUN
-        TOOL[Tools] -. 嵌入 .-> CAT
+    subgraph App["📱 应用层（数据闭环主旅程 6 步）"]
+        REQM[① Requirements] -. 提需求 .-> REQ
+        EXP[② Explorer] -. 找候选 clip .-> SAMPLE
+        OPSM[③ Operations] -. 人机协同加工 .-> OPS
+        PIPE[④ Pipelines] -. 机器执行观测 .-> RUN
+        CAT[⑤ Catalog] -. 构建数据集 .-> DS
+        EXPORTS[⑥ Exports] -. 出仓 + 训练反馈 .-> DS
+    end
+
+    subgraph Sidecar["🧰 跨切面（不在主旅程线上）"]
+        OV[Overview · 综合首页 Dashboard]
+        TOOL[Tools · 微前端工具门户]
     end
 
     Domain --> Eng

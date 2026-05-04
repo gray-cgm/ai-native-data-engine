@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useSearchParams } from 'react-router-dom'
 import { StatusBadge } from '@/shared/components/status-badge'
 import { TableCellText } from '@/shared/components/table-cell-text'
+import { IdCell } from '@/shared/components/id-cell'
 import type { PipelineRunFilters, PipelineRunRow } from '../api'
 import { fetchPipelineRuns } from '../api'
 import { RunDetailDrawer } from './run-detail.drawer'
@@ -73,12 +74,12 @@ export function RunsView() {
       render: (t: string) => <Tag color="orange">{t}</Tag> },
     { key: 'run_purpose', title: 'Purpose', dataIndex: 'run_purpose', width: 120,
       render: (t: string) => <Tag color="magenta">{t}</Tag> },
-    { key: 'x_trace_id', title: 'x_trace_id', dataIndex: 'x_trace_id', width: 180,
-      render: (t?: string | null) => <TableCellText value={t} maxWidth={180} code /> },
-    { key: 'requirement_id', title: 'Requirement', dataIndex: 'requirement_id', width: 180,
-      render: (t?: string | null) => <TableCellText value={t} maxWidth={180} code /> },
-    { key: 'operations_task_id', title: 'Ops Task', dataIndex: 'operations_task_id', width: 180,
-      render: (t?: string | null) => <TableCellText value={t} maxWidth={180} code /> },
+    { key: 'x_trace_id', title: 'x_trace_id', dataIndex: 'x_trace_id', width: 200,
+      render: (t?: string | null) => <IdCell value={t} variant="mono-ellipsis" maxWidth={160} /> },
+    { key: 'requirement_id', title: 'Requirement', dataIndex: 'requirement_id', width: 160,
+      render: (t?: string | null) => <IdCell value={t} /> },
+    { key: 'operations_task_id', title: 'Ops Task', dataIndex: 'operations_task_id', width: 160,
+      render: (t?: string | null) => <IdCell value={t} /> },
     { key: 'created_at', title: 'Created', dataIndex: 'created_at', width: 160,
       render: (t: string) => <Text type="secondary" style={{ fontSize: 12 }}>{t}</Text> },
   ], [])
@@ -132,7 +133,22 @@ export function RunsView() {
         tableLayout="fixed"
         scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (t) => `${t} run${t !== 1 ? 's' : ''}` }}
-        onRow={(record) => ({ onClick: () => setSelectedRunId(record.id), style: { cursor: 'pointer' } })}
+        rowClassName={(record) =>
+          'clickable-row' + (record.id === selectedRunId ? ' clickable-row--selected' : '')
+        }
+        onRow={(record) => ({
+          onClick: (event) => {
+            const target = event.target as HTMLElement
+            if (target.closest('a, button')) return
+            setSelectedRunId(record.id)
+          },
+          tabIndex: 0,
+          onKeyDown: (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return
+            event.preventDefault()
+            setSelectedRunId(record.id)
+          },
+        })}
         locale={{ emptyText: '无匹配的 Pipeline Run。尝试调整过滤条件或运行 make seed-trace-demo。' }}
       />
 

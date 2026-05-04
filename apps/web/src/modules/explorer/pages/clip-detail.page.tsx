@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { TrainingHistorySection } from '@/modules/exports/components/training-history-section'
 import {
   Alert,
   Breadcrumb,
@@ -180,6 +181,10 @@ export default function ClipDetailPage() {
           </Card>
         </Col>
       </Row>
+
+      <div style={{ marginBottom: 16 }}>
+        <TrainingHistorySection clipId={summary.clip_id} datasetId={fromDataset ?? undefined} />
+      </div>
 
       <Card style={{ marginBottom: 16 }}>
         <Tabs

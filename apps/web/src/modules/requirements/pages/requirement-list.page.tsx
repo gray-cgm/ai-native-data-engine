@@ -74,15 +74,16 @@ export default function RequirementListPage() {
           <p className="text-muted">No requirements found. Create one to get started.</p>
         ) : (
           <>
-            <DataTable
+            <DataTable<RequirementListItem>
+              rowHref={(row) => `/requirements/${row.id}`}
               columns={[
                 {
                   key: 'title',
                   header: 'Title',
                   render: (row: RequirementListItem) => (
-                    <Link to={`/requirements/${row.id}`} style={{ color: 'var(--color-accent)' }}>
+                    <span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>
                       {row.title}
-                    </Link>
+                    </span>
                   ),
                 },
                 { key: 'source', header: 'Source' },

@@ -21,12 +21,14 @@ import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
 import { DataTable } from '@/shared/components/data-table'
+import { IdCell } from '@/shared/components/id-cell'
 import {
   getDataset,
   listSamples,
   type DatasetSampleV2,
   type DatasetV2,
 } from '@/modules/datasets/datasets-api'
+import { TrainingImpactSection } from '@/modules/exports/components/training-impact-section'
 
 const { Text, Paragraph } = Typography
 
@@ -192,6 +194,8 @@ export default function DatasetV2DetailPage() {
         </Descriptions>
       </Card>
 
+      <TrainingImpactSection datasetId={ds.id} />
+
       <Card
         title={`Samples (${samples.data?.total ?? sampleCount})`}
         extra={
@@ -215,18 +219,15 @@ export default function DatasetV2DetailPage() {
         {samples.state === 'empty' && <Empty description="No samples in this dataset yet." />}
         {samples.state === 'ready' && (
           <DataTable<DatasetSampleV2>
+            rowHref={(row) =>
+              `/explorer/clips/${encodeURIComponent(row.clip_id)}?ts=${row.ts}&dataset=${encodeURIComponent(ds.id)}`
+            }
             columns={[
               {
                 key: 'clip_id',
                 header: 'Clip',
-                render: (row) => (
-                  <Link
-                    to={`/explorer/clips/${encodeURIComponent(row.clip_id)}?ts=${row.ts}&dataset=${encodeURIComponent(ds.id)}`}
-                    style={{ fontFamily: 'monospace' }}
-                  >
-                    {row.clip_id.slice(0, 16)}…
-                  </Link>
-                ),
+                width: 280,
+                render: (row) => <IdCell value={row.clip_id} variant="mono-ellipsis" maxWidth={240} />,
               },
               {
                 key: 'ts',

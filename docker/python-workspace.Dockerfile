@@ -21,7 +21,6 @@ COPY python/core/pyproject.toml python/core/pyproject.toml
 COPY python/adapters/pyproject.toml python/adapters/pyproject.toml
 COPY python/workflows/pyproject.toml python/workflows/pyproject.toml
 COPY python/profiles/pyproject.toml python/profiles/pyproject.toml
-COPY python/services/pyproject.toml python/services/pyproject.toml
 COPY sdk/python/pyproject.toml sdk/python/pyproject.toml
 
 RUN uv sync --locked --package orchestrator --no-install-workspace
@@ -33,7 +32,6 @@ COPY python/core/src python/core/src
 COPY python/adapters/src python/adapters/src
 COPY python/workflows/src python/workflows/src
 COPY python/profiles/src python/profiles/src
-COPY python/services/src python/services/src
 COPY sdk/python/src sdk/python/src
 COPY infra infra
 

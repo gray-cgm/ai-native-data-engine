@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AppstoreOutlined } from '@ant-design/icons'
 import { Card, Col, Row, Space, Tag, Typography } from 'antd'
 import { DataTable } from '@/shared/components/data-table'
+import { IdCell } from '@/shared/components/id-cell'
 import { buildClipVideoUrl, type ClipSummary } from '../clips-api'
 import { ClipProgressBar } from './clip-progress-bar'
 
@@ -44,26 +45,25 @@ export function splitTags(raw: string | null | undefined): string[] {
 
 export function ClipResultTable({ items, emptyText, detailHref }: ClipTableProps) {
   return (
-    <DataTable
+    <DataTable<ClipSummary>
+      rowHref={(row) =>
+        detailHref ? detailHref(row) : `/explorer/clips/${encodeURIComponent(row.clip_id)}`
+      }
       columns={[
         {
           key: 'clip_id',
           header: 'Clip',
-          render: (row: ClipSummary) => {
-            const href = detailHref ? detailHref(row) : `/explorer/clips/${encodeURIComponent(row.clip_id)}`
-            return (
+          width: 280,
+          render: (row: ClipSummary) => (
+            <div>
+              <IdCell value={row.clip_id} variant="mono-ellipsis" maxWidth={240} />
               <div>
-                <Link to={href} style={{ fontFamily: 'monospace' }}>
-                  {row.clip_id}
-                </Link>
-                <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {formatTimestamp(row.start_time)}
-                  </Text>
-                </div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {formatTimestamp(row.start_time)}
+                </Text>
               </div>
-            )
-          },
+            </div>
+          ),
         },
         {
           key: 'vehicle_name',
@@ -150,9 +150,8 @@ function ClipWallCard({ row, detailHref }: { row: ClipSummary; detailHref?: (cli
   const href = detailHref ? detailHref(row) : `/explorer/clips/${encodeURIComponent(row.clip_id)}`
 
   return (
-    <Link to={href} style={{ color: 'inherit' }}>
+    <Link to={href} style={{ color: 'inherit', display: 'block' }} className="clickable-card" aria-label={`Open clip ${row.clip_id}`}>
       <Card
-        hoverable
         size="small"
         styles={{ body: { padding: 12 } }}
         cover={
@@ -195,18 +194,8 @@ function ClipWallCard({ row, detailHref }: { row: ClipSummary; detailHref?: (cli
           </div>
         }
       >
-        <div
-          style={{
-            fontFamily: 'monospace',
-            fontSize: 12,
-            marginBottom: 4,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-          title={row.clip_id}
-        >
-          {row.clip_id}
+        <div style={{ marginBottom: 4 }}>
+          <IdCell value={row.clip_id} variant="mono-ellipsis" maxWidth="100%" />
         </div>
         <div
           style={{

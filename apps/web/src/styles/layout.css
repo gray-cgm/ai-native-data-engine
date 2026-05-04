@@ -203,4 +203,101 @@
   font-size: 12px;
 }
 
+/* ─────────────────────────── Clickable affordance ───────────────────────────
+ * Minimal-noise rule: hover bg + cursor pointer is enough signal.
+ * No left-edge stripes, no extra borders — the table looks clean at rest.
+ *
+ * Use: pass `rowClassName="clickable-row"` to antd <Table> with onRow click,
+ * or apply `.clickable-card` to a Card that opens a drawer.
+ * --------------------------------------------------------------------------- */
+
+/* Antd table rows ---------------------------------------------------------- */
+
+.app-data-table .ant-table-row,
+.ant-table-row.clickable-row {
+  transition: var(--interactive-transition);
+}
+
+.ant-table-row.clickable-row > .ant-table-cell {
+  cursor: var(--interactive-cursor);
+}
+
+.ant-table-row.clickable-row:hover > .ant-table-cell {
+  background: var(--interactive-bg-hover) !important;
+}
+
+.ant-table-row.clickable-row:active > .ant-table-cell {
+  background: var(--interactive-bg-active) !important;
+}
+
+.ant-table-row.clickable-row.clickable-row--selected > .ant-table-cell {
+  background: var(--interactive-bg-selected) !important;
+}
+
+/* Inline links inside clickable rows — keep them visually distinct from row
+ * click target. Underline-on-hover so users see they navigate. */
+.ant-table-row.clickable-row a:hover,
+.ant-table-row.clickable-row a:focus-visible {
+  text-decoration: underline;
+}
+
+/* ── Density: tighten antd small table to MVP-comfortable height ───────────
+ * Default antd "small" still leaves ~12px vertical padding; we want compact
+ * data-grid feel for high-info tables (snapshots / runs / clips). */
+.app-data-table.ant-table-wrapper .ant-table.ant-table-small .ant-table-cell {
+  padding: 6px 10px;
+}
+
+.app-data-table.ant-table-wrapper .ant-table.ant-table-small .ant-table-thead > tr > th {
+  padding: 8px 10px;
+  font-weight: 600;
+  background: var(--color-bg-secondary);
+}
+
+/* Cards / list items ------------------------------------------------------- */
+
+.clickable-card {
+  cursor: var(--interactive-cursor);
+  transition: var(--interactive-transition);
+  border-color: var(--color-border) !important;
+}
+
+.clickable-card:hover {
+  background: var(--interactive-bg-hover);
+  border-color: var(--interactive-border-hover) !important;
+  box-shadow: var(--interactive-shadow-hover);
+}
+
+.clickable-card:active {
+  background: var(--interactive-bg-active);
+}
+
+.clickable-card.clickable-card--selected {
+  background: var(--interactive-bg-selected);
+  border-color: var(--interactive-border-hover) !important;
+}
+
+/* Inline chips / pills clickable (e.g. trace tag → filter) ----------------- */
+
+.clickable-chip {
+  cursor: var(--interactive-cursor);
+  transition: var(--interactive-transition);
+  text-decoration: none;
+}
+
+.clickable-chip:hover {
+  filter: brightness(0.92);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+/* Keyboard focus — applies to ALL interactive surfaces above ---------------- */
+
+.clickable-row:focus-visible,
+.clickable-row:focus-visible > .ant-table-cell,
+.clickable-card:focus-visible,
+.clickable-chip:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-outline-offset);
+}
+
 

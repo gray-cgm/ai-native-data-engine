@@ -20,6 +20,7 @@ import { PageContainer } from '@/shared/components/page-container'
 import { PageLoading } from '@/shared/components/page-loading'
 import { PageError } from '@/shared/components/page-error'
 import { DataTable } from '@/shared/components/data-table'
+import { IdCell } from '@/shared/components/id-cell'
 import { fetchClipDatasets, type ClipDataset } from '../clip-datasets'
 import { listDatasets, type DatasetV2 } from '@/modules/datasets/datasets-api'
 import { NewDatasetModal } from '@/modules/datasets/new-dataset-modal'
@@ -177,23 +178,19 @@ function DatasetsView() {
           </Empty>
         ) : (
           <DataTable<DatasetV2>
+            rowHref={(row) => `/catalog/v2/${encodeURIComponent(row.id)}`}
             columns={[
               {
                 key: 'name',
                 header: 'Dataset',
                 render: (row) => (
                   <div>
-                    <Link
-                      to={`/catalog/v2/${encodeURIComponent(row.id)}`}
-                      style={{ fontWeight: 500 }}
-                    >
-                      <AppstoreOutlined style={{ marginRight: 6 }} />
+                    <span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                      <AppstoreOutlined style={{ marginRight: 6, color: 'var(--color-accent)' }} />
                       {row.name}
-                    </Link>
+                    </span>
                     <div>
-                      <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                        {row.id}
-                      </Text>
+                      <IdCell value={row.id} />
                     </div>
                   </div>
                 ),
@@ -233,9 +230,12 @@ function DatasetsView() {
                 header: 'Requirement',
                 render: (row) =>
                   row.requirement_id ? (
-                    <Link to={`/requirements/${row.requirement_id}`}>
-                      req:{row.requirement_id.slice(0, 8)}
-                    </Link>
+                    <span data-stop-row-click style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Link to={`/requirements/${row.requirement_id}`} style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                        {row.requirement_id.slice(0, 8)}…
+                      </Link>
+                      <Typography.Text copyable={{ text: row.requirement_id, tooltips: ['复制', '已复制'] }} />
+                    </span>
                   ) : (
                     <Text type="secondary">—</Text>
                   ),
@@ -352,24 +352,20 @@ function ScenarioView() {
         {state === 'empty' ? (
           <Empty description="No clips found." />
         ) : (
-          <DataTable
+          <DataTable<ClipDataset>
+            rowHref={(row) => `/catalog/${encodeURIComponent(row.dataset_id)}`}
             columns={[
               {
                 key: 'name',
                 header: 'Scenario bucket',
                 render: (row: ClipDataset) => (
                   <div>
-                    <Link
-                      to={`/catalog/${encodeURIComponent(row.dataset_id)}`}
-                      style={{ fontWeight: 500 }}
-                    >
-                      <AppstoreOutlined style={{ marginRight: 6 }} />
+                    <span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                      <AppstoreOutlined style={{ marginRight: 6, color: 'var(--color-accent)' }} />
                       {row.name}
-                    </Link>
+                    </span>
                     <div>
-                      <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                        {row.dataset_id}
-                      </Text>
+                      <IdCell value={row.dataset_id} />
                     </div>
                   </div>
                 ),

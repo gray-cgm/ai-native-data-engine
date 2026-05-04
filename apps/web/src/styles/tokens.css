@@ -46,6 +46,22 @@
   /* Shadows */
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
 
+  /* ─── Interactive affordance (rest / hover / active / selected / focus) ───
+     Single source of truth for "this thing is clickable". Apply via the
+     .clickable-row / .clickable-card / .clickable-chip classes (see layout.css).
+     Do NOT inline cursor:pointer or hover-bg in feature code — use these. */
+  --interactive-bg-rest: transparent;
+  --interactive-bg-hover: rgba(22, 119, 255, 0.06);
+  --interactive-bg-active: rgba(22, 119, 255, 0.12);
+  --interactive-bg-selected: rgba(22, 119, 255, 0.10);
+  --interactive-border-rest: transparent;
+  --interactive-border-hover: var(--color-accent);
+  --interactive-shadow-hover: 0 1px 6px rgba(22, 119, 255, 0.15);
+  --interactive-cursor: pointer;
+  --focus-outline: 2px solid var(--color-accent);
+  --focus-outline-offset: 2px;
+  --interactive-transition: background 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+
   /* Typography */
   --font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-size-xs: 12px;

@@ -89,6 +89,16 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
+    label: 'Exports',
+    icon: ExportOutlined,
+    items: [
+      { label: 'Snapshots', path: '/exports?tab=snapshots', icon: HistoryOutlined },
+      { label: 'Consumers', path: '/exports?tab=consumers', icon: UnorderedListOutlined },
+      { label: 'Hard Samples', path: '/exports?tab=hard-samples', icon: ExperimentOutlined },
+      { label: 'ROI', path: '/exports?tab=roi', icon: BarChartOutlined },
+    ],
+  },
+  {
     label: 'Tools',
     icon: ToolOutlined,
     items: [

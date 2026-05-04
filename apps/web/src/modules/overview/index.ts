@@ -1,1 +1,2 @@
-export { PlatformStats } from './components/platform-stats'
+// Module entry — page is lazy-imported via routes.tsx; nothing public here yet.
+export {}

@@ -70,6 +70,97 @@ type PageState = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 
 ## 4. 关键交互模式
 
+### 4.0 交互可感知性（Interactive Affordance）—— 极简原则
+
+> **干净 + 可用 + 可复制**。MVP 阶段不堆装饰：行 hover 才出现底色、id 带原位 copy、表格行高紧凑。
+
+#### 4.0.1 可点区域的 3 状态
+
+| 类型 | rest | hover | active / selected |
+|---|---|---|---|
+| **clickable-row** | 与普通行视觉一致；进入 row 区域显 cursor:pointer | 行底色 `--interactive-bg-hover` + 行内 link 下划线 | active 行底色 `--interactive-bg-active`；当前 drawer 打开的行加 `.clickable-row--selected` 显 `--interactive-bg-selected` |
+| **clickable-card** | 普通边框 | bg + 边框 accent + `--interactive-shadow-hover` | bg 变深 / selected |
+| **clickable-chip** | 普通 Tag | brightness(0.92) + accent 1px outline | — |
+
+`:focus-visible` 一律 `outline: 2px solid accent` + `outline-offset: 2px`，键盘可达必给。
+
+**故意不做**：
+- ❌ 行左侧蓝色 / 灰色 accent 竖条（视觉噪音、表格已经够密）
+- ❌ rest 状态加 bg-tint（"看起来像被选中了"的误报）
+- ❌ hover 加阴影（行级元素只用底色变化，避免布局抖动）
+
+#### 4.0.2 密度（高信息密度表格）
+
+DataTable 默认 `size="small"` + 自定义 padding `6px 10px`（cell）/ `8px 10px`（th）。**不要在业务代码里再传 size**——用全局默认。
+
+#### 4.0.3 Token（[`apps/web/src/styles/tokens.css`](../../apps/web/src/styles/tokens.css)）
+
+```css
+--interactive-bg-rest:      transparent;
+--interactive-bg-hover:     rgba(22, 119, 255, 0.06);
+--interactive-bg-active:    rgba(22, 119, 255, 0.12);
+--interactive-bg-selected:  rgba(22, 119, 255, 0.10);
+--interactive-border-hover: var(--color-accent);
+--interactive-shadow-hover: 0 1px 6px rgba(22, 119, 255, 0.15);
+--focus-outline:            2px solid var(--color-accent);
+--focus-outline-offset:     2px;
+--interactive-transition:   background 120ms, box-shadow 120ms, border-color 120ms;
+```
+
+**禁止内联 `style={{ cursor: 'pointer' }}`**——用 `.clickable-*` class 或 DataTable 的 `rowHref` / `onRowClick` props。
+
+#### 4.0.4 ID 列：必须带原位复制
+
+凡 id（UUID / `x_trace_id` / `dataset_id` / `clip_id` / `run_id` / artifact URI 等）出现在表格 cell 或 Description 里，**必须用 [`<IdCell>`](../../apps/web/src/shared/components/id-cell.tsx)**：
+
+```tsx
+<IdCell value={row.x_trace_id} />                           // short：8 字头 + …
+<IdCell value={row.x_trace_id} head={12} />                 // 自定义截断长度
+<IdCell value={row.clip_id} variant="mono-ellipsis" maxWidth={240} />  // 表格内：CSS ellipsis
+<IdCell value={data.dataset_id} variant="full" />           // Description / 单卡：全显示
+```
+
+IdCell 自带：
+- 截断显示（避免列宽爆炸）
+- Tooltip 浮层显全（300ms 延迟，鼠标停留才出）
+- antd `Typography.copyable` 复制按钮（始终可见）+ 复制完反馈
+- `data-stop-row-click` 属性，避免触发外层行点击
+
+**禁止做的事**：
+- ❌ 在表格里写 `<Text code>{id}</Text>` / `<span style={{fontFamily:monospace}}>...slice(0,16)</span>`——用 IdCell
+- ❌ 在 ID 旁边再额外写一遍"复制"按钮——IdCell 自带
+
+#### 4.0.5 共享 API：[`<DataTable>`](../../apps/web/src/shared/components/data-table.tsx)
+
+```tsx
+<DataTable
+  rowHref={(row) => `/catalog/v2/${row.id}`}      // 主导航：cmd/ctrl/middle-click 新标签自动支持
+  // 或 onRowClick={(row) => openDrawer(row.id)}  // 抽屉打开类
+  isRowSelected={(row) => row.id === selectedId}  // 当前选中态（可选）
+  ...
+/>
+```
+
+DataTable 自动加 `.clickable-row` + `tabIndex=0` + Enter/Space 键盘触发；click 落在 `<a>` / `<button>` / `[data-stop-row-click]` 上不冒泡。
+
+| 目标 | 用 |
+|---|---|
+| 跳到另一个页面 | **`rowHref`** |
+| 同页打开 Drawer / Modal | **`onRowClick`** |
+| 行内有多个 link / button 各做不同事 | 都不传，保留只读表格 + 行内按钮各自带显式 affordance |
+
+#### 4.0.6 button 等级（每页硬上限）
+
+| 级别 | antd `type` | 用法 | 同页上限 |
+|---|---|---|---|
+| **Primary** | `primary` | 当前页唯一 main CTA（Create / Promote / Submit） | **1** |
+| **Secondary** | `default` | 与 primary 平级但更次要（Reset / Export） | 3 |
+| **Tertiary** | `link` | 行内反向跳转、breadcrumb、小动作 | 不限，不堆叠 |
+| **Danger** | `primary` + `danger` | 不可逆破坏（Delete / Drop） | 1，必带二次确认 |
+| **Icon-only** | 任意 + `icon=` | 必须 `<Tooltip>` 包裹 | 不限 |
+
+**不要**：3 个并排同色 primary / icon-only 没 tooltip / 同一行又 link 又 button 又 link。
+
 ### 4.1 链路上下文穿透（X-Trace-Id）
 
 - URL `?trace=trace_e2e_xxx` → 顶栏显示该 trace 的 Tag
@@ -153,7 +244,8 @@ type PageState = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 | `<PageContainer>` | `shared/components/page-container` | 统一页头：title + description + actions + breadcrumb |
 | `<PageLoading>` | `shared/components/page-loading` | 加载骨架 |
 | `<PageError>` | `shared/components/page-error` | 错误兜底 + 重试 |
-| `<DataTable>` | `shared/components/data-table` | 列表页表格薄壳，统一空态 / hover |
+| `<DataTable>` | `shared/components/data-table` | 列表页表格薄壳：可传 `rowHref` / `onRowClick` / `isRowSelected`，自动套 `.clickable-row` + 键盘可达 + `size="small"` |
+| `<IdCell>` | `shared/components/id-cell` | id 列原位 copy + tooltip 显全（variant: `short` / `mono-ellipsis` / `full`） |
 | `<StatusBadge>` | `shared/components/status-badge` | 状态颜色映射 |
 | `<DatasetPicker>` | `modules/datasets/dataset-picker` | dataset 选择器 + 一键 New |
 | `<NewDatasetModal>` | `modules/datasets/new-dataset-modal` | 创建 customized/official |
@@ -174,6 +266,8 @@ type PageState = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 
 ## 8. 待优化清单
 
+- [ ] 把剩余直接用 antd `<Table>`（未走 `<DataTable>`）的页面也接 `clickable-row`：
+      `runs-view`、`snapshots-view`、`requirements-detail` 各 Drawer 内表
 - [ ] 统一 Sidebar / 顶栏 design token，目前各页面字号轻微漂移
 - [ ] Empty 状态 illustration 库（图形 vs 纯文字）
 - [ ] 暗色模式（antd ConfigProvider）
