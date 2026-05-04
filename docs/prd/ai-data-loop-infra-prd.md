@@ -25,7 +25,7 @@ flowchart TB
     end
 
     Verticals -.通过 schema/workflow/profile 适配.-> Core
-    Core -.对外交付.-> Algo["🧪 算法工程师<br/>Train / Eval / Iterate"]
+    Core -.对外交付.-> MLE["🧪 算法工程师 (Machine Learning Engineer)<br/>Train / Eval / Iterate"]
 ```
 
 ### 0.2 数据闭环：四层对象 + x_trace_id 串通
@@ -71,29 +71,43 @@ flowchart LR
     P -->|profile 切换| T -->|不重写代码| S
 ```
 
-### 0.4 六大功能模块（应用层入口）
+### 0.4 业务模块（应用层入口）
+
+> 数据闭环主旅程 **6 步**，对应 6 个业务模块：
+> ① 提需求 → ② 找候选 → ③ 人机协同加工 → ④ 机器执行观测 → ⑤ 构建数据集 → ⑥ 出仓 + 训练反馈 → **hard sample 回流 ③**（闭环成立）。
+>
+> Operations 与 Pipelines 是同一 DataTask 的两个执行面（人 ⇄ 机器，x_trace_id 串通）。
+> 另有 **Overview** 综合首页 Dashboard（平台入口视图）+ **Tools** 跨切面工具门户（解决 modern data stack 工具碎片化，平行支持每一步，不在主线上）。
 
 ```mermaid
-flowchart TB
-    subgraph Apps["六大模块（按用户旅程组织）"]
-        direction LR
-        REQ[📋 Requirement<br/>需求管理]
-        CAT[📦 Catalog<br/>数据集目录]
-        EXP[🔍 Explorer<br/>Clip 检索/切割]
-        OPS[⚙️ Operations<br/>5 子域]
-        PIPE[🔁 Pipelines<br/>运行/血缘/质量/成本]
-        TOOL[🧰 Tools<br/>微前端工具平台]
-    end
-    REQ ---|提需求| OPS ---|挑数据| EXP ---|查 clip| CAT ---|消费数据集| PIPE ---|看质量| TOOL
+flowchart LR
+    REQ[📋 Requirement<br/>① 提需求] -->|拆 6 类 DataTask| EXP[🔍 Explorer<br/>② 找候选 clip]
+    EXP -->|候选清单| OPS[⚙️ Operations<br/>③ 人机协同加工]
+    OPS <-.x_trace_id 串通.-> PIPE[🔁 Pipelines<br/>④ 机器执行观测]
+    OPS --> CAT[📦 Catalog<br/>⑤ 构建数据集]
+    PIPE --> CAT
+    CAT -->|Promote official| EX[📤 Exports<br/>⑥ 出仓 + 训练反馈]
+    EX -.hard sample 回流.-> OPS
+
+    OV[🏠 Overview · 综合首页 Dashboard]:::sidecar -.入口.-> REQ
+    TOOL[🧰 Tools · 跨切面工具门户]:::sidecar
+
+    classDef sidecar fill:#fff5e6,stroke:#d97706,stroke-dasharray:4 4
 ```
 
 详见模块级 PRD：
-- [模块 PRD · Catalog](./module-catalog.md)
-- [模块 PRD · Requirement](./module-requirement.md)
-- [模块 PRD · Explorer](./module-explorer.md)
-- [模块 PRD · Operations](./module-operations.md)
-- [模块 PRD · Pipelines](./module-pipelines.md)
-- [模块 PRD · Tools](./module-tools.md)
+
+**主旅程 6 步**
+- ① [模块 PRD · Requirement](./module-requirement.md) —— 提需求
+- ② [模块 PRD · Explorer](./module-explorer.md) —— 找候选 clip
+- ③ [模块 PRD · Operations](./module-operations.md) —— 人机协同加工（mining / tagging / labeling / checking / privacy / release 6 子域）
+- ④ [模块 PRD · Pipelines](./module-pipelines.md) —— 机器执行观测（运行 / 血缘 / 质量 / 成本 / 总览 5 Tab）
+- ⑤ [模块 PRD · Catalog](./module-catalog.md) —— 构建数据集（customized → official Promote）
+- ⑥ [模块 PRD · Exports](./module-exports.md) —— 出仓 + 训练反馈（dlkit SDK + Hard Sample / ROI 闭环回流）
+
+**主旅程之外**
+- [模块 PRD · Overview](./module-overview.md) —— 综合首页 Dashboard（入口视图）
+- [模块 PRD · Tools](./module-tools.md) —— 跨切面工具门户（微前端 + iframe 网关）
 
 ### 0.5 产品视觉标识（一图说完产品故事）
 

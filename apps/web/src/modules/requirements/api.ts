@@ -51,41 +51,81 @@ export type RequirementStats = {
   by_source: Record<string, number>
 }
 
+// Role-Based Requirement Report —— 与 BFF requirementEngine.buildRequirementReport 同形
+export type FunnelStage = {
+  task_type: string
+  task_count: number
+  target_count: number
+  actual_count: number
+  completion_ratio: number
+  completed_task_count: number
+}
+
+export type DatasetSummaryItem = {
+  id: string
+  name: string
+  dataset_type: string
+  dataset_version: number
+  allow_train: boolean
+  status: string
+  created_at: string
+}
+
+export type RollupRow = {
+  dataset_id: string
+  sample_count: number
+  consumed_count: number
+  train_run_count: number
+  snapshot_count: number
+  mean_loss: number | null
+  hard_sample_count: number
+  hard_ratio: number
+}
+
 export type RequirementReportView = {
   requirement: RequirementDetailView
-  result_summary: {
+  headline: {
     data_task_count: number
-    data_task_completed_count: number
-    data_task_signed_off_count: number
-    operations_task_count: number
-    run_count: number
-    latest_run_status: string | null
-    export_count: number
-    total_actual_count: number
-    total_target_count: number
+    data_task_completed: number
+    ops_task_count: number
+    pipeline_run_count: number
+    dataset_count: number
+    snapshot_count: number
+    lineage_event_count: number
   }
-  cost_summary: {
-    estimated_cost: number
-    duration_seconds: number
-    cpu_seconds: number
-    gpu_seconds: number
-    input_bytes: number
-    output_bytes: number
-  }
-  linked_items: {
-    operations_tasks: Array<Record<string, unknown>>
-    runs: Array<Record<string, unknown>>
-    exports: Array<Record<string, unknown>>
-  }
-  automation: {
-    superset: {
-      status: string
-      can_auto_create: boolean
-      dashboard_name: string
+  sections: {
+    manager: {
+      funnel: FunnelStage[]
+      cost: {
+        total_cost_usd: number
+        total_cpu_seconds: number
+        total_gpu_seconds: number
+        total_duration_seconds: number
+        total_rows_in: number
+        total_rows_out: number
+        run_count: number
+      }
     }
-    llm_analysis: {
-      status: string
-      trigger: string
+    data_engineer: {
+      pipeline_health: { running: number; success: number; failed: number; pending: number }
+      failed_top: Array<Record<string, unknown>>
+      ops_by_module: Record<string, Array<Record<string, unknown>>>
+      snapshots: Array<Record<string, unknown>>
+    }
+    mle: {
+      datasets: DatasetSummaryItem[]
+      customized_count: number
+      official_count: number
+      training_impact_totals: {
+        consumed_count: number
+        train_run_count: number
+        snapshot_count: number
+        hard_sample_count: number
+        sample_count: number
+      }
+      dataset_impacts: Array<{ dataset_id: string; rollup: RollupRow | null }>
+      export_snapshots: Array<Record<string, unknown>>
+      loop_back_tasks: Array<Record<string, unknown>>
     }
   }
 }

@@ -1,11 +1,16 @@
 """End-to-end self-driving demo —— ``make e2e-demo`` 主驱动。
 
-按 9 步贯穿 Requirement → DataTask → Mining → Pipeline(batch+streaming) →
-Labeling/Tagging/Checking → Explorer → **Build customized Dataset** → **Release
-Promote → official Dataset** → **Export Dataset Artifact**。所有对象共享同一个
-``x_trace_id``，最终交付物是一个可被算法工程师消费的 **official Dataset**
-（datasets_v2 表 + DatasetSample 行 + 导出 parquet/jsonl artifact + LineageEvent
-release）；同时落一份 ``DatasetSnapshotManifest`` 作为链路 receipt。
+按 11 步贯穿数据闭环主旅程：
+
+  ① Requirement → ② DataTask × 6 → ③ Mining → ④ Pipeline(batch+streaming) →
+  ⑤ Labeling/Tagging/Checking → ⑥ Explorer → **⑦ Build customized Dataset** →
+  **⑧ Promote → official Dataset** → **⑨ Export Artifact** →
+  **⑩ Training Feedback (TrainRun + per-sample loss)** →
+  **⑪ Closed-Loop (hard sample → spawn next mining round, parent_trace 串通)**
+
+所有对象共享同一个 ``x_trace_id``；最终交付物是一个可被算法工程师消费的
+**official Dataset** + 一份 ``DatasetSnapshotManifest`` 链路 receipt + 一条
+**反指上一轮 trace 的下一轮 mining task**（闭环成立）。
 
 执行方式（直接走 SessionLocal，不依赖 API 在跑）：
     uv run --package api python -m src.scripts.e2e_demo
@@ -147,7 +152,13 @@ class DemoContext:
     export_artifact_uri: str | None = None
     export_format: str = "parquet"
     asset_id: str | None = None  # 导出 artifact 登记的 Asset 行
-    demo_train_run_id: str | None = None  # 示例 TrainRun（snapshot ↔ consumer 闭环）
+    # ── Exports v1：训练反馈 + 闭环回流 ──
+    demo_train_run_id: str | None = None       # Step 10 注册的 TrainRun
+    consumption_event_count: int = 0           # Step 10 上报的事件总数
+    top_hard_sample_uid: str | None = None     # Step 11 找到的 hard sample
+    top_hard_sample_score: float | None = None # Step 11 hard_score
+    loop_back_mining_task_id: str | None = None  # Step 11 spawn 的下一轮 mining task
+    loop_back_trace_id: str | None = None        # 下一轮 trace（与本轮 trace 用 parent 串通）
 
     # ── 帮助：按业务语义把对象挂到对的 DataTask 上 ───────────────────
     def data_task_for(self, key: str) -> str:
@@ -243,11 +254,22 @@ def reset_existing(db) -> int:
         db.query(EventResult).filter(EventResult.event_pk.in_(event_pks)).delete(synchronize_session=False)
         db.query(LineageEvent).filter(LineageEvent.id.in_(event_pks)).delete(synchronize_session=False)
 
-    # 3) ops_items / pipeline_runs / operations_tasks / data_tasks
+    # 3) ops_items / pipeline_runs / data_tasks（按 trace_ids 精确清理）
     db.query(OpsItem).filter(OpsItem.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
     db.query(PipelineRun).filter(PipelineRun.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
-    db.query(OperationsTask).filter(OperationsTask.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
     db.query(DataTask).filter(DataTask.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
+    # OperationsTask 用 LIKE 模糊清——Step 11 spawn 的下一轮 mining task 用的是新 trace，
+    # 不在本轮 trace_ids 里，但同样以 ``trace_e2e_`` 前缀创建。
+    db.query(OperationsTask).filter(
+        OperationsTask.x_trace_id.like("trace_e2e_%")
+    ).delete(synchronize_session=False)
+    # 4) Exports v1：TrainRun + consumption events（Step 10 写入，按 x_trace_id 清）
+    from src.models.consumption_event import ExportConsumptionEvent
+    from src.models.train_run import TrainRun
+    db.query(ExportConsumptionEvent).filter(
+        ExportConsumptionEvent.x_trace_id.in_(trace_ids)
+    ).delete(synchronize_session=False)
+    db.query(TrainRun).filter(TrainRun.x_trace_id.in_(trace_ids)).delete(synchronize_session=False)
     req_ids = [m.requirement_id for m in targets if m.requirement_id]
     if req_ids:
         db.query(Requirement).filter(Requirement.id.in_(req_ids)).delete(synchronize_session=False)
@@ -262,7 +284,7 @@ def reset_existing(db) -> int:
 
 
 def step_requirement(db, ctx: DemoContext) -> None:
-    _section("Step 1/9 — Requirement", f"scenario={ctx.scenario.name} trace={ctx.x_trace_id}")
+    _section("Step 1/11 — Requirement", f"scenario={ctx.scenario.name} trace={ctx.x_trace_id}")
     req = Requirement(
         title=f"[E2E] {ctx.scenario.title}",
         description=ctx.scenario.description.strip(),
@@ -328,7 +350,7 @@ _DEFAULT_DATA_TASKS: list[dict[str, Any]] = [
 
 
 def step_data_tasks(db, ctx: DemoContext) -> None:
-    _section("Step 2/9 — Data Tasks (项目经理视角的 6 条业务里程碑：collection / mining / tagging / labeling / checking / release，自动 sign-off)")
+    _section("Step 2/11 — Data Tasks (项目经理视角的 6 条业务里程碑：collection / mining / tagging / labeling / checking / release，自动 sign-off)")
     plan = ctx.scenario.data_tasks or _DEFAULT_DATA_TASKS
     now = datetime.now(timezone.utc)
 
@@ -405,7 +427,7 @@ def step_data_tasks(db, ctx: DemoContext) -> None:
 
 
 def step_mining(db, ctx: DemoContext) -> None:
-    _section("Step 3/9 — Operation Mining (filter clips by scene_tags)")
+    _section("Step 3/11 — Operation Mining (filter clips by scene_tags)")
 
     cf = ctx.scenario.clip_filter or {}
     candidates = clip_matcher.list_candidates(
@@ -502,7 +524,7 @@ def _build_metrics(ctx: DemoContext, success: bool) -> dict[str, Any]:
 
 
 def step_pipeline_batch(db, ctx: DemoContext) -> None:
-    _section("Step 4/9 — Pipeline Batch (collect → clip-extract → feature-compute → release)")
+    _section("Step 4/11 — Pipeline Batch (collect → clip-extract → feature-compute → release)")
     parent = ctx.mining_ops_task_id
     last_run_id: str | None = None
     pass_rate = float(ctx.scenario.quality_gate.get("pass_rate", 0.85))
@@ -553,9 +575,9 @@ def step_pipeline_batch(db, ctx: DemoContext) -> None:
 
 def step_pipeline_streaming(db, ctx: DemoContext) -> None:
     if not ctx.include_streaming:
-        _section("Step 4b/9 — Streaming SKIPPED (INCLUDE_STREAMING=0)")
+        _section("Step 4b/11 — Streaming SKIPPED (INCLUDE_STREAMING=0)")
         return
-    _section(f"Step 4b/9 — Pipeline Streaming (mode={ctx.streaming_mode})")
+    _section(f"Step 4b/11 — Pipeline Streaming (mode={ctx.streaming_mode})")
     started = datetime.now(timezone.utc) - timedelta(minutes=8)
     ended = started + timedelta(minutes=4)
     metrics = _build_metrics(ctx, success=True)
@@ -634,7 +656,7 @@ def _ops_task(
 
 
 def step_labeling_tagging_checking(db, ctx: DemoContext) -> None:
-    _section("Step 5/9 — Labeling / Tagging / Checking (按业务语义挂到对应 DataTask)")
+    _section("Step 5/11 — Labeling / Tagging / Checking (按业务语义挂到对应 DataTask)")
     if not ctx.candidates:
         print("  ⚠ 没有候选 clip，跳过 5 步内容（仅创建占位 ops_task）")
         _ops_task(db, ctx, module=OperationsModule.LABELING, title=f"标注（占位）：{ctx.scenario.title}")
@@ -703,7 +725,7 @@ def step_labeling_tagging_checking(db, ctx: DemoContext) -> None:
 
 
 def step_explorer_hint(ctx: DemoContext) -> None:
-    _section("Step 6/9 — Explorer (verification only — no DB write)")
+    _section("Step 6/11 — Explorer (verification only — no DB write)")
     print("  Explorer 复用 /clips API 查询候选 clip：")
     if ctx.candidates:
         for cand in ctx.candidates[:3]:
@@ -756,7 +778,7 @@ def _clip_window_ns(ctx: DemoContext, cand: clip_matcher.ClipCandidate) -> tuple
 
 
 def step_build_customized_dataset(db, ctx: DemoContext) -> None:
-    _section("Step 7/9 — Build customized Dataset (samples from passed clips)")
+    _section("Step 7/11 — Build customized Dataset (samples from passed clips)")
 
     passed = _passed_candidates(db, ctx)
     if not passed:
@@ -825,7 +847,7 @@ def step_build_customized_dataset(db, ctx: DemoContext) -> None:
 
 
 def step_release_promote(db, ctx: DemoContext) -> None:
-    _section("Step 8/9 — Release → Promote customized → official Dataset")
+    _section("Step 8/11 — Release → Promote customized → official Dataset")
 
     if not ctx.customized_dataset_id:
         print("  ⚠ 没有 customized dataset，跳过 promote")
@@ -915,7 +937,8 @@ def step_release_promote(db, ctx: DemoContext) -> None:
 
 
 def step_export(db, ctx: DemoContext) -> None:
-    _section("Step 9/9 — Export Official Dataset → Algorithm Engineer Artifact")
+    _section("Step 9/11 — Export Official Dataset → Algorithm Engineer Artifact",
+             "出仓动作：把 official dataset 落 jsonl artifact + 登记 derived Asset + seal manifest")
 
     if not ctx.official_dataset_id:
         print("  ⚠ 没有 official dataset，跳过 export")
@@ -993,7 +1016,35 @@ def step_export(db, ctx: DemoContext) -> None:
         export_artifact_uri=ctx.export_artifact_uri,
         export_format=fmt,
     )
-    # ── 注册一条示例 TrainRun，演示 snapshot ↔ consumer 闭环 ──
+    db.commit()
+    _section_done(
+        f"artifact={output_path} rows={len(rows)} asset={asset.id[:8]}…"
+    )
+
+
+# ── Step 10 : Training Feedback (algo consumer → dlkit SDK 上报) ─────
+
+
+def step_training_feedback(db, ctx: DemoContext) -> None:
+    """模拟算法工程师拿到 official dataset 后训练，dlkit SDK 上报每条 sample 的 loss。
+
+    真实场景：
+        with dlkit.run(snapshot_traces=[trace]) as r:
+            logger = dlkit.LossLogger(r)
+            for batch in dataloader:
+                losses = loss_fn(model(x), y)   # reduction='none'
+                logger.log(sample_uids, losses.tolist(), epoch=e, step=s)
+
+    e2e_demo 直接调底层 service（避开真 SDK 依赖），等价效果。
+    """
+    _section("Step 10/11 — Training Feedback (algo consumer → dlkit SDK 上报 + per-sample loss)",
+             "下游算法工程师消费 official dataset → 注册 TrainRun → 批量上报 sample 消费事件 + loss")
+
+    if not ctx.official_dataset_id:
+        print("  ⚠ 没有 official dataset，跳过 training feedback")
+        return
+
+    # 1) 注册 TrainRun（等价 dlkit.run(...) 上下文）
     demo_run = train_run_service.register(
         db,
         snapshot_ids=[ctx.x_trace_id],
@@ -1001,37 +1052,97 @@ def step_export(db, ctx: DemoContext) -> None:
         consumer="e2e-demo@local",
         external_run_id=f"mlflow-demo-{ctx.x_trace_id[:8]}",
         model_version="v0.0.1-demo",
-        notes="Auto-registered by e2e_demo to seed snapshot ↔ consumer 闭环.",
+        notes="Auto-registered by e2e_demo (mocks dlkit.register_run).",
     )
     train_run_service.finish(db, run_id=demo_run.id, status="completed")
     ctx.demo_train_run_id = demo_run.id
-    # ── 模拟 dlkit SDK 上报若干 sample 消费事件 + 随机 loss
-    # （演示 Consumers Tab 下钻 + Hard Samples / ROI Tab 真有数）──
-    import random
-    from datetime import datetime, timezone
+
+    # 2) 上报 12 条 consumption events（3 epochs × 4 samples），含 loss
+    #    clip-0 故意上报高 loss（0.8~1.5）—— Step 11 会被 contribution_service 识别为 hard sample 触发回流
     rng = random.Random(hash(ctx.x_trace_id) & 0xFFFF_FFFF)
-    consumption_event_service.ingest_batch(
-        db,
-        events=[
-            {
-                "snapshot_trace": ctx.x_trace_id,
-                "sample_uid": f"{ctx.official_dataset_id or 'ds'}:demo-clip-{i % 4}:0",
-                "train_run_id": demo_run.id,
-                "epoch": i // 4,
-                "step": i,
-                # 故意做出"几条 hard sample"：clip-0 高 loss，其余正常
-                "loss": (
-                    rng.uniform(0.8, 1.5) if i % 4 == 0
-                    else rng.uniform(0.05, 0.4)
-                ),
-                "ts": datetime.now(timezone.utc),
-            }
-            for i in range(12)
-        ],
-    )
+    events = [
+        {
+            "snapshot_trace": ctx.x_trace_id,
+            "sample_uid": f"{ctx.official_dataset_id}:demo-clip-{i % 4}:0",
+            "train_run_id": demo_run.id,
+            "epoch": i // 4,
+            "step": i,
+            "loss": rng.uniform(0.8, 1.5) if i % 4 == 0 else rng.uniform(0.05, 0.4),
+            "ts": datetime.now(timezone.utc),
+        }
+        for i in range(12)
+    ]
+    result = consumption_event_service.ingest_batch(db, events=events)
+    ctx.consumption_event_count = result.get("accepted", 0)
     db.commit()
+
     _section_done(
-        f"artifact={output_path} rows={len(rows)} asset={asset.id[:8]}… train_run={demo_run.id[:8]}…"
+        f"train_run={demo_run.id[:8]}… reported {ctx.consumption_event_count} events "
+        f"(3 epochs × 4 samples) → snapshot.consumed_count bumped"
+    )
+
+
+# ── Step 11 : Closed-Loop Feedback (hard sample → spawn next mining) ─
+
+
+def step_closed_loop_feedback(db, ctx: DemoContext) -> None:
+    """contribution_service 计算 hard_score 后，把 top hard sample 自动回流到下一轮 mining。
+
+    UI 等价路径：Hard Samples Tab → 行级 "Send to Mining" 按钮（PRD §2.2 / P3 自动 create）。
+    本步演示**整个闭环**：trace_A → Exports 反馈 hard sample → 创建 trace_B 的 mining task，
+    parent_trace_id=trace_A 把两轮 trace 串通。
+    """
+    _section("Step 11/11 — Closed-Loop Feedback (hard sample → 触发下一轮 mining)",
+             "Exports 模块的核心价值：消费反馈 → 自动回流 → 闭环成立")
+
+    if not ctx.demo_train_run_id or not ctx.official_dataset_id:
+        print("  ⚠ 没有 train_run 或 official dataset，跳过 closed-loop")
+        return
+
+    # 1) 找 top hard sample（mean_loss × log(1+consumed_count)）
+    from src.services import contribution_service
+    top = contribution_service.top_hard_samples(
+        db, dataset_id=ctx.official_dataset_id, limit=1
+    )
+    if not top:
+        print("  ⚠ 没有带 loss 的事件，跳过闭环回流")
+        return
+    hard = top[0]
+    ctx.top_hard_sample_uid = hard["sample_uid"]
+    ctx.top_hard_sample_score = float(hard["hard_score"])
+
+    # 2) Spawn 下一轮 mining OperationsTask；新 trace 用 parent_trace_id 反指本轮 trace
+    loop_trace = _new_trace_id(ctx.rng)
+    next_mining = OperationsTask(
+        requirement_id=ctx.requirement_id,
+        data_task_id=ctx.data_task_for(_OPS_TO_TASK_TYPE["mining"]),
+        module=OperationsModule.MINING,
+        title=f"[闭环回流] hard sample 触发：{(hard.get('clip_id') or hard['sample_uid'])[:32]}",
+        status=OperationsTaskStatus.SCHEDULED,
+        assigned_to="mining-bot@example.com",
+        x_trace_id=loop_trace,
+        payload={
+            "trigger": "hard_sample_feedback",
+            "parent_trace_id": ctx.x_trace_id,            # ← 闭环锚点
+            "source_train_run_id": ctx.demo_train_run_id,
+            "source_sample_uid": hard["sample_uid"],
+            "hard_score": ctx.top_hard_sample_score,
+            "mean_loss": hard.get("mean_loss"),
+            "consumed_count": hard.get("consumed_count"),
+        },
+        started_at=datetime.now(timezone.utc),
+    )
+    db.add(next_mining)
+    db.flush()
+    ctx.loop_back_mining_task_id = next_mining.id
+    ctx.loop_back_trace_id = loop_trace
+    db.commit()
+
+    _section_done(
+        f"loop closed: hard_score={ctx.top_hard_sample_score:.3f} "
+        f"(sample={(hard['sample_uid'])[:40]}…) "
+        f"→ next mining_task={next_mining.id[:8]}… trace={loop_trace} "
+        f"(parent_trace={ctx.x_trace_id})"
     )
 
 
@@ -1059,15 +1170,32 @@ def print_banner(ctx: DemoContext) -> None:
     print(f"  artifact (file)   : {ctx.export_artifact_uri or '—'}")
     print(f"  asset_id          : {ctx.asset_id or '—'}")
     print(f"  trace receipt     : {receipt}")
-    print(f"  demo_train_run    : {ctx.demo_train_run_id or '—'}")
     print(f"  streaming         : {ctx.streaming_mode} ({ctx.streaming_detail})"
           if ctx.include_streaming else "  streaming         : skipped")
+    print("─" * 72)
+    print("  ── Training Feedback (Step 10) ──")
+    print(f"  demo_train_run    : {ctx.demo_train_run_id or '—'}")
+    print(f"  consumed events   : {ctx.consumption_event_count}  (per-sample loss)")
+    print("  ── Closed-Loop (Step 11) ──")
+    if ctx.loop_back_trace_id:
+        print(f"  ▶ top hard sample : {ctx.top_hard_sample_uid}")
+        print(f"    hard_score      : {ctx.top_hard_sample_score:.3f}")
+        print(f"  ▶ next round trace: {ctx.loop_back_trace_id}  (parent_trace={ctx.x_trace_id})")
+        print(f"    next mining task: {ctx.loop_back_mining_task_id}")
+        print("    ↻ 闭环成立：本轮 hard sample 已 spawn 下一轮 mining task")
+    else:
+        print("  loop closure      : skipped (无 hard sample 数据)")
     print("─" * 72)
     print("For the algorithm engineer (API expected at http://localhost:8000):")
     if ctx.official_dataset_id:
         print(f"  curl 'http://localhost:8000/api/v1/datasets/{ctx.official_dataset_id}'")
         print(f"  curl 'http://localhost:8000/api/v1/datasets/{ctx.official_dataset_id}/samples?limit=200'")
         print(f"  open  http://localhost:5173/catalog/v2/{ctx.official_dataset_id}")
+    print()
+    print("Requirement Report (role-based · 1 requirement → N datasets 视图):")
+    print(f"  curl 'http://localhost:8000/api/v1/requirements/{ctx.requirement_id}'")
+    print(f"  curl 'http://localhost:8000/api/v1/datasets?requirement_id={ctx.requirement_id}'  # ← 应见 N 个 datasets")
+    print(f"  open  http://localhost:5173/requirements/{ctx.requirement_id}/report")
     print()
     print("Trace verification:")
     print(f"  curl http://localhost:8000/api/v1/snapshots/{ctx.x_trace_id}")
@@ -1076,13 +1204,17 @@ def print_banner(ctx: DemoContext) -> None:
     print(f"  curl 'http://localhost:8000/api/v1/assets?x_trace_id={ctx.x_trace_id}'")
     print(f"  curl 'http://localhost:8000/api/v1/trace/{ctx.x_trace_id}'")
     print()
-    print("Exports (training feedback loop):")
+    print("Exports (training feedback + 闭环回流):")
     print(f"  curl 'http://localhost:8000/api/v1/exports/snapshots/{ctx.x_trace_id}'")
     print(f"  curl 'http://localhost:8000/api/v1/exports/train-runs?snapshot_trace={ctx.x_trace_id}'")
     print(f"  curl 'http://localhost:8000/api/v1/exports/usage?snapshot_trace={ctx.x_trace_id}'")
+    print(f"  curl 'http://localhost:8000/api/v1/exports/contributions?dataset_id={ctx.official_dataset_id}'")
     print(f"  open  http://localhost:5173/exports?tab=snapshots")
-    print(f"  open  http://localhost:5173/exports?tab=consumers")
-    print(f"  open  http://localhost:5173/pipelines?x_trace_id={ctx.x_trace_id}")
+    print(f"  open  http://localhost:5173/exports?tab=hard-samples")
+    if ctx.loop_back_trace_id:
+        print()
+        print("Closed-loop · 下一轮 mining task：")
+        print(f"  curl 'http://localhost:8000/api/v1/operations-tasks?x_trace_id={ctx.loop_back_trace_id}'")
     print("═" * 72)
 
 
@@ -1149,7 +1281,9 @@ def main() -> None:
         step_explorer_hint(ctx)
         step_build_customized_dataset(db, ctx); db.commit()
         step_release_promote(db, ctx)
-        step_export(db, ctx)
+        step_export(db, ctx); db.commit()
+        step_training_feedback(db, ctx); db.commit()
+        step_closed_loop_feedback(db, ctx); db.commit()
         print_banner(ctx)
     except Exception as exc:
         db.rollback()

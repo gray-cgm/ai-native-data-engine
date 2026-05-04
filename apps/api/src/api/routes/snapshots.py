@@ -47,6 +47,7 @@ def _serialize(m: DatasetSnapshotManifest) -> dict:
 def list_snapshots(
     limit: int = Query(20, ge=1, le=200),
     scenario: str | None = Query(None),
+    requirement_id: str | None = Query(None, description="按需求过滤（Requirement Report 用）"),
     db: Session = Depends(get_db),
 ) -> dict:
     q = db.query(DatasetSnapshotManifest).order_by(
@@ -54,6 +55,8 @@ def list_snapshots(
     )
     if scenario:
         q = q.filter(DatasetSnapshotManifest.scenario == scenario)
+    if requirement_id:
+        q = q.filter(DatasetSnapshotManifest.requirement_id == requirement_id)
     rows = q.limit(limit).all()
     return {"items": [_serialize(r) for r in rows], "total": len(rows)}
 

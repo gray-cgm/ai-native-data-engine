@@ -2,13 +2,13 @@
 
 > 目标读者：第一周入职的工程师 / 算法 / PM。
 > 学习路径：按 [系统分层](../architecture/system-layers.md) 从下到上跑 7 个独立 demo，每个 demo 聚焦 1-2 个分层 / 1-2 个对象。
-> 全部跑完 → 你能完全看懂 [E2E Demo](./e2e-demo.md) 的代码。
+> 全部跑完 → 你能完全看懂 [E2E Demo](./e2e-demo.md)（11 步含闭环回流）的代码。
 
 ---
 
 ## 0. 为什么要做这套 Onboarding？
 
-直接看 [`apps/api/src/scripts/e2e_demo.py`](../../apps/api/src/scripts/e2e_demo.py) 一上来 1000+ 行、9 步串行，新人很难抓住"系统分了几层、每层在做什么"。
+直接看 [`apps/api/src/scripts/e2e_demo.py`](../../apps/api/src/scripts/e2e_demo.py) 一上来 1000+ 行、11 步串行（含 Step 10 训练反馈 + Step 11 闭环回流），新人很难抓住"系统分了几层、每层在做什么"。
 
 本教程把这 1000 行**拆成 7 个 < 250 行的小 demo**，每个：
 
@@ -47,7 +47,7 @@ make db-upgrade
 | **04** | `s04_business_flow.py` | ⑥ 业务承诺 | Requirement → 4 个 DataTask（sign-off）→ OperationsTask；x_trace_id 串通 |
 | **05** | `s05_dataset_sample.py` | ⑥ 数据资产 | create customized Dataset；3 种切割（flexible / one_to_four / random_sample）；唯一约束实测 |
 | **06** | `s06_snowflake_lineage.py` | 血缘观测 | emit LineageEvent + EventResult + 4 维度 query；登记 Asset |
-| **07** | `s07_promote_export.py` | 端到端收尾 | Promote → official Dataset → 导出 jsonl + 登记 Asset + DatasetSnapshotManifest |
+| **07** | `s07_promote_export.py` | 端到端收尾 | Promote → official Dataset → 导出 jsonl + 登记 Asset + DatasetSnapshotManifest（闭环回流见 e2e_demo Step 10/11） |
 
 跳过 ③ 湖表格式层 / ④ 计算层是有意为之——当前 MVP 还在用裸文件 + local Python，不用 Iceberg / Spark。等切到团队 / SaaS 阶段再写两节。
 
@@ -205,6 +205,23 @@ cat  data/exports/<official_id>-v1.jsonl
 open http://localhost:5173/catalog/v2/<official_id>
 ```
 
+> **下一步：训练反馈 + 闭环回流（Exports 模块的核心价值）**
+>
+> Onboarding 第 7 步只演示到 Export artifact 落地。算法工程师**消费**之后还有
+> 两件事，构成完整的数据闭环——onboarding 不重复实现（避免引入 dlkit SDK
+> 依赖），直接看 e2e_demo 的 Step 10/11：
+>
+> - **Step 10 · Training Feedback** —— 算工通过 [`dlkit`](../../sdk/dlkit/README.md) SDK
+>   注册 TrainRun + 批量上报 per-sample loss。e2e_demo 直接调
+>   `train_run_service.register` + `consumption_event_service.ingest_batch` 等价模拟。
+> - **Step 11 · Closed-Loop Feedback** —— `contribution_service` 计算 hard_score
+>   后，自动把 top hard sample 回流到下一轮 mining：spawn 新 `OperationsTask`
+>   `(module=mining, payload.parent_trace_id=本轮 trace)`，**两轮 trace 用 parent
+>   串通形成闭环**。
+>
+> 完整 11 步：[`apps/api/src/scripts/e2e_demo.py`](../../apps/api/src/scripts/e2e_demo.py) ·
+> 模块 PRD：[Exports](../prd/module-exports.md)
+
 ---
 
 ## 5. 学完之后
@@ -217,14 +234,20 @@ open http://localhost:5173/catalog/v2/<official_id>
 ✅ 四层闭环对象 + sign-off（⑥ 业务承诺）
 ✅ Dataset / Sample / 切割策略（⑥ 数据资产）
 ✅ Snowflake 中心 + 4 维度 + Asset（血缘观测）
-✅ Promote → official → artifact（端到端收尾）
+✅ Promote → official → artifact（端到端交付）
+
+⏳ 7 个 onboarding demo 不覆盖的 2 步（在 e2e_demo 里）：
+- **训练反馈**（Step 10）—— TrainRun 注册 + per-sample loss 上报，dlkit SDK 等价路径
+- **闭环回流**（Step 11）—— hard sample → spawn 下一轮 mining task，parent_trace 串通
 
 下一步：
 
-1. **跑一次完整 e2e**：`make e2e-demo SCENARIO=night-vru SEED=42`，对照刚才学的 7 步看代码
+1. **跑一次完整 e2e（11 步含闭环）**：`make e2e-demo SCENARIO=night-vru SEED=42`，对照刚才学的 7 步看代码，并在 banner 里看 Step 10/11 的训练反馈与闭环回流
 2. **进入产品视角**：[产品使用说明](../prd/user-guide.md) 按角色看怎么用平台
 3. **进入架构视角**：[架构总览](../architecture/overview.md) → 从这里往下挖每个分层
-4. **想深入某模块**：业务模块 PRD（按数据闭环旅程序）—— [Requirement](../prd/module-requirement.md) → [Explorer](../prd/module-explorer.md) → [Operations](../prd/module-operations.md) → [Pipelines](../prd/module-pipelines.md) → [Catalog](../prd/module-catalog.md) → [Exports](../prd/module-exports.md) → [Tools](../prd/module-tools.md)；综合入口看 [Overview Dashboard](../prd/module-overview.md)
+4. **想深入某模块**——按数据闭环主旅程 6 步追：
+   ① [Requirement](../prd/module-requirement.md) 提需求 → ② [Explorer](../prd/module-explorer.md) 找候选 → ③ [Operations](../prd/module-operations.md) 人机协同加工 → ④ [Pipelines](../prd/module-pipelines.md) 机器执行观测 → ⑤ [Catalog](../prd/module-catalog.md) 构建数据集 → ⑥ [Exports](../prd/module-exports.md) 出仓 + 训练反馈
+   主旅程之外：[Overview](../prd/module-overview.md)（综合首页入口）/ [Tools](../prd/module-tools.md)（跨切面工具门户）
 
 ---
 

@@ -129,6 +129,7 @@ def list_snapshots(
     limit: int = Query(50, ge=1, le=500),
     scenario: str | None = Query(None),
     dataset_id: str | None = Query(None),
+    requirement_id: str | None = Query(None, description="按需求过滤（Requirement Report 用）"),
     consumed: str | None = Query(None, description="yes / no / null=不过滤"),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -139,6 +140,8 @@ def list_snapshots(
         q = q.filter(DatasetSnapshotManifest.scenario == scenario)
     if dataset_id:
         q = q.filter(DatasetSnapshotManifest.dataset_id == dataset_id)
+    if requirement_id:
+        q = q.filter(DatasetSnapshotManifest.requirement_id == requirement_id)
     # "consumed" 含义：snapshot 已经被某个 TrainRun 注册（P0 信号）或有 sample 级
     # ConsumptionEvent（P1 信号）。两者其一即视为已消费。
     if consumed == "yes":

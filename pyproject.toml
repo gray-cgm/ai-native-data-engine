@@ -13,7 +13,8 @@ members = [
   "python/adapters",
   "python/workflows",
   "python/profiles",
-  "sdk/python"
+  "sdk/python",
+  "sdk/dlkit",
 ]
 
 [tool.uv.sources]

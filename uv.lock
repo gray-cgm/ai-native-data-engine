@@ -16,6 +16,7 @@ members = [
     "ad-workflows",
     "ai-native-data-engine",
     "api",
+    "dlkit",
     "orchestrator",
 ]
 
@@ -596,6 +597,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/96/0d/d97e7f09ec1b823b9
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f8/f5/2aa0d0bc7449b3307a939ac01e49b4f7ced752317ae977bc1c871b40cd3b/dagster_webserver-1.13.0-py3-none-any.whl", hash = "sha256:70413ff941b2d47f0654abf9aa2e3a7a74a36e3b1d133b2ca5431410cbae8a05", size = 12127238, upload-time = "2026-04-09T18:13:41.464Z" },
 ]
+
+[[package]]
+name = "dlkit"
+version = "0.1.0"
+source = { editable = "sdk/dlkit" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "httpx", specifier = ">=0.27.0" }]
 
 [[package]]
 name = "docstring-parser"
