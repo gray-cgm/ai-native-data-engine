@@ -21,6 +21,8 @@ from src.models.dataset import Dataset, DatasetSample  # noqa: F401
 from src.models.lineage_event import EventResult, LineageEvent  # noqa: F401
 from src.models.asset import Asset, AssetKind  # noqa: F401
 from src.models.clip_tag import ClipTag, TagSource  # noqa: F401
+from src.models.train_run import TrainRun  # noqa: F401
+from src.models.consumption_event import ExportConsumptionEvent  # noqa: F401
 
 __all__ = [
     "Base",
@@ -41,4 +43,6 @@ __all__ = [
     "AssetKind",
     "ClipTag",
     "TagSource",
+    "TrainRun",
+    "ExportConsumptionEvent",
 ]

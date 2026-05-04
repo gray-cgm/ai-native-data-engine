@@ -10,7 +10,7 @@ from src.api.routes.assets import router as assets_router
 from src.api.routes.data_tasks import router as data_tasks_router
 from src.api.routes.datasets import router as datasets_router
 from src.api.routes.events import router as events_router
-from src.api.routes.export import router as export_router
+from src.api.routes.exports import router as exports_router
 from src.api.routes.health import router as health_router
 from src.api.routes.operations import router as operations_router
 from src.api.routes.ops_modules import router as ops_modules_router
@@ -41,7 +41,6 @@ app.include_router(catalog_router)
 app.include_router(clips_router)
 app.include_router(operations_router)
 app.include_router(ops_modules_router)
-app.include_router(export_router)
 app.include_router(tools_router)
 
 # ── 数据闭环需求管理系统路由 ──
@@ -52,6 +51,7 @@ app.include_router(snapshots_router)
 app.include_router(datasets_router)
 app.include_router(events_router)
 app.include_router(assets_router)
+app.include_router(exports_router)
 
 
 @app.on_event('startup')

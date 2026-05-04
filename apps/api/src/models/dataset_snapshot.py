@@ -67,3 +67,21 @@ class DatasetSnapshotManifest(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     sealed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, comment="export 完成、artifact 落盘时间"
     )
+
+    # ── 训练侧反馈计数 ──
+    consumed_count: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False,
+        comment="被 dlkit SDK 上报的 sample 消费总次数（P1 由 ingest workflow 维护，P0 默认 0）",
+    )
+    train_run_count: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False,
+        comment="关联的 train_run 数量（P0 由 train_run 注册触发自增）",
+    )
+    last_consumed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="最近一次被消费的时间",
+    )
+    hard_sample_count: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False,
+        comment="hard_score ≥ threshold 的 sample 数（P2 由 contribution_score Dagster job 写入）",
+    )

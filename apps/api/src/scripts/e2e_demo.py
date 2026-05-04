@@ -73,7 +73,12 @@ from src.models.requirement import (
     Requirement,
 )
 from src.scripts.lib import clip_matcher, scenario_loader, streaming_probe
-from src.services import dataset_slice_service, snapshot_service
+from src.services import (
+    consumption_event_service,
+    dataset_slice_service,
+    snapshot_service,
+    train_run_service,
+)
 
 # clip_reader 在 python/adapters；直接导入读 lance meta（start_time / end_time 纳秒）
 from adapters import clip_reader
@@ -142,6 +147,7 @@ class DemoContext:
     export_artifact_uri: str | None = None
     export_format: str = "parquet"
     asset_id: str | None = None  # 导出 artifact 登记的 Asset 行
+    demo_train_run_id: str | None = None  # 示例 TrainRun（snapshot ↔ consumer 闭环）
 
     # ── 帮助：按业务语义把对象挂到对的 DataTask 上 ───────────────────
     def data_task_for(self, key: str) -> str:
@@ -987,9 +993,45 @@ def step_export(db, ctx: DemoContext) -> None:
         export_artifact_uri=ctx.export_artifact_uri,
         export_format=fmt,
     )
+    # ── 注册一条示例 TrainRun，演示 snapshot ↔ consumer 闭环 ──
+    demo_run = train_run_service.register(
+        db,
+        snapshot_ids=[ctx.x_trace_id],
+        name=f"demo-train-{ctx.scenario.name}",
+        consumer="e2e-demo@local",
+        external_run_id=f"mlflow-demo-{ctx.x_trace_id[:8]}",
+        model_version="v0.0.1-demo",
+        notes="Auto-registered by e2e_demo to seed snapshot ↔ consumer 闭环.",
+    )
+    train_run_service.finish(db, run_id=demo_run.id, status="completed")
+    ctx.demo_train_run_id = demo_run.id
+    # ── 模拟 dlkit SDK 上报若干 sample 消费事件 + 随机 loss
+    # （演示 Consumers Tab 下钻 + Hard Samples / ROI Tab 真有数）──
+    import random
+    from datetime import datetime, timezone
+    rng = random.Random(hash(ctx.x_trace_id) & 0xFFFF_FFFF)
+    consumption_event_service.ingest_batch(
+        db,
+        events=[
+            {
+                "snapshot_trace": ctx.x_trace_id,
+                "sample_uid": f"{ctx.official_dataset_id or 'ds'}:demo-clip-{i % 4}:0",
+                "train_run_id": demo_run.id,
+                "epoch": i // 4,
+                "step": i,
+                # 故意做出"几条 hard sample"：clip-0 高 loss，其余正常
+                "loss": (
+                    rng.uniform(0.8, 1.5) if i % 4 == 0
+                    else rng.uniform(0.05, 0.4)
+                ),
+                "ts": datetime.now(timezone.utc),
+            }
+            for i in range(12)
+        ],
+    )
     db.commit()
     _section_done(
-        f"artifact={output_path} rows={len(rows)} asset={asset.id[:8]}…"
+        f"artifact={output_path} rows={len(rows)} asset={asset.id[:8]}… train_run={demo_run.id[:8]}…"
     )
 
 
@@ -1017,6 +1059,7 @@ def print_banner(ctx: DemoContext) -> None:
     print(f"  artifact (file)   : {ctx.export_artifact_uri or '—'}")
     print(f"  asset_id          : {ctx.asset_id or '—'}")
     print(f"  trace receipt     : {receipt}")
+    print(f"  demo_train_run    : {ctx.demo_train_run_id or '—'}")
     print(f"  streaming         : {ctx.streaming_mode} ({ctx.streaming_detail})"
           if ctx.include_streaming else "  streaming         : skipped")
     print("─" * 72)
@@ -1032,6 +1075,13 @@ def print_banner(ctx: DemoContext) -> None:
     print(f"  curl 'http://localhost:8000/api/v1/events?x_trace_id={ctx.x_trace_id}'")
     print(f"  curl 'http://localhost:8000/api/v1/assets?x_trace_id={ctx.x_trace_id}'")
     print(f"  curl 'http://localhost:8000/api/v1/trace/{ctx.x_trace_id}'")
+    print()
+    print("Exports (training feedback loop):")
+    print(f"  curl 'http://localhost:8000/api/v1/exports/snapshots/{ctx.x_trace_id}'")
+    print(f"  curl 'http://localhost:8000/api/v1/exports/train-runs?snapshot_trace={ctx.x_trace_id}'")
+    print(f"  curl 'http://localhost:8000/api/v1/exports/usage?snapshot_trace={ctx.x_trace_id}'")
+    print(f"  open  http://localhost:5173/exports?tab=snapshots")
+    print(f"  open  http://localhost:5173/exports?tab=consumers")
     print(f"  open  http://localhost:5173/pipelines?x_trace_id={ctx.x_trace_id}")
     print("═" * 72)
 

@@ -82,13 +82,17 @@ export const DOC_SECTIONS: DocManifestSection[] = [
       },
       {
         id: 'product-modules',
-        label: '六大模块子 PRD',
+        label: '业务模块子 PRD',
         items: [
-          { path: 'prd/module-catalog.md', title: 'Catalog', hint: '数据集目录 + customized/official Tab + Promote' },
+          {
+            path: 'prd/module-overview.md',
+            title: '① Overview · 综合首页 Dashboard',
+            hint: 'Role-based 一屏（Manager / DE / MLE 三段 + 北极星）—— 平台综合入口，非业务领域模块',
+          },
           {
             path: 'prd/module-requirement.md',
-            title: 'Requirement',
-            hint: '需求 + Sign-off + 4 层闭环',
+            title: '② Requirement · 需求起点',
+            hint: '需求 + Sign-off → 拆 6 类 DataTask（4 层闭环对象的入口）',
             children: [
               {
                 path: 'prd/requirement-management-system.md',
@@ -97,10 +101,36 @@ export const DOC_SECTIONS: DocManifestSection[] = [
               },
             ],
           },
-          { path: 'prd/module-explorer.md', title: 'Explorer', hint: 'Clip 检索 / 详情 / 灵活切割（Lance ns 时间轴）' },
-          { path: 'prd/module-operations.md', title: 'Operations', hint: 'Mining / Labeling / Tagging / Checking / Release' },
-          { path: 'prd/module-pipelines.md', title: 'Pipelines', hint: '运行 / 血缘 / 质量 / 成本 5 Tab' },
-          { path: 'prd/module-tools.md', title: 'Tools', hint: '微前端工具平台 + iframe 网关' },
+          {
+            path: 'prd/module-explorer.md',
+            title: '③ Explorer · 数据挖掘',
+            hint: 'Clip 检索 / 详情 / 灵活切割（Lance ns 时间轴）',
+          },
+          {
+            path: 'prd/module-operations.md',
+            title: '④ Operations · 人机协同执行(human in the loop)',
+            hint: 'Mining / Tagging / Labeling / Checking / Privacy / Release 6 子域',
+          },
+          {
+            path: 'prd/module-pipelines.md',
+            title: '⑤ Pipelines · 机器执行观测',
+            hint: 'PipelineRun 5 Tab：运行 / 血缘 / 质量 / 成本 / 总览',
+          },
+          {
+            path: 'prd/module-catalog.md',
+            title: '⑥ Catalog · 数据集沉淀',
+            hint: 'customized → official Promote · 双 Tab 目录',
+          },
+          {
+            path: 'prd/module-exports.md',
+            title: '⑦ Exports · 数据交付与训练反馈',
+            hint: '出仓 + dlkit SDK + Hard Sample / ROI 闭环回流',
+          },
+          {
+            path: 'prd/module-tools.md',
+            title: '⑧ Tools · 工具平台',
+            hint: '微前端 + iframe 网关嵌入第三方/内部子工具',
+          },
         ],
       },
       {
@@ -305,6 +335,21 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     description: '按日期记录每次迭代的改造内容与待办项',
     items: [
       { path: 'dev-logs/README.md', title: '开发日志说明' },
+      {
+        path: 'dev-logs/2026-05-04-exports-impl-and-ui-overhaul.md',
+        title: '2026-05-04 · Exports MVP P0~P2 全实装 / UI 交互拉直 / Overview 重写 / 场景多样化',
+        hint: 'dlkit SDK + Hard Sample / ROI / Contributions / clickable-row + IdCell / Role-based Dashboard 配色分段 / 9 类真实 ADAS 场景',
+      },
+      {
+        path: 'dev-logs/2026-05-04-exports-sample-contribution-design.md',
+        title: '2026-05-04 · 数据 ROI 价值链条 · Exports 模块 + Sample Contribution 设计稿',
+        hint: '设计稿（PRD + Architecture）：分层边界 / 编排能力 / 算法贡献样本回流平台',
+      },
+      {
+        path: 'dev-logs/2026-05-03-docs-manifest-and-logo.md',
+        title: '2026-05-03 · 文档目录重排 + Logo 上线 + 待办框样式修复',
+        hint: '架构 4 组 MECE 重排 / mvp-scope 跨节迁 / Logo 设计 + favicon / GFM checkbox CSS',
+      },
       {
         path: 'dev-logs/2026-05-02-tasktype-and-layering-cleanup.md',
         title: '2026-05-02 · TaskType 重构 + 分层边界落地 + Mermaid 升级',

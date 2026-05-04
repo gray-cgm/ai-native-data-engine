@@ -224,7 +224,7 @@ open http://localhost:5173/catalog/v2/<official_id>
 1. **跑一次完整 e2e**：`make e2e-demo SCENARIO=night-vru SEED=42`，对照刚才学的 7 步看代码
 2. **进入产品视角**：[产品使用说明](../prd/user-guide.md) 按角色看怎么用平台
 3. **进入架构视角**：[架构总览](../architecture/overview.md) → 从这里往下挖每个分层
-4. **想深入某模块**：六大模块 PRD（[Catalog](../prd/module-catalog.md) / [Requirement](../prd/module-requirement.md) / [Explorer](../prd/module-explorer.md) / [Operations](../prd/module-operations.md) / [Pipelines](../prd/module-pipelines.md) / [Tools](../prd/module-tools.md)）
+4. **想深入某模块**：业务模块 PRD（按数据闭环旅程序）—— [Requirement](../prd/module-requirement.md) → [Explorer](../prd/module-explorer.md) → [Operations](../prd/module-operations.md) → [Pipelines](../prd/module-pipelines.md) → [Catalog](../prd/module-catalog.md) → [Exports](../prd/module-exports.md) → [Tools](../prd/module-tools.md)；综合入口看 [Overview Dashboard](../prd/module-overview.md)
 
 ---
 

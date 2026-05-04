@@ -21,7 +21,10 @@ class ADEngineClient:
         return httpx.get(f'{self.base_url}/exports', timeout=30).json()
 
     def export_dataset(self, dataset_id: str, format: str = 'lance') -> dict:
-        return httpx.post(f'{self.base_url}/exports/dataset/{dataset_id}', params={'format': format}, timeout=30).json()
+        return httpx.post(
+            f'{self.base_url}/api/v1/exports/datasets/{dataset_id}',
+            params={'format': format}, timeout=30,
+        ).json()
 
     def search_preview(self) -> dict:
         return httpx.get(f'{self.base_url}/samples/search-preview', timeout=30).json()
