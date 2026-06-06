@@ -319,6 +319,40 @@ export async function getOpsStats(module: OpsModuleKey): Promise<OpsStats> {
   return (await platformFetch(`/api/v1/ops/${module}/stats`)) as OpsStats
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Labeling 标注保存闭环（对齐 apps/api/src/api/routes/labeling_annotations.py）
+// ────────────────────────────────────────────────────────────────────────
+
+export type SaveAnnotationsBody = {
+  clip_id: string
+  annotations: unknown[]
+  ops_item_id?: string
+  requirement_id?: string
+  x_trace_id?: string
+  image_id?: string
+}
+
+export async function saveLabelingAnnotations(body: SaveAnnotationsBody) {
+  const clipId = typeof body?.clip_id === 'string' ? body.clip_id.trim() : ''
+  if (!clipId) {
+    throw new AppError('clip_id is required', {
+      status: 400,
+      code: errorCodes.router.requestParamIncorrect,
+      detailMessage: 'Cannot save annotations without clip_id.',
+    })
+  }
+  return await platformFetch('/api/v1/ops/labeling/annotations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+export async function loadLabelingAnnotations(clipId: string, xTraceId?: string) {
+  const query = toQuery({ clip_id: clipId, x_trace_id: xTraceId })
+  return await platformFetch(`/api/v1/ops/labeling/annotations${query}`)
+}
+
 /**
  * Decorates the platform overview with module metadata so the Web can render
  * cards without cross-referencing a second lookup table.

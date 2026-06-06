@@ -26,6 +26,32 @@ export default [
     },
     handler: opsModulesHandler.overview,
   }),
+  // labeling 标注保存闭环 —— 必须排在 /ops/:module/:id 之前，
+  // 否则 /ops/labeling/annotations 会被当成 module=labeling&id=annotations。
+  defineRoute({
+    method: 'post',
+    path: '/ops/labeling/annotations',
+    validate: {
+      type: 'json',
+      body: unknownObject,
+      output: buildOutputSchema(unknownObject),
+    },
+    meta: { swagger: { summary: 'Save labeling annotations (cornerstone)', tags: ['ops'] } },
+    handler: opsModulesHandler.saveAnnotations,
+  }),
+  defineRoute({
+    method: 'get',
+    path: '/ops/labeling/annotations',
+    validate: {
+      query: Joi.object({
+        clip_id: Joi.string().required(),
+        x_trace_id: Joi.string().optional(),
+      }),
+      output: buildOutputSchema(unknownObject),
+    },
+    meta: { swagger: { summary: 'Load latest labeling annotations for a clip', tags: ['ops'] } },
+    handler: opsModulesHandler.loadAnnotations,
+  }),
   defineRoute({
     method: 'get',
     path: '/ops/:module/vocab',

@@ -13,6 +13,7 @@ from src.api.routes.events import router as events_router
 from src.api.routes.exports import router as exports_router
 from src.api.routes.health import router as health_router
 from src.api.routes.operations import router as operations_router
+from src.api.routes.labeling_annotations import router as labeling_annotations_router
 from src.api.routes.ops_modules import router as ops_modules_router
 from src.api.routes.pipelines import router as pipelines_router
 from src.api.routes.requirements import router as requirements_router
@@ -40,6 +41,8 @@ app.include_router(streaming_router)
 app.include_router(catalog_router)
 app.include_router(clips_router)
 app.include_router(operations_router)
+# labeling 标注闭环：必须在通用 ops_modules_router 之前，避免 /annotations 被 /{item_id} 抢匹配
+app.include_router(labeling_annotations_router)
 app.include_router(ops_modules_router)
 app.include_router(tools_router)
 

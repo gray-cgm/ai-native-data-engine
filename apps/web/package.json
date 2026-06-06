@@ -13,6 +13,8 @@
     "@ad-engine/schemas": "workspace:*",
     "@ant-design/icons": "^6.1.1",
     "@ant-design/plots": "^2.6.8",
+    "@cornerstonejs/core": "4.22.13",
+    "@cornerstonejs/tools": "4.22.13",
     "antd": "^6.3.6",
     "highlight.js": "^11.11.1",
     "mermaid": "^11.14.0",

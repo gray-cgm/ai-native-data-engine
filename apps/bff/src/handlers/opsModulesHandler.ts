@@ -8,10 +8,13 @@ import {
   getOpsOverview,
   getOpsStats,
   getOpsVocab,
+  loadLabelingAnnotations,
   patchOpsItemForModule,
   queryOpsItems,
+  saveLabelingAnnotations,
   type OpsItemCreateInput,
   type OpsItemPatchInput,
+  type SaveAnnotationsBody,
 } from '../engines/opsModulesEngine.js'
 
 /**
@@ -65,6 +68,16 @@ class OpsModulesHandler {
 
   async overview(ctx: Context) {
     ctx.body = await getOpsOverview()
+  }
+
+  // ── Labeling 标注保存闭环 ──
+  async saveAnnotations(ctx: Context) {
+    ctx.body = await saveLabelingAnnotations(ctx.request.body as SaveAnnotationsBody)
+  }
+
+  async loadAnnotations(ctx: Context) {
+    const query = ctx.request.query as Record<string, string>
+    ctx.body = await loadLabelingAnnotations(query.clip_id, query.x_trace_id)
   }
 }
 

@@ -16,6 +16,7 @@ const ClipDetailPage = lazy(() => import('./modules/explorer/pages/clip-detail.p
 const TaskBoardPage = lazy(() => import('./modules/operations/pages/task-board.page'))
 const ExportListPage = lazy(() => import('./modules/operations/pages/export-list.page'))
 const LabelingPage = lazy(() => import('./modules/operations/pages/labeling.page'))
+const AnnotationWorkspacePage = lazy(() => import('./modules/operations/annotation/annotation-workspace.page'))
 const TaggingPage = lazy(() => import('./modules/operations/pages/tagging.page'))
 const CheckingPage = lazy(() => import('./modules/operations/pages/checking.page'))
 const MiningPage = lazy(() => import('./modules/operations/pages/mining.page'))
@@ -45,6 +46,7 @@ export const routes: RouteObject[] = [
       { path: '/ops', element: <TaskBoardPage /> },
       { path: '/ops/mining', element: <MiningPage /> },
       { path: '/ops/labeling', element: <LabelingPage /> },
+      { path: '/ops/labeling/annotate', element: <AnnotationWorkspacePage /> },
       { path: '/ops/tagging', element: <TaggingPage /> },
       { path: '/ops/checking', element: <CheckingPage /> },
       { path: '/ops/release', element: <ReleasePage /> },
