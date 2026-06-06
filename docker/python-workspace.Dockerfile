@@ -9,7 +9,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.7 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -22,6 +22,7 @@ COPY python/adapters/pyproject.toml python/adapters/pyproject.toml
 COPY python/workflows/pyproject.toml python/workflows/pyproject.toml
 COPY python/profiles/pyproject.toml python/profiles/pyproject.toml
 COPY sdk/python/pyproject.toml sdk/python/pyproject.toml
+COPY sdk/dlkit/pyproject.toml sdk/dlkit/pyproject.toml
 
 RUN uv sync --locked --package orchestrator --no-install-workspace
 
@@ -33,6 +34,7 @@ COPY python/adapters/src python/adapters/src
 COPY python/workflows/src python/workflows/src
 COPY python/profiles/src python/profiles/src
 COPY sdk/python/src sdk/python/src
+COPY sdk/dlkit/src sdk/dlkit/src
 COPY infra infra
 
 RUN uv sync --locked --package orchestrator

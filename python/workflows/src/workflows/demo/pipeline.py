@@ -5,6 +5,7 @@ from adapters.query.duckdb.adapter import DuckDBQueryAdapter
 from adapters.vector.lance.adapter import LanceVectorAdapter
 from core.domain.models import AuthenticatedUser, ComputeRun, SampleRecord, ScenarioTriageConfig, ScenarioTriageSummary
 from core.profiles.runtime import RuntimeContainer
+from workflows.exports import publish_export
 from workflows.ingestion.demo import ingest_local_dataset
 
 
@@ -60,6 +61,10 @@ def run_scenario_triage_flow(
         Path(config.export_output_uri),
         format=config.export_format,
     )
+    # Object-backed profiles publish the exported artifact to the storage layer
+    # (s3/oss via OpenDAL); local-fs profiles keep it on disk, no-op here.
+    if container.capabilities.object_storage:
+        publish_export(container.storage, output_path, config.export_output_uri)
     distribution = container.query.query_distribution()
     search_rows = container.search.search_by_filters({}, top_k=100)
 

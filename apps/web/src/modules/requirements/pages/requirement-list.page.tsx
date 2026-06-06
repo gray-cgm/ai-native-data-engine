@@ -37,7 +37,9 @@ export default function RequirementListPage() {
       const payload = d as { items?: unknown[] }
       return (payload?.items?.length ?? 0) === 0
     },
-    cacheKey: 'requirements',
+    // cacheKey 必须纳入所有筛选条件，否则改 status/priority/keyword/page 不会触发 refetch
+    // （useQuery 仅在 cacheKey 变化时重取）。对齐 ops-module-list-page 的动态 key 模式。
+    cacheKey: `requirements:${status}:${priority}:${keyword}:${page}`,
   })
 
   const { data: statsData } = useQuery(statsFetcher, { cacheKey: 'requirement-stats' })
@@ -45,7 +47,9 @@ export default function RequirementListPage() {
   const items = listData?.items ?? []
   const total = listData?.total ?? 0
 
-  if (listState === 'loading') {
+  // 整页 loader 只在首次加载（尚无数据）时显示；筛选变化触发的后台 refetch
+  // 保留已有表格与筛选框，避免每次输入都把整页闪成 loading。
+  if (listState === 'loading' && !listData) {
     return <PageLoading message="Loading requirements..." />
   }
 

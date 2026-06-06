@@ -196,10 +196,12 @@ Requirement.id → DataTask.x_trace_id → OperationsTask.x_trace_id
 - 不创建额外文档文件，除非用户明确要求
 - 测试只覆盖边界与分支，不写"看起来全面"的样板
 
-#### 第 6 步：验证
+#### 第 6 步：验证 + 测试（强制，见 CLAUDE.md 测试基线）
 
 - AST 解析 + tsc（如涉及前端）
 - 受影响 Python 模块 import smoke
+- **`uv run pytest` 全绿**：补/改 `tests/unit/`（adapter 多实现走 contract test 参数化）；接外部存储/库/消息的功能必加 `tests/integration/`（`@pytest.mark.integration`，不可达显式 skip）
+- **产出测试报告**：`reports/junit.xml` + `reports/coverage/`；总结里附报告路径与 passed/skipped 计数
 - 涉及 ORM 改动：`alembic upgrade head` + e2e_demo 跑通
 - 涉及前端：`pnpm build` / 手动浏览器验证
 

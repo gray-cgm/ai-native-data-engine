@@ -22,3 +22,37 @@ ad-core = { workspace = true }
 ad-adapters = { workspace = true }
 ad-workflows = { workspace = true }
 ad-profiles = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+  "python/core/src",
+  "python/adapters/src",
+  "python/workflows/src",
+  "python/profiles/src",
+  "apps/api",
+]
+markers = [
+  "integration: 需要外部服务（minio/postgres/kafka）的集成测试；不可达时显式 skip",
+]
+addopts = """
+  -ra
+  --strict-markers
+  -m "not integration"
+  --junitxml=reports/junit.xml
+  --cov=adapters --cov=profiles --cov=workflows --cov=src
+  --cov-report=term-missing
+  --cov-report=html:reports/coverage
+"""
+
+[tool.coverage.run]
+omit = [
+  "apps/api/src/scripts/*",
+  "*/scripts/*",
+]

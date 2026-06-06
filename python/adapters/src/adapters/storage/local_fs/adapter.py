@@ -20,6 +20,9 @@ class LocalFileStorageAdapter:
     def exists(self, uri: str) -> bool:
         return Path(uri).exists()
 
+    def size(self, uri: str) -> int:
+        return Path(uri).stat().st_size
+
     def list(self, prefix: str) -> list[str]:
         root = Path(prefix)
         return [str(path) for path in self.list_files(root)] if root.exists() else []

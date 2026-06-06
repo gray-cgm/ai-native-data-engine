@@ -9,9 +9,14 @@ profile: team-dev
 # auth = cross-cutting access control capability
 
 storage:
-  provider: minio
+  provider: opendal
+  scheme: s3
+  root: ./data            # base：本地形 uri（如 export_output_uri）归一为 bucket 内 key
   bucket: ad-data
   endpoint: http://minio:9000
+  region: us-east-1
+  access_key_id: minioadmin
+  secret_access_key: minioadmin
 
 file_formats:
   current_primary: lance

@@ -25,7 +25,7 @@ flowchart TB
     end
 
     Verticals -.通过 schema/workflow/profile 适配.-> Core
-    Core -.对外交付.-> MLE["🧪 算法工程师 (Machine Learning Engineer)<br/>Train / Eval / Iterate"]
+    Core -.对外交付.-> MLE["🧪 算法工程师 (Machine Learning Engineer)<br/>Train / Eval / Iterate"]    F
 ```
 
 ### 0.2 数据闭环：四层对象 + x_trace_id 串通
@@ -966,6 +966,7 @@ Catalog Dataset (scenario 聚合)
 
 - 交付结果是否真实改善
 - 系统能力是否真的可持续
+- 团队机制是否支持平台长期演进
 - 团队机制是否支持平台长期演进
 - 工程体系是否能够支撑持续发布、稳定运行和快速恢复
 

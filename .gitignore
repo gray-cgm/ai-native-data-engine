@@ -30,3 +30,8 @@ docker/dagster/.nux/
 docker/dagster/.logs_queue/
 docker/dagster/logs/
 docker/dagster/storage/
+# Test artifacts
+reports/
+.pytest_cache/
+.coverage
+htmlcov/

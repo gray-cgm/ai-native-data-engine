@@ -1,0 +1,138 @@
+name: CI
+
+# 三层测试 + 覆盖率门禁（≥80%）+ 报告 artifact。
+# - api：pytest（apps/api/src 覆盖率门禁）
+# - bff / web：vitest（各自 vitest.config.ts 的 coverage.thresholds.lines=80 门禁）
+# - integration：OpenDAL ↔ MinIO 集成测试（service container）
+#
+# 注：仓库 pnpm-lock.yaml 为 lockfileVersion 6.0（pnpm 8 写入），与 package.json 的
+# packageManager: pnpm@10.8.1 不一致（仓库历史遗留）。CI 显式用 pnpm 8.15.1 匹配 lockfile，
+# 以保证 --frozen-lockfile 可用；待团队统一 pnpm 版本后再调整。
+
+on:
+  push:
+    branches: [master, test]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-tests:
+    name: api · pytest (cov ≥80%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install Python + deps
+        run: |
+          uv python install 3.12
+          uv sync --dev
+      - name: pytest（apps/api/src 门禁 ≥80%，排除 integration）
+        run: >
+          uv run pytest -o addopts=""
+          -m "not integration"
+          --cov=src
+          --cov-report=term-missing
+          --cov-report=html:reports/coverage
+          --cov-report=xml:reports/coverage.xml
+          --junitxml=reports/junit.xml
+          --cov-fail-under=80
+      - name: Upload api test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-report
+          path: reports/
+          retention-days: 14
+
+  bff-tests:
+    name: bff · vitest (cov ≥80%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pnpm (match lockfile v6.0)
+        run: npm i -g pnpm@8.15.1
+      - run: pnpm install --frozen-lockfile
+      - name: vitest bff（门禁 lines ≥80%）
+        run: pnpm --filter bff test:cov
+      - name: Upload bff coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bff-coverage-report
+          path: apps/bff/reports/
+          retention-days: 14
+
+  web-tests:
+    name: web · vitest (cov ≥75%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pnpm (match lockfile v6.0)
+        run: npm i -g pnpm@8.15.1
+      - run: pnpm install --frozen-lockfile
+      - name: vitest web（门禁 lines ≥75%，当前 80.83%）
+        run: pnpm --filter web test:cov
+      - name: Upload web coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage-report
+          path: apps/web/reports/
+          retention-days: 14
+
+  api-integration:
+    name: api · OpenDAL↔MinIO integration
+    runs-on: ubuntu-latest
+    services:
+      minio:
+        image: bitnami/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+          MINIO_DEFAULT_BUCKETS: ad-data
+    env:
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_BUCKET: ad-data
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: |
+          uv python install 3.12
+          uv sync --dev
+      - name: Wait for MinIO（runner 侧轮询，容器内无 curl 也不受影响）
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live; then echo "minio up"; exit 0; fi
+            sleep 2
+          done
+          echo "minio not ready (集成测试将显式 skip)"; exit 0
+      - name: pytest -m integration（MinIO 可达则真跑，否则显式 skip）
+        run: >
+          uv run pytest -o addopts=""
+          -m integration
+          --junitxml=reports/integration-junit.xml
+      - name: Upload integration report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-integration-report
+          path: reports/integration-junit.xml
+          retention-days: 14

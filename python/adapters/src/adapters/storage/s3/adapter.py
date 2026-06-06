@@ -18,6 +18,9 @@ class S3StorageAdapter:
     def exists(self, uri: str) -> bool:
         raise NotImplementedError
 
+    def size(self, uri: str) -> int:
+        raise NotImplementedError
+
     def list(self, prefix: str) -> list[str]:
         raise NotImplementedError
 

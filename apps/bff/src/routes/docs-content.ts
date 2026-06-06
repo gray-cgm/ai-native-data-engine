@@ -1,6 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { errorCodes } from '../const/error.js'
+import { AppError } from '../errors.js'
 import { defineRoute } from './route-types.js'
 import { buildOutputSchema, Joi } from './schema.js'
 
@@ -162,12 +164,12 @@ const treeRoute = defineRoute({
         nodes,
       }
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        root: DOCS_ROOT,
-        nodes: [],
-        error: (error as Error).message,
-      }
+      // 同理走标准错误通道（手写 500 body 不符合 errorResponseSchema）。
+      throw new AppError('failed to build docs tree', {
+        status: 500,
+        code: errorCodes.system.unknown,
+        detailMessage: (error as Error).message,
+      })
     }
   },
 })
@@ -199,9 +201,13 @@ const fileRoute = defineRoute({
     const rawPath = String((ctx.request.query as Record<string, string>)?.path ?? '')
     const absPath = resolveSafeFilePath(rawPath)
     if (!absPath) {
-      ctx.status = 404
-      ctx.body = { message: 'document not found' }
-      return
+      // 走标准错误通道，让 exception 中间件产出符合 errorResponseSchema 的 envelope；
+      // 直接 ctx.body={message} 会被 404 的 output 校验拒成 500。
+      throw new AppError('document not found', {
+        status: 404,
+        code: errorCodes.router.unknown,
+        detailMessage: `document not found: ${rawPath}`,
+      })
     }
     const stat = fs.statSync(absPath)
     const content = fs.readFileSync(absPath, 'utf8')

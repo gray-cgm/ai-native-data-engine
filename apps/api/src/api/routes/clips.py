@@ -24,6 +24,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from adapters import clip_reader
 from adapters.catalog import ClipCatalogIndex
 from core.domain.models import ClipCatalogQuery
+from src.core.runtime import get_runtime_container
 
 
 router = APIRouter(prefix='/clips', tags=['clips'])
@@ -244,7 +245,12 @@ def stream_video(clip_id: str, camera: str, request: Request):
             ),
             media_type='application/json',
         )
-    file_size = local_path.stat().st_size
+    # Byte streaming goes through the StorageAdapter so the same range path
+    # serves local-fs and (OpenDAL) object-backed clips unchanged: seek() over an
+    # OpenDAL Reader issues an HTTP Range request under the hood.
+    storage = get_runtime_container().storage
+    video_uri = str(local_path)
+    file_size = storage.size(video_uri)
     range_ = _parse_range(request.headers.get('range'), file_size)
     if range_ is None:
         return FileResponse(
@@ -254,7 +260,7 @@ def stream_video(clip_id: str, camera: str, request: Request):
     length = end - start + 1
 
     def iter_chunk(chunk_size: int = 1024 * 1024):
-        with local_path.open('rb') as fh:
+        with storage.open(video_uri, 'rb') as fh:
             fh.seek(start)
             remaining = length
             while remaining > 0:

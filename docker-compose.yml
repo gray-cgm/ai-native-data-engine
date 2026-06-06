@@ -116,6 +116,40 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── MinIO (S3-compatible object storage for team-dev / OpenDAL) ──
+  # team-dev / enterprise profiles point storage.provider=opendal scheme=s3 here;
+  # OpenDALStorageAdapter streams clip video range + publishes dataset exports.
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # One-shot: wait for MinIO then ensure the team-dev bucket exists.
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >-
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET:-ad-data} &&
+      echo 'minio bucket ready: ${MINIO_BUCKET:-ad-data}'
+      "
+
   # ── Kafka broker (single-node KRaft, no Zookeeper) ──
   # Using confluentinc/cp-kafka because it ships native multi-arch images
   # (linux/amd64 + linux/arm64) and avoids the SIGILL crashes observed with
@@ -172,3 +206,4 @@ volumes:
   postgres_data:
   superset_home:
   kafka_data:
+  minio_data:

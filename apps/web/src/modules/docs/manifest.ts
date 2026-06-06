@@ -336,6 +336,26 @@ export const DOC_SECTIONS: DocManifestSection[] = [
     items: [
       { path: 'dev-logs/README.md', title: '开发日志说明' },
       {
+        path: 'dev-logs/2026-06-07-ci-test-coverage-gates.md',
+        title: '2026-06-07 · CI 接入三层测试 + 覆盖率门禁 + 报告 artifact',
+        hint: 'GitHub Actions 4 job (api/bff/web/integration) / pytest --cov-fail-under + vitest thresholds 80% / pnpm 8 匹配 lockfile v6.0 / MinIO service container',
+      },
+      {
+        path: 'dev-logs/2026-06-06-web-bff-api-test-coverage.md',
+        title: '2026-06-06 · web / bff / api 三层测试补齐至 ≥80% 覆盖率',
+        hint: 'api 92% (pytest+TestClient 21 路由) / bff 96.1% (vitest+supertest) / web 80.83% (vitest+RTL) / 三 subagent 并行 / 零改生产代码 / 查出 4 处问题',
+      },
+      {
+        path: 'dev-logs/2026-06-06-opendal-usecases-and-test-baseline.md',
+        title: '2026-06-06 · OpenDAL 三大用例落地 + 测试基线建立',
+        hint: 'clips 视频 range read 走 storage / dataset 导出 publish_export / docker minio + team-dev opendal-s3 / pytest unit+integration+报告 / test-expert subagent / CLAUDE.md 测试规范',
+      },
+      {
+        path: 'dev-logs/2026-06-06-opendal-storage-adapter.md',
+        title: '2026-06-06 · OpenDAL 接管 StorageAdapter（Phase 1：新增 + 共存）',
+        hint: 'OpenDALStorageAdapter 实装 / 与 local_fs·s3 共存 / profile provider:opendal 装配 / fs contract parity / 一套配置切 s3·oss·gcs',
+      },
+      {
         path: 'dev-logs/2026-05-04-exports-impl-and-ui-overhaul.md',
         title: '2026-05-04 · Exports MVP P0~P2 全实装 / UI 交互拉直 / Overview 重写 / 场景多样化',
         hint: 'dlkit SDK + Hard Sample / ROI / Contributions / clickable-row + IdCell / Role-based Dashboard 配色分段 / 9 类真实 ADAS 场景',

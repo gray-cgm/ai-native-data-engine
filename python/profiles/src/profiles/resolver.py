@@ -12,6 +12,7 @@ from adapters.table.lance.adapter import LanceTableAdapter
 from adapters.query.duckdb.adapter import DuckDBQueryAdapter
 from adapters.query.starrocks.adapter import StarRocksQueryAdapter
 from adapters.storage.local_fs.adapter import LocalFileStorageAdapter
+from adapters.storage.opendal.adapter import OpenDALStorageAdapter
 from adapters.storage.s3.adapter import S3StorageAdapter
 from adapters.vector.lance.adapter import LanceVectorAdapter
 from core.domain.models import ProfileCapabilities, RuntimeProfile
@@ -27,8 +28,18 @@ def load_profile(profile_path: Path) -> RuntimeProfile:
 def build_container(profile_path: Path) -> RuntimeContainer:
     profile = load_profile(profile_path)
 
-    if profile.storage['provider'] == 'local_fs':
+    storage_provider = profile.storage['provider']
+    if storage_provider == 'local_fs':
         storage = LocalFileStorageAdapter()
+    elif storage_provider == 'opendal':
+        reserved = {'provider', 'scheme', 'root', 'base'}
+        options = {k: v for k, v in profile.storage.items() if k not in reserved}
+        storage = OpenDALStorageAdapter(
+            profile.storage['scheme'],
+            root=profile.storage.get('root', '.'),
+            base=profile.storage.get('base'),
+            **options,
+        )
     else:
         storage = S3StorageAdapter(
             bucket=profile.storage.get('bucket', ''),
